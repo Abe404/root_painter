@@ -303,7 +303,7 @@ class Trainer():
 
         message = (f'Training {self.epochs_without_progress}'
                    f' of max {self.max_epochs_without_progress}'
-                   ' epochs without progress.')
+                   ' epochs without progress')
         print(message)
         self.write_message(message)
         if self.epochs_without_progress >= self.max_epochs_without_progress:

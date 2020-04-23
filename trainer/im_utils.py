@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import os
 import time
 import glob
+import shutil
 from math import ceil
 import random
 import numpy as np
@@ -26,6 +27,7 @@ import skimage.util as skim_util
 from skimage import color
 from skimage.exposure import rescale_intensity
 from skimage.io import imread, imsave
+
 
 
 def is_photo(fname):
@@ -166,7 +168,7 @@ def save_then_move(out_path, seg_alpha):
     fname = os.path.basename(out_path)
     temp_path = os.path.join('/tmp', fname)
     imsave(temp_path, seg_alpha)
-    os.rename(temp_path, out_path)
+    shutil.move(temp_path, out_path)
 
 def load_image(photo_path):
     photo = imread(photo_path)

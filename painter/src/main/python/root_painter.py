@@ -71,14 +71,16 @@ class RootPainter(QtWidgets.QMainWindow):
         self.image_pixmap_holder = None
         self.seg_pixmap_holder = None
         self.annot_pixmap_holder = None
-        self.initUI()
+
+        self.image_visible = True
         self.seg_visible = False
         self.annot_visible = True
-        self.image_visible = True
         self.pre_segment_count = 0
         self.im_width = None
         self.im_height = None
 
+        self.initUI()
+        
     def mouse_scroll(self, event):
         scroll_up = event.angleDelta().y() > 0
         modifiers = QtWidgets.QApplication.keyboardModifiers()

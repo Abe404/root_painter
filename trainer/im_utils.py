@@ -70,7 +70,9 @@ def load_train_image_and_annot(dataset_dir, train_annot_dir):
             # also return fname for debugging purposes.
             return image, annot, fname
         except Exception as e:
-            print('error loading image and annot', e)
+            # This could be due to an empty annotation saved by the user.
+            # Which happens rarely due to deleting all labels in an 
+            # existing annotation and is not a problem.
             # give it some time and try again.
             time.sleep(0.1)
     if attempts == max_attempts:

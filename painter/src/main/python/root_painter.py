@@ -193,8 +193,8 @@ class RootPainter(QtWidgets.QMainWindow):
         image_pixmap = QtGui.QPixmap(self.image_path)
         im_size = image_pixmap.size()
         im_width, im_height = im_size.width(), im_size.height()
-        assert im_width > 0
-        assert im_height > 0
+        assert im_width > 0, self.image_path
+        assert im_height > 0, self.image_path
         self.graphics_view.image = image_pixmap # for resize later
         self.im_width = im_width
         self.im_height = im_height

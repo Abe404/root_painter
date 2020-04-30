@@ -127,12 +127,18 @@ class Trainer():
         name = fname.rpartition('_')[0] # remove hash
         if name in [i.__name__ for i in self.valid_instructions]:
             print('execute_instruction', name)
-            with open(fpath, 'r') as json_file:
-                config = self.fix_config_paths(json.load(json_file))
-                getattr(self, name)(config)
+            try:
+              with open(fpath, 'r') as json_file:
+                  contents = json_file.read()
+                  config = self.fix_config_paths(json.loads(contents))
+                  getattr(self, name)(config)
+            except Exception as e:
+              print('Exception parsing instruction', e)
+              return False
         else:
             #TODO put in a log and display error to the user.
             raise Exception(f"unhandled instruction {name})")
+        return True)
 
     def stop_training(self, _):
         if self.training:

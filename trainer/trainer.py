@@ -119,8 +119,8 @@ class Trainer():
 
     def check_for_instructions(self):
         for fname in os.listdir(self.instruction_dir):
-            self.execute_instruction(fname)
-            os.remove(os.path.join(self.instruction_dir, fname))
+            if self.execute_instruction(fname):
+                os.remove(os.path.join(self.instruction_dir, fname))
 
     def execute_instruction(self, fname):
         fpath = os.path.join(self.instruction_dir, fname)
@@ -128,13 +128,13 @@ class Trainer():
         if name in [i.__name__ for i in self.valid_instructions]:
             print('execute_instruction', name)
             try:
-              with open(fpath, 'r') as json_file:
-                  contents = json_file.read()
-                  config = self.fix_config_paths(json.loads(contents))
-                  getattr(self, name)(config)
+                with open(fpath, 'r') as json_file:
+                    contents = json_file.read()
+                    config = self.fix_config_paths(json.loads(contents))
+                    getattr(self, name)(config)
             except Exception as e:
-              print('Exception parsing instruction', e)
-              return False
+                print('Exception parsing instruction', e)
+                return False
         else:
             #TODO put in a log and display error to the user.
             raise Exception(f"unhandled instruction {name})")

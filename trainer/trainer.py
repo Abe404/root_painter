@@ -138,7 +138,7 @@ class Trainer():
         else:
             #TODO put in a log and display error to the user.
             raise Exception(f"unhandled instruction {name})")
-        return True)
+        return True
 
     def stop_training(self, _):
         if self.training:

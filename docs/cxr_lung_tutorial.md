@@ -79,24 +79,24 @@ datasets folder.
 7. Annotate and train.
     - Label two images. Use the red (foreground) brush for the lungs and the green (background) brush for everything else. The brushes can be selected from the brush menu or using the shortcut key Q for foreground and W for background. Leave ambiguous regions as undefined. If you make a mistake you can undo by pressing the Z key or using the eraser tool (key E). Click 'Save & Next' after completing each annotation. Your annotations may look differently depending on your knowledge of lungs, the random order and which images were used for the dataset. 
     
-    ![First Lung Annotation](lungs1.jpeg)
+    ![First Lung Annotation](images/lungs1.jpeg)
   
-    ![Second Lung Annotation](lungs2.jpeg)
+    ![Second Lung Annotation](images/lungs2.jpeg)
 
     - Click start training from the network menu.
     - Label a third image in a similar way to the first two.
     - For the fourth image, first view the segmentation to inspect the trained model performance. The segmentation can be shown by ticking the checkbox or pressing the S key. It may be useful to also hide the annotation (key A) and image (key I) when inspecting the segmentation. 
-     ![Fourth Lung Segmentation](lungs_4th_image_seg.jpeg)
+     ![Fourth Lung Segmentation](images/lungs_4th_image_seg.jpeg)
     
     - Then then target the annotations towards area where the segentation is inadequate.
-      ![Fourth Lung Annotation](lungs_4th_annot.jpeg)
+      ![Fourth Lung Annotation](images/lungs_4th_annot.jpeg)
 
     - Proceed through the images this way. First viewing the segmentation and then assigning annotations to correct for mistakes.
     - If waiting for the segmentation is slowing you down then set Pre-Segment from 0 to 1. Pre-Segment is in the options menu.
     - Keep progressing through the images until you are happy with the quality of the model. It's possible to workthrough over 200 images in two hours but this will depend on your attention to detail and GPU. The segmentation quality will vary but should improve on average, with less annotation being required over time and eventually many of the images not requireing any corrections.
     
-        ![34th Lung Annotation](lungs_34.jpeg)
-        ![212 Lung Segmentation](lungs_212.jpeg)
+        ![34th Lung Annotation](images/lungs_34.jpeg)
+        ![212 Lung Segmentation](images/lungs_212.jpeg)
     
     
     

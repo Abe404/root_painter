@@ -1,6 +1,6 @@
 ### RootPainter Chest X-ray Segmentation Tutorial
 
-This is a guide for using [RootPainter](https://www.biorxiv.org/content/10.1101/2020.04.16.044461v1) to train a model to segment lungs in chest X-ray images
+This is a guide for using [RootPainter](https://www.biorxiv.org/content/10.1101/2020.04.16.044461v1) to train a model to segment lungs in chest X-ray images.
 
 In this guide I assume you have the server component of RootPainter set up and running. I also assume the sync directory location to be ~/Desktop/root_painter_sync. Please modify accordingly.
 
@@ -84,7 +84,19 @@ datasets folder.
     ![Second Lung Annotation](lungs2.jpeg)
 
     - Click start training from the network menu.
-    - Label a third image.
-    - From the fourth image onwards, view the segmentation first and then target the annotations towards area where the segentation is inadequate.
+    - Label a third image in a similar way to the first two.
+    - For the fourth image, first view the segmentation to inspect the trained model performance. The segmentation can be shown by ticking the checkbox or pressing the S key. It may be useful to also hide the annotation (key A) and image (key I) when inspecting the segmentation. 
+     ![Fourth Lung Segmentation](lungs_4th_image_seg.jpeg)
+    
+    - Then then target the annotations towards area where the segentation is inadequate.
+      ![Fourth Lung Annotation](lungs_4th_annot.jpeg)
+
+    - Proceed through the images this way. First viewing the segmentation and then assigning annotations to correct for mistakes.
     - If waiting for the segmentation is slowing you down then set Pre-Segment from 0 to 1. Pre-Segment is in the options menu.
-    - Keep progressing through the images until you are happy with the quality of the model
+    - Keep progressing through the images until you are happy with the quality of the model. It's possible to workthrough over 200 images in two hours but this will depend on your attention to detail and GPU. The segmentation quality will vary but should improve on average, with less annotation being required over time and eventually many of the images not requireing any corrections.
+    
+        ![34th Lung Annotation](lungs_34.jpeg)
+        ![212 Lung Segmentation(lungs_212.jpeg)
+    
+    
+    

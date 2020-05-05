@@ -3,7 +3,7 @@
 This is is a guide for getting started with the RootPainter software
 using sshfs to connect the client and server components. RootPainter is described in [this paper.](https://www.biorxiv.org/content/10.1101/2020.04.16.044461v1)
 
-I presume you have a linux server setup with a suitable GPU installed.
+I presume you have ssh access to a linux server with a suitable GPU and CUDA installed.
 
 1. SSH into your server to set up the server component of RootPainter.
 ```

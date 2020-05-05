@@ -34,19 +34,14 @@ python main.py
 You will be prompted to input a location for the sync directory. This is the folder where files are shared between the client and server. I will use ~/root_painter_sync.
 RootPainter will then create some folders inside ~/root_painter_sync
 The server should print the automatically selected batch size, which should be greater than 0.
-```
----
 
 7. To mount the sync directory from your local machine you will need to install sshfs locally (SSH Filesystem client).
 
 Debian / Ubuntu:
+```sudo apt-get install sshfs
 ```
-sudo apt-get install sshfs
-```
-
 OSX:
-```
-brew cask install osxfuse
+```brew cask install osxfuse
 ```
 
 Windows:

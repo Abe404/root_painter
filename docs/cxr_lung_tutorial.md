@@ -77,7 +77,12 @@ datasets folder.
     * name your project 'cxr_tutorial' (or whatever you want).
 
 7. Annotate and train.
-    - Label two images. Use the red (foreground) brush for the lungs and the green (background) brush for everything else. Leave ambiguous regions as undefined.
+    - Label two images. Use the red (foreground) brush for the lungs and the green (background) brush for everything else. The brushes can be selected from the brush menu or using the shortcut key Q for foreground and W for background. Leave ambiguous regions as undefined. If you make a mistake you can undo by pressing the Z key or using the eraser tool (key E). Click 'Save & Next' after completing each annotation. Your annotations may look differently depending on your knowledge of lungs, the random order and which images were used for the dataset. 
+    
+    ![First Lung Annotation](lungs1.jpeg)
+  
+    ![Second Lung Annotation](lungs2.jpeg)
+
     - Click start training from the network menu.
     - Label a third image.
     - From the fourth image onwards, view the segmentation first and then target the annotations towards area where the segentation is inadequate.

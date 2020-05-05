@@ -25,7 +25,7 @@ git clone --branch 0.2.3 https://github.com/Abe404/root_painter
 cd root_painter/trainer
 ```
 
-4. To avoid alterating any global packages. I suggest using a virtual environment. Create a virtual environment and activate it.
+4. To avoid alterating global packages. I suggest using a virtual environment. Create a virtual environment and activate it.
 ```
 python -m venv env
 source ./env/bin/activate

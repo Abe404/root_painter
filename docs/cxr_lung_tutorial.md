@@ -93,7 +93,7 @@ datasets folder.
 
     - Proceed through the images this way. First viewing the segmentation and then assigning annotations to correct for mistakes.
     - If waiting for the segmentation is slowing you down then set Pre-Segment from 0 to 1. Pre-Segment is in the options menu.
-    - Keep progressing through the images until you are happy with the quality of the model. It's possible to workthrough over 200 images in two hours but this will depend on your attention to detail and GPU. The segmentation quality will vary but should improve on average, with less annotation being required over time and eventually many of the images not requireing any corrections.
+    - Keep progressing through the images until you are happy with the quality of the model. It's possible to workthrough over 200 images in two hours but this will depend on your attention to detail and GPU. The segmentation quality will vary but should improve on average, with less annotation being required over time and eventually many of the images not requireing corrections.
     
         ![34th Lung Annotation](images/lungs_34.jpeg)
         ![212 Lung Segmentation](images/lungs_212.jpeg)

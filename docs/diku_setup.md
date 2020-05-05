@@ -40,7 +40,7 @@ pip install -r requirements.txt
 ```
 python main.py
 ```
-You will be prompted to input a location for the sync directory. This is the folder where files are shared between the client and server. I will use ~/root_painter_sync
+You will be prompted to input a location for the sync directory. This is the folder where files are shared between the client and server. I will use ~/root_painter_sync.
 RootPainter will then create some folders inside ~/root_painter_sync
 
 7. Create a slurm job.
@@ -52,7 +52,7 @@ Create a file named job.sh and insert the following. Modify the details based on
 #SBATCH --ntasks=1 --cpus-per-task=12 --mem=20000M
 # we run on the gpu partition and we allocate 1 titanrtx gpu
 #SBATCH -p gpu --gres=gpu:titanrtx:1
-#We expect that our program should not run langer than 2 hours
+#We expect that our program should not run langer than 3 hours
 #Note that a program will be killed once it exceeds this time!
 #SBATCH --time=3:00:00
 

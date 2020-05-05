@@ -65,7 +65,7 @@ datasets folder.
   
 4. If you haven't already installed the RootPainter client then download the
   client installer for your operating system.
-  DMG (OSX) EXE (Windows) and DEB (Debian/Ubuntu) files are available from
+  dmg (OSX) exe (Windows) and deb (Debian/Ubuntu) files are available from
   [this link](https://github.com/Abe404/root_painter/releases/tag/0.2.0).
   Then run the downloaded installer.
 

@@ -86,6 +86,6 @@ Windows:
 mkdir ~/Desktop/root_painter_sync
 sshfs -o allow_other,default_permissions KUID@slurm:/home/KUID/root_painter_sync ~/Desktop/root_painter_sync
 ```
-You should now be able to see the folders created by RootPainter (datasets, instructions and projects) inside ~/root_painter_sync on your local machine 
+You should now be able to see the folders created by RootPainter (datasets, instructions and projects) inside ~/Desktop/root_painter_sync on your local machine 
 See [lung tutorial](cxr_lung_tutorial.md) for an example of how to use RootPainter to train a model.
 

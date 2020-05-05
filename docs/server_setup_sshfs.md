@@ -31,7 +31,7 @@ pip install -r requirements.txt
 ```
 python main.py
 ```
-You will be prompted to input a location for the sync directory. This is the folder where files are shared between the client and server. I will use ~/root_painter_sync
+You will be prompted to input a location for the sync directory. This is the folder where files are shared between the client and server. I will use ~/root_painter_sync.
 RootPainter will then create some folders inside ~/root_painter_sync
 The server should print the automatically selected batch size, which should be greater than 0.
 ```

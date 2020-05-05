@@ -24,6 +24,7 @@ source ./env/bin/activate
 
 4. Install dependencies in the virtual environment. (takes ~3 minutes)
 ```
+pip install torch==1.3.1 -f https://download.pytorch.org/whl/torch_stable.html
 pip install -r requirements.txt
 ```
 

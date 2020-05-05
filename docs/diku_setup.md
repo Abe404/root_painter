@@ -52,7 +52,7 @@ Create a file named job.sh and insert the following. Modify the details based on
 #SBATCH --ntasks=1 --cpus-per-task=12 --mem=20000M
 # we run on the gpu partition and we allocate 1 titanrtx gpu
 #SBATCH -p gpu --gres=gpu:titanrtx:1
-#We expect that our program should not run langer than 2 hours
+#We expect that our program should not run langer than 3 hours
 #Note that a program will be killed once it exceeds this time!
 #SBATCH --time=3:00:00
 

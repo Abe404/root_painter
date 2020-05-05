@@ -37,24 +37,27 @@ The server should print the automatically selected batch size, which should be g
 ```
 ---
 
-9. To mount the sync directory from your local machine you will need to install sshfs locally (SSH Filesystem client).
+7. To mount the sync directory from your local machine you will need to install sshfs locally (SSH Filesystem client).
 
 Debian / Ubuntu:
 ```
 sudo apt-get install sshfs
 ```
+
 OSX:
 ```
 brew cask install osxfuse
 ```
+
 Windows:
 [Digital ocean has a guide](https://www.digitalocean.com/community/tutorials/how-to-use-sshfs-to-mount-remote-file-systems-over-ssh)
 
-10. Create the directory and mount the drive locally using sshfs. 
+8. Create the directory and mount the drive locally using sshfs. 
 ```
 mkdir ~/Desktop/root_painter_sync
 sudo sshfs -o allow_other,default_permissions username@xxx.xxx.xxx.xxx:/home/username/root_painter_sync ~/Desktop/root_painter_sync
 ```
+
 You should now be able to see the folders created by RootPainter (datasets, instructions and projects) inside ~/root_painter_sync on your local machine 
 See [lung tutorial](cxr_lung_tutorial.md) for an example of how to use RootPainter to train a model.
 

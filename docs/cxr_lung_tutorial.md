@@ -88,12 +88,12 @@ datasets folder.
     - For the fourth image, first view the segmentation to inspect the trained model performance. The segmentation can be shown by ticking the checkbox or pressing the S key. It may be useful to also hide the annotation (key A) and image (key I) when inspecting the segmentation. 
      ![Fourth Lung Segmentation](images/lungs_4th_image_seg.jpeg)
     
-    - Then then target the annotations towards area where the segentation is inadequate.
+    - Target the annotations towards areas where the segentation is inadequate.
       ![Fourth Lung Annotation](images/lungs_4th_annot.jpeg)
 
-    - Proceed through the images this way. First viewing the segmentation and then assigning annotations to correct for mistakes.
+    - Proceed through the images. First viewing the segmentation and then assigning annotations to correct for mistakes.
     - If waiting for the segmentation is slowing you down then set Pre-Segment from 0 to 1. Pre-Segment is in the options menu.
-    - Keep progressing through the images until you are happy with the quality of the model. It's possible to workthrough over 200 images in two hours but this will depend on your attention to detail and GPU. The segmentation quality will vary but should improve on average, with less annotation being required over time and eventually many of the images will not require corrections.
+    - Keep progressing through the images until you are happy with the quality of the model. It's possible to work through over 200 images in two hours but this will depend on your attention to detail and GPU. The segmentation quality will vary but should improve on average, with less annotation being required over time and eventually many of the images will not require corrections allowing you to proceed faster as you continue.
     
         ![34th Lung Annotation](images/lungs_34.jpeg)
         ![212 Lung Segmentation](images/lungs_212.jpeg)

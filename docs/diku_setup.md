@@ -68,7 +68,7 @@ python main.py
 sbatch job.sh
 ```
 
-9. To mount the sync directory you will need to install sshfs (SSH Filesystem client).
+9. To mount the sync directory from your local machine you will need to install sshfs locally (SSH Filesystem client).
 
 Debian / Ubuntu:
 ```

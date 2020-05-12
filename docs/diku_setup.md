@@ -21,7 +21,7 @@ ssh slurm
 
 3. Clone the RootPainter code from the repository and then cd into the trainer directory (the server component).
 ```
-git clone --branch 0.2.3 https://github.com/Abe404/root_painter
+git clone --branch 0.2.4 https://github.com/Abe404/root_painter.git
 cd root_painter/trainer
 ```
 

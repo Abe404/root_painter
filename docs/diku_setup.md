@@ -1,7 +1,7 @@
 ### DIKU RootPainter Setup
 
 This is is a guide for getting started with the RootPainter software
-using the diku servers. RootPainter is described in [this paper.](https://www.biorxiv.org/content/10.1101/2020.04.16.044461v1)
+using the diku servers and has been tested using python 3.7. RootPainter is described in [this paper.](https://www.biorxiv.org/content/10.1101/2020.04.16.044461v1)
 
 1. You will need to be able to ssh into slurm. If you don't have one already then add an entry for slurm in your ssh config file. Add the following to ~/.ssh/config and replace KUID with your own KU ID.
 ---

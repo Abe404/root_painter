@@ -28,9 +28,10 @@ from skimage import img_as_float32
 import im_utils
 from unet import UNetGNRes
 from metrics import get_metrics
+from file_utils import ls
 
 def get_latest_model_paths(model_dir, k):
-    fnames = os.listdir(model_dir)
+    fnames = ls(model_dir)
     fnames = sorted(fnames)[-k:]
     fpaths = [os.path.join(model_dir, f) for f in fnames]
     return fpaths
@@ -72,7 +73,7 @@ def get_val_metrics(cnn, val_annot_dir, dataset_dir, in_w, out_w, bs):
     TODO - This is too similar to the train loop. Merge both and use flags.
     """
     start = time.time()
-    fnames = os.listdir(val_annot_dir)
+    fnames = ls(val_annot_dir)
     fnames = [a for a in fnames if im_utils.is_photo(a)]
     cnn.half()
     # TODO: In order to speed things up, be a bit smarter here

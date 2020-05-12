@@ -27,7 +27,7 @@ import skimage.util as skim_util
 from skimage import color
 from skimage.exposure import rescale_intensity
 from skimage.io import imread, imsave
-
+from file_utils import ls
 
 
 def is_photo(fname):
@@ -54,7 +54,7 @@ def load_train_image_and_annot(dataset_dir, train_annot_dir):
         # (just try again)
         try:
             # This might take ages, profile and optimize
-            fnames = os.listdir(train_annot_dir)
+            fnames = ls(train_annot_dir)
             fnames = [a for a in fnames if is_photo(a)]
             fname = random.sample(fnames, 1)[0]
             annot_path = os.path.join(train_annot_dir, fname)

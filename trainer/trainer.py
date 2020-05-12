@@ -42,6 +42,7 @@ import model_utils
 from model_utils import save_if_better
 
 from im_utils import is_photo, load_image, save_then_move
+from file_utils import ls
 from startup import startup_setup
 
 
@@ -118,7 +119,7 @@ class Trainer():
         return new_config
 
     def check_for_instructions(self):
-        for fname in os.listdir(self.instruction_dir):
+        for fname in ls(self.instruction_dir):
             if self.execute_instruction(fname):
                 os.remove(os.path.join(self.instruction_dir, fname))
 
@@ -172,7 +173,7 @@ class Trainer():
         val_annot_dir = self.train_config['val_annot_dir']
         new_annot_mtimes = []
         for annot_dir in [train_annot_dir, val_annot_dir]:
-            for fname in os.listdir(annot_dir):
+            for fname in ls(annot_dir):
                 fpath = os.path.join(annot_dir, fname)
                 new_annot_mtimes.append(os.path.getmtime(fpath))
         new_annot_mtimes = sorted(new_annot_mtimes)
@@ -188,9 +189,9 @@ class Trainer():
     def train_one_epoch(self):
         train_annot_dir = self.train_config['train_annot_dir']
         val_annot_dir = self.train_config['val_annot_dir']
-        if not [is_photo(a) for a in os.listdir(train_annot_dir)]:
+        if not [is_photo(a) for a in ls(train_annot_dir)]:
             return
-        if not [is_photo(a) for a in os.listdir(val_annot_dir)]:
+        if not [is_photo(a) for a in ls(val_annot_dir)]:
             return
 
         if self.first_loop:
@@ -354,7 +355,7 @@ class Trainer():
             fnames = segment_config['file_names']
         else:
             # default to using all files in the directory if file_names is not specified.
-            fnames = os.listdir(in_dir)
+            fnames = ls(in_dir)
 
         # if model paths not specified use latest.
         if "model_paths" in segment_config:

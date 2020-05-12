@@ -29,6 +29,7 @@ from skimage import img_as_float32
 from skimage.exposure import rescale_intensity
 
 from im_utils import load_train_image_and_annot
+from file_utils import ls
 import im_utils
 import elastic
 
@@ -99,7 +100,7 @@ class TrainDataset(Dataset):
     def __len__(self):
         # use at least 612 but when dataset gets bigger start to expand
         # to prevent validation from taking all the time (relatively)
-        return max(612, len(os.listdir(self.train_annot_dir)) * 2)
+        return max(612, len(ls(self.train_annot_dir)) * 2)
 
     def __getitem__(self, _):
         image, annot, _ = load_train_image_and_annot(self.dataset_dir,

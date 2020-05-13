@@ -181,6 +181,18 @@ class CreateProjectWidget(QtWidgets.QWidget):
     def create_project(self):
         project_name = self.proj_name
         project_location = Path(self.project_location)
+
+        dataset_path = os.path.abspath(self.selected_dir)
+        datasets_dir = str(self.sync_dir / 'datasets')
+    
+        if not dataset_path.startswith(datasets_dir):
+            message = ("When creating a project the selected dataset must be in "
+                       "the datasets folder. The selected dataset is "
+                       f"{dataset_path} and the datasets folder is "
+                       f"{datasets_dir}.")
+            QtWidgets.QMessageBox.about(self, 'Project Creation Error', message)
+            return
+
         os.makedirs(self.sync_dir / project_location)
         proj_file_path = (self.sync_dir / project_location /
                           (project_name + '.seg_proj'))
@@ -202,10 +214,6 @@ class CreateProjectWidget(QtWidgets.QWidget):
                             'models' / model_name)
             original_model_file = self.selected_model
 
-        dataset_path = os.path.abspath(self.selected_dir)
-        assert dataset_path.startswith(str(self.sync_dir / 'datasets')), (
-            "When creating a project the selected dataset must be in "
-            "the datasets folder")
 
         dataset = os.path.basename(dataset_path)
         # get files in random order for training.

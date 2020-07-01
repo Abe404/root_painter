@@ -27,6 +27,7 @@ import sys
 from datetime import datetime
 from functools import partial
 import copy
+import traceback
 
 import numpy as np
 import torch
@@ -135,6 +136,7 @@ class Trainer():
                     getattr(self, name)(config)
             except Exception as e:
                 print('Exception parsing instruction', e)
+                self.log(f'Exception parsing instruction,{e},{traceback.format_exc()}')
                 return False
         else:
             #TODO put in a log and display error to the user.

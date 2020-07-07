@@ -16,6 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # pylint: disable=I1101, C0111, E0611, R0902
 """ Canvas where image and annotations can be drawn """
+from math import hypot
 from PyQt5 import QtWidgets
 from PyQt5 import QtGui
 from PyQt5 import QtCore
@@ -37,6 +38,10 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         self.last_x = None
         self.last_y = None
         self.annot_pixmap = None
+
+        self.shift_down_x = None
+        self.shift_down_y = None
+
 
         # These globals should eventually be loaded from a configuation file, which would
         # be created on project creation.
@@ -65,7 +70,13 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
     def mousePressEvent(self, event):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
-        if not modifiers & QtCore.Qt.ControlModifier and self.parent.annot_visible:
+        shift_down = (modifiers & QtCore.Qt.ShiftModifier)
+        if shift_down:
+            pos = event.scenePos()
+            x, y = pos.x(), pos.y()
+            self.shift_down_x = x
+            self.shift_down_y = y
+        elif not modifiers & QtCore.Qt.ControlModifier and self.parent.annot_visible:
             self.drawing = True
             pos = event.scenePos()
             x, y = pos.x(), pos.y()
@@ -100,8 +111,22 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.history.append(self.annot_pixmap.copy())
             self.redo_list = []
 
+        self.shift_down_x = None
+        self.shift_down_y = None
+
+
     def mouseMoveEvent(self, event):
-        if self.drawing:
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        shift_down = (modifiers & QtCore.Qt.ShiftModifier)
+        if shift_down:
+            pos = event.scenePos()
+            x, y = pos.x(), pos.y()
+            if self.shift_down_x is not None:
+                dist = hypot(x - self.shift_down_x, y - self.shift_down_y)
+                self.brush_size = max(1, dist * 2)
+                # Warning: very tight coupling.
+                self.parent.update_cursor() 
+        elif self.drawing:
             painter = QtGui.QPainter(self.annot_pixmap)
             painter.setCompositionMode(QtGui.QPainter.CompositionMode_Source)
             painter.drawPixmap(0, 0, self.annot_pixmap)
@@ -121,3 +146,6 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             painter.end()
             self.last_x = x
             self.last_y = y
+
+
+

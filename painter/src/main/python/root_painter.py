@@ -637,6 +637,26 @@ class RootPainter(QtWidgets.QMainWindow):
         toggle_image_visibility_btn.triggered.connect(self.show_hide_image)
         view_menu.addAction(toggle_image_visibility_btn)
 
+        def zoom_in():
+            self.graphics_view.zoom *= 1.1
+            self.graphics_view.update_zoom()
+
+        def zoom_out():
+            self.graphics_view.zoom /= 1.1
+            self.graphics_view.update_zoom()
+
+        zoom_in_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Zoom in', self)
+        zoom_in_btn.setShortcut('+')
+        zoom_in_btn.setStatusTip('Zoom in')
+        zoom_in_btn.triggered.connect(zoom_in)
+        view_menu.addAction(zoom_in_btn)
+
+        zoom_out_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Zoom out', self)
+        zoom_out_btn.setShortcut('-')
+        zoom_out_btn.setStatusTip('Zoom out')
+        zoom_out_btn.triggered.connect(zoom_out)
+        view_menu.addAction(zoom_out_btn)
+
         # Network Menu
         network_menu = menu_bar.addMenu('Network')
 

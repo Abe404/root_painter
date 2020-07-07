@@ -39,10 +39,6 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         self.last_y = None
         self.annot_pixmap = None
 
-        self.shift_down_x = None
-        self.shift_down_y = None
-
-
         # These globals should eventually be loaded from a configuation file, which would
         # be created on project creation.
         self.foreground_color = QtGui.QColor(255, 0, 0, 180)
@@ -70,13 +66,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
     def mousePressEvent(self, event):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
-        shift_down = (modifiers & QtCore.Qt.ShiftModifier)
-        if shift_down:
-            pos = event.scenePos()
-            x, y = pos.x(), pos.y()
-            self.shift_down_x = x
-            self.shift_down_y = y
-        elif not modifiers & QtCore.Qt.ControlModifier and self.parent.annot_visible:
+        if not modifiers & QtCore.Qt.ControlModifier and self.parent.annot_visible:
             self.drawing = True
             pos = event.scenePos()
             x, y = pos.x(), pos.y()
@@ -111,21 +101,17 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.history.append(self.annot_pixmap.copy())
             self.redo_list = []
 
-        self.shift_down_x = None
-        self.shift_down_y = None
-
-
     def mouseMoveEvent(self, event):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
         shift_down = (modifiers & QtCore.Qt.ShiftModifier)
+        pos = event.scenePos()
+        x, y = pos.x(), pos.y()
         if shift_down:
-            pos = event.scenePos()
-            x, y = pos.x(), pos.y()
-            if self.shift_down_x is not None:
-                dist = hypot(x - self.shift_down_x, y - self.shift_down_y)
-                self.brush_size = max(1, dist * 2)
-                # Warning: very tight coupling.
-                self.parent.update_cursor() 
+            dist = self.last_y - y
+            self.brush_size += dist
+            self.brush_size = max(1, self.brush_size)
+            # Warning: very tight coupling.
+            self.parent.update_cursor()
         elif self.drawing:
             painter = QtGui.QPainter(self.annot_pixmap)
             painter.setCompositionMode(QtGui.QPainter.CompositionMode_Source)
@@ -133,8 +119,6 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             pen = QtGui.QPen(self.brush_color, self.brush_size, Qt.SolidLine,
                              Qt.RoundCap, Qt.RoundJoin)
             painter.setPen(pen)
-            pos = event.scenePos()
-            x, y = pos.x(), pos.y()
 
             # Based on empirical observation
             if self.brush_size % 2 == 0:
@@ -144,8 +128,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
             self.annot_pixmap_holder.setPixmap(self.annot_pixmap)
             painter.end()
-            self.last_x = x
-            self.last_y = y
+        self.last_x = x
+        self.last_y = y
 
 
 

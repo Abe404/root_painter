@@ -79,8 +79,9 @@ OSX:
 ```
 brew cask install osxfuse
 ```
+
 Windows:
-[Digital ocean has a guide](https://www.digitalocean.com/community/tutorials/how-to-use-sshfs-to-mount-remote-file-systems-over-ssh)
+See [sshfs-win](https://github.com/billziss-gh/sshfs-win)
 
 10. Create the directory and mount the drive locally using sshfs. Replace KUID with your own KU ID.
 ```

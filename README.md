@@ -9,7 +9,7 @@ RootPainter uses a client-server architecture, allowing users with a typical lap
 
 #### Server setup 
 
-This is for a local server. If you want to run the server component of RootPainter on a remote machine then please consider [the sshfs server setup tutorial](https://github.com/Abe404/root_painter/blob/master/docs/server_setup_sshfs.md). You can also use Dropbox instead of sshfs or [Google Drive with Google Colab](https://colab.research.google.com/drive/1c4BXojb8PuVGPdxYIinZSQ2OMRtSojNn?usp=sharing) if you don't have access to a suitable GPU.
+This is for a local server. If you want to run the server component of RootPainter on a remote machine then please consider [the sshfs server setup tutorial](https://github.com/Abe404/root_painter/blob/master/docs/server_setup_sshfs.md). You can also use Dropbox instead of sshfs or [Google Drive with Google Colab](https://colab.research.google.com/drive/104narYAvTBt-X4QEDrBSOZm_DRaAKHtA?usp=sharing) if you don't have access to a suitable GPU.
 
 For the next steps I assume you have a suitable GPU and CUDA installed.
 

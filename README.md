@@ -20,10 +20,21 @@ git clone https://github.com/Abe404/root_painter.git
 cd root_painter/trainer
 ```
 
-2. To avoid alterating global packages. I suggest using a virtual environment. Create a virtual environment and activate it.
+2. To avoid alterating global packages. I suggest using a virtual environment. Create a virtual environment 
 ```
 python -m venv env
+```
+
+And then activate it.
+
+On linux:
+```
 source ./env/bin/activate
+```
+
+On windows:
+```
+env\Scripts\activate.bat
 ```
 
 3. Install dependencies in the virtual environment. (takes over 3 minutes)

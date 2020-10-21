@@ -48,11 +48,14 @@ from startup import startup_setup
 
 class Trainer():
 
-    def __init__(self):
-        self.settings_path = os.path.join(Path.home(),
-                                          'root_painter_settings.json')
-        startup_setup(self.settings_path)
-        self.sync_dir = Path(json.load(open(self.settings_path, 'r'))['sync_dir'])
+    def __init__(self, sync_dir=None):
+        if sync_dir:
+            self.sync_dir = sync_dir
+        else:
+            self.settings_path = os.path.join(Path.home(),
+                                              'root_painter_settings.json')
+            startup_setup(self.settings_path)
+            self.sync_dir = Path(json.load(open(self.settings_path, 'r'))['sync_dir'])
         self.instruction_dir = os.path.join(self.sync_dir, 'instructions')
         self.training = False
         self.train_set = None
@@ -64,6 +67,7 @@ class Trainer():
         self.out_w = 500
         mem_per_item = 3800000000
         total_mem = 0
+        print('GPU Available', torch.cuda.is_available())
         for i in range(torch.cuda.device_count()):
             total_mem += torch.cuda.get_device_properties(i).total_memory
         self.bs = total_mem // mem_per_item
@@ -395,8 +399,12 @@ class Trainer():
                 return
             # if input is smaller than this, behaviour is unpredictable.
             if photo.shape[0] < self.in_w or photo.shape[1] < self.in_w:
-                raise Exception(f"image {fname} too small to segment. Width "
-                                f" and height must be at least {self.in_w}")
+                # skip images that are too small.
+                message = (f"image {fname} too small to segment. Width "
+                           f" and height must be at least {self.in_w}")
+                print(message)
+                self.log(message)
+                self.write_message(message)
             seg_start = time.time()
             segmented = ensemble_segment(model_paths, photo, self.bs,
                                          self.in_w, self.out_w)

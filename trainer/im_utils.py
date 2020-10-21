@@ -169,8 +169,9 @@ def save_then_move(out_path, seg_alpha):
     """
     fname = os.path.basename(out_path)
     temp_path = os.path.join('/tmp', fname)
-    imsave(temp_path, seg_alpha, check_contrast=False)
-    shutil.move(temp_path, out_path)
+    imsave(temp_path, seg_alpha)
+    shutil.copy(temp_path, out_path)
+    os.remove(temp_path)
 
 def load_image(photo_path):
     photo = imread(photo_path)

@@ -16,6 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # pylint: disable=I1101, C0111, E0611, R0902
 """ Canvas where image and annotations can be drawn """
+from math import hypot
 from PyQt5 import QtWidgets
 from PyQt5 import QtGui
 from PyQt5 import QtCore
@@ -101,15 +102,23 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.redo_list = []
 
     def mouseMoveEvent(self, event):
-        if self.drawing:
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        shift_down = (modifiers & QtCore.Qt.ShiftModifier)
+        pos = event.scenePos()
+        x, y = pos.x(), pos.y()
+        if shift_down:
+            dist = self.last_y - y
+            self.brush_size += dist
+            self.brush_size = max(1, self.brush_size)
+            # Warning: very tight coupling.
+            self.parent.update_cursor()
+        elif self.drawing:
             painter = QtGui.QPainter(self.annot_pixmap)
             painter.setCompositionMode(QtGui.QPainter.CompositionMode_Source)
             painter.drawPixmap(0, 0, self.annot_pixmap)
             pen = QtGui.QPen(self.brush_color, self.brush_size, Qt.SolidLine,
                              Qt.RoundCap, Qt.RoundJoin)
             painter.setPen(pen)
-            pos = event.scenePos()
-            x, y = pos.x(), pos.y()
 
             # Based on empirical observation
             if self.brush_size % 2 == 0:
@@ -119,5 +128,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
             self.annot_pixmap_holder.setPixmap(self.annot_pixmap)
             painter.end()
-            self.last_x = x
-            self.last_y = y
+        self.last_x = x
+        self.last_y = y
+
+
+

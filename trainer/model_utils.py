@@ -173,8 +173,8 @@ def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
     """
     Threshold set to None means probabilities returned without thresholding.
     """
-    assert image.shape[0] > in_w, str(image.shape[0])
-    assert image.shape[1] > in_w, str(image.shape[1])
+    assert image.shape[0] >= in_w, str(image.shape[0])
+    assert image.shape[1] >= in_w, str(image.shape[1])
 
     tiles, coords = im_utils.get_tiles(image,
                                        in_tile_shape=(in_w, in_w, 3),

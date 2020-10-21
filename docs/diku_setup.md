@@ -12,7 +12,7 @@ Host slurm
   ProxyCommand ssh -q -W %h:%p KUID@ssh-diku-image.science.ku.dk
 ```
 ---
-There is more information about working with slurm in the [Slurm Wiki](http://image.diku.dk/mediawiki/index.php/Slurm_Cluster).
+There is more information about working with slurm in the [Slurm Wiki](https://diku-dk.github.io/wiki/slurm-cluster).
 
 2. SSH into the server to set up the server component of RootPainter.
 ```
@@ -79,8 +79,9 @@ OSX:
 ```
 brew cask install osxfuse
 ```
+
 Windows:
-[Digital ocean has a guide](https://www.digitalocean.com/community/tutorials/how-to-use-sshfs-to-mount-remote-file-systems-over-ssh)
+See [sshfs-win](https://github.com/billziss-gh/sshfs-win)
 
 10. Create the directory and mount the drive locally using sshfs. Replace KUID with your own KU ID.
 ```

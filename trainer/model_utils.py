@@ -89,7 +89,18 @@ def get_val_metrics(cnn, val_annot_dir, dataset_dir, in_w, out_w, bs):
     for fname in fnames:
         annot_path = os.path.join(val_annot_dir,
                                   os.path.splitext(fname)[0] + '.png')
-        annot = imread(annot_path)
+        # reading the image may throw an exception.
+        # I suspect this is due to it being only partially written to disk
+        # simply retry if this happens.
+        try:
+            annot = imread(annot_path)
+        except Exception as ex:
+            print('Exception reading annotation inside validation method.'
+                  'Will retry in 0.1 seconsds')
+            print(fname, ex)
+            time.sleep(0.1)
+            annot = imread(annot_path)
+
         annot = np.array(annot)
         foreground = annot[:, :, 0].astype(bool).astype(int)
         background = annot[:, :, 1].astype(bool).astype(int)

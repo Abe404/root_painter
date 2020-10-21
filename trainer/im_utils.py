@@ -169,7 +169,7 @@ def save_then_move(out_path, seg_alpha):
     """
     fname = os.path.basename(out_path)
     temp_path = os.path.join('/tmp', fname)
-    imsave(temp_path, seg_alpha)
+    imsave(temp_path, seg_alpha, check_contrast=False)
     shutil.move(temp_path, out_path)
 
 def load_image(photo_path):

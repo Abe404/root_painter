@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 import os
+import glob
 from pathlib import Path
 import json
 
@@ -60,3 +61,10 @@ def startup_setup(settings_path):
         if not os.path.isdir(subfolder_path):
             print('Creating', subfolder_path)
             os.mkdir(subfolder_path)
+
+    # clear the instructions at the start
+    # executing old instructions can get confusing for users
+    instructions_dir = os.path.join(sync_dir_abs, 'instructions')
+    files = glob.glob(instructions_dir + '/*')
+    for f in files:
+        os.remove(f)

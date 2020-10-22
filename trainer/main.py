@@ -17,7 +17,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from trainer import Trainer
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--syncdir',
+                    help=('location of directory where data is'
+                           ' synced between the client and server'))
 
 if __name__ == '__main__':
-    trainer = Trainer()
+    args = parser.parse_args()
+    if args.syncdir:
+        trainer = Trainer(sync_dir=args.syncdir)
+    else:
+        trainer = Trainer()
     trainer.main_loop()

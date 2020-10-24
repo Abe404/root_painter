@@ -27,27 +27,33 @@ def startup_setup(settings_path):
     1. if the settings file doesn't exist
        then ask the user for a sync dir and create the settings file
        else if it does exist then read the sync dir from it.
-    2. If the sync dir doesn't exist then create it.
-    3. If the required sync dir subfolders don't exist then create them.
+    """
+    if settings_path is not None:
+        # Get sync dir from settings file.
+        if os.path.isfile(settings_path):
+            sync_dir = Path(json.load(open(settings_path, 'r'))['sync_dir'])
+            sync_dir_abs = os.path.abspath(sync_dir)
+        else:
+            # Or if the settings file doesn't exist get a sync_dir
+            # from the user and save it to a settings file.
+            sync_dir = input("Please specify RootPainter sync directory")
+            sync_dir = os.path.expanduser(sync_dir)
+            sync_dir_abs = os.path.abspath(sync_dir)
+            with open(settings_path, 'w') as json_file:
+                content = {
+                    "sync_dir": sync_dir_abs
+                }
+                print(f'Writing {sync_dir_abs} to {settings_path}')
+                json.dump(content, json_file, indent=4)
+
+
+def ensure_required_folders_exist(sync_dir):
+    """
+    1. If the sync dir doesn't exist then create it.
+    2. If the required sync dir subfolders don't exist then create them.
     """
 
-    # Get sync dir from settings file.
-    if os.path.isfile(settings_path):
-        sync_dir = Path(json.load(open(settings_path, 'r'))['sync_dir'])
-        sync_dir_abs = os.path.abspath(sync_dir)
-    else:
-        # Or if the settings file doesn't exist get a sync_dir
-        # from the user and save it to a settings file.
-        sync_dir = input("Please specify RootPainter sync directory")
-        sync_dir = os.path.expanduser(sync_dir)
-        sync_dir_abs = os.path.abspath(sync_dir)
-        with open(settings_path, 'w') as json_file:
-            content = {
-                "sync_dir": sync_dir_abs
-            }
-            print(f'Writing {sync_dir_abs} to {settings_path}')
-            json.dump(content, json_file, indent=4)
-
+    sync_dir_abs = os.path.abspath(sync_dir)
     # If sync_dir doesn't exist then create it.
     if not os.path.isdir(sync_dir_abs):
         print('Creating', sync_dir_abs)

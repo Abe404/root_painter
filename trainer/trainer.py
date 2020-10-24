@@ -44,7 +44,7 @@ from model_utils import save_if_better
 
 from im_utils import is_photo, load_image, save_then_move
 from file_utils import ls
-from startup import startup_setup
+from startup import startup_setup, ensure_required_folders_exist
 
 
 class Trainer():
@@ -57,6 +57,8 @@ class Trainer():
                                               'root_painter_settings.json')
             startup_setup(self.settings_path)
             self.sync_dir = Path(json.load(open(self.settings_path, 'r'))['sync_dir'])
+
+        ensure_required_folders_exist(self.sync_dir)
         self.instruction_dir = os.path.join(self.sync_dir, 'instructions')
         self.training = False
         self.train_set = None

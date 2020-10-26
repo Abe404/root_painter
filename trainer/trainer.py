@@ -89,7 +89,11 @@ class Trainer():
         print('Started main loop. Checking for instructions in',
               self.instruction_dir)
         while True:
-            self.check_for_instructions()
+            try:
+                self.check_for_instructions()
+            except Exception as e:
+                print('Exception check_for_instructions', e, traceback.format_exc())
+                self.log(f'Exception check_for_instructions instruction,{e},{traceback.format_exc()}')
             if self.training:
                 # can take a while so checks for
                 # new instructions are also made inside
@@ -417,6 +421,8 @@ class Trainer():
                 warnings.simplefilter("ignore")
                 seg_alpha = np.zeros((segmented.shape[0], segmented.shape[1], 4))
                 seg_alpha[segmented > 0] = [0, 1.0, 1.0, 0.7]
+                # Conver to uint8 to save as png without warning
+                seg_alpha  = (seg_alpha * 255).astype(np.uint8)
 
                 if sync_save:
                     # other wise do sync because we don't want to delete the segment

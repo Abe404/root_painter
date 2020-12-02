@@ -103,8 +103,8 @@ class TrainDataset(Dataset):
         return max(612, len(ls(self.train_annot_dir)) * 2)
 
     def __getitem__(self, _):
-        image, annot, _ = load_train_image_and_annot(self.dataset_dir,
-                                                     self.train_annot_dir)
+        image, annot, fname = load_train_image_and_annot(self.dataset_dir,
+                                                         self.train_annot_dir)
         tile_pad = (self.in_w - self.out_w) // 2
 
         # ensures each pixel is sampled with equal chance
@@ -136,10 +136,10 @@ class TrainDataset(Dataset):
                             x_in:x_in+self.in_w]
 
         assert annot_tile.shape == (self.in_w, self.in_w, 2), (
-            f" shape is {annot_tile.shape}")
+            f" shape is {annot_tile.shape} for tile from {fname}")
 
         assert im_tile.shape == (self.in_w, self.in_w, 3), (
-            f" shape is {im_tile.shape}")
+            f" shape is {im_tile.shape} for tile from {fname}")
 
         im_tile = img_as_float32(im_tile)
         im_tile = im_utils.normalize_tile(im_tile)

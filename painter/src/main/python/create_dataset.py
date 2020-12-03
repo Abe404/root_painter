@@ -292,7 +292,9 @@ class CreateDatasetWidget(QtWidgets.QWidget):
 
     def validate(self):
         name = self.name_edit_widget.name
-        self.target_dir = os.path.join(self.sync_dir, 'datasets', name)
+
+        if name:
+            self.target_dir = os.path.join(self.sync_dir, 'datasets', name)
 
         if not name:
             self.info_label.setText("Name must be specified to create dataset")

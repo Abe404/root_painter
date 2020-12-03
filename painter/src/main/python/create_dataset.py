@@ -24,6 +24,7 @@ import numpy as np
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from skimage.io import imread, imsave
+from skimage.color import rgba2rgb
 
 from progress_widget import BaseProgressWidget
 from name_edit_widget import NameEditWidget
@@ -119,6 +120,8 @@ def save_im_pieces(im_path, target_dir, pieces_from_each_image, target_size):
     fname = os.path.splitext(fname)[0]
     for i, p in enumerate(pieces):
         piece_fname = f"{fname}_{str(i).zfill(3)}.jpg"
+        if p.shape[-1] == 4:
+            p = rgba2rgb(p)
         imsave(os.path.join(target_dir, piece_fname), p)
 
 class CreationProgressWidget(BaseProgressWidget):
@@ -128,7 +131,6 @@ class CreationProgressWidget(BaseProgressWidget):
     """
     def __init__(self):
         super().__init__('Creating dataset')
-        self.initUI()
 
     def run(self, ims_to_sample_from, target_dir,
             tiles_per_image, target_size):

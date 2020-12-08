@@ -28,6 +28,7 @@ from skimage.color import rgba2rgb
 
 from progress_widget import BaseProgressWidget
 from name_edit_widget import NameEditWidget
+import im_utils
 
 def all_image_paths_in_dir(dir_path):
     root_dir = os.path.abspath(dir_path)
@@ -114,7 +115,7 @@ def get_file_pieces(im, target_size):
 
 
 def save_im_pieces(im_path, target_dir, pieces_from_each_image, target_size):
-    pieces = get_file_pieces(imread(im_path), target_size)
+    pieces = get_file_pieces(im_utils.load_image(im_path), target_size)
     pieces = random.sample(pieces, min(pieces_from_each_image, len(pieces)))
     fname = os.path.basename(im_path)
     fname = os.path.splitext(fname)[0]

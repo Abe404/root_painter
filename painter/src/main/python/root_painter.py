@@ -36,6 +36,7 @@ from PyQt5 import QtWidgets
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
+from PIL import Image
 
 from about import AboutWindow, LicenseWindow
 from create_project import CreateProjectWidget
@@ -55,6 +56,8 @@ from file_utils import maybe_save_annotation
 from instructions import send_instruction
 
 use_plugin("pil")
+
+Image.MAX_IMAGE_PIXELS = None
 
 class RootPainter(QtWidgets.QMainWindow):
 

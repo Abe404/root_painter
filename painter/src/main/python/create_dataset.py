@@ -123,7 +123,7 @@ def save_im_pieces(im_path, target_dir, pieces_from_each_image, target_size):
         piece_fname = f"{fname}_{str(i).zfill(3)}.jpg"
         if p.shape[-1] == 4:
             p = rgba2rgb(p)
-        imsave(os.path.join(target_dir, piece_fname), p)
+        imsave(os.path.join(target_dir, piece_fname), p, check_contrast=False)
 
 class CreationProgressWidget(BaseProgressWidget):
     """

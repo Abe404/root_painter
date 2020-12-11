@@ -32,12 +32,15 @@ def fix_app():
     # running the fbs freeze command
     # ./target/RootPainter.app
     is_mac = os.path.isdir('./target/RootPainter.app')
+    is_linux = os.path.exists('./target/RootPainter/RootPainter')
     
     # or the following folder on windows
     is_windows = os.path.exists('target\RootPainter\RootPainter.exe')
    
     print('is_windows', is_windows)
     print('is_mac', is_mac)
+    print('is_linux', is_linux)
+
     # If you try to run RootPainter on the command line like so:
     # ./target/RootPainter.app/Contents/MacOS/RootPainter 
     # Then you may receive the following error:
@@ -55,6 +58,10 @@ def fix_app():
     elif is_windows:
         site_packages_dir = os.path.join(env_dir, 'Lib', 'site-packages')
         build_dir = './target/RootPainter'
+    elif is_linux:
+        site_packages_dir = os.path.join(env_dir, 'lib/python3.7/site-packages')
+        build_dir = './target/RootPainter'
+
 
     # Copy missing orb file.
     skimage_dir = os.path.join(site_packages_dir, 'skimage')

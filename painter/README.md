@@ -13,7 +13,9 @@ Alternatively the painter source code can be ran directly using the python 3 int
 
 # to run
 > fbs run
+
 Or alternatively 
+
 > python src/main/python/main.py
 
 # to build the application and installer

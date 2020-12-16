@@ -66,7 +66,7 @@ datasets folder.
 4. If you haven't already installed the RootPainter client then download the
   client installer for your operating system.
   dmg (OSX) exe (Windows) and deb (Debian/Ubuntu) files are available from
-  [this link](https://github.com/Abe404/root_painter/releases/tag/0.2.0).
+  [this link](https://github.com/Abe404/root_painter/releases).
   Then run the downloaded installer.
 
 5. When you open the installed application for the first time. You will be promped to specify a sync directory. Specify ~/Desktop/root_painter_sync. The specified path will be added to a settings file in your home folder named root_painter_settings.json and the value found in that file will be used from then on.

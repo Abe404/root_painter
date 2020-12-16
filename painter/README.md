@@ -1,5 +1,5 @@
 
-**Note** server must be running for the client to function.
+**Note:** The server (trainer) must be running for the client to function.
 
 Installers for OSX, Windows and Debian based linux distrubtions are avilable from the following URL (recommended for most users):
 https://github.com/Abe404/root_painter/tags

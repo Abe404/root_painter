@@ -140,7 +140,7 @@ class RootPainter(QtWidgets.QMainWindow):
             self.model_dir = self.proj_location / 'models'
 
             self.message_dir = self.proj_location / 'messages'
-
+    
             # If there are any annotations which have already been saved
             # then go through the annotations in the order specified
             # by self.image_fnames
@@ -152,6 +152,10 @@ class RootPainter(QtWidgets.QMainWindow):
                 fname = last_with_annot
             else:
                 fname = self.image_fnames[0]
+
+            # manual override for the image to show
+            if 'image_index' in settings:
+                fname = self.image_fnames[settings['image_index']]
 
             # set first image from project to be current image
             self.image_path = os.path.join(self.dataset_dir, fname)

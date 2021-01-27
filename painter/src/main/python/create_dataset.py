@@ -26,6 +26,11 @@ from PyQt5 import QtCore
 from skimage.io import imread, imsave
 from skimage.color import rgba2rgb
 
+# Avoiding bug with truncated images,
+# "Reason: "broken data stream when reading image file"
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 from progress_widget import BaseProgressWidget
 from name_edit_widget import NameEditWidget
 import im_utils

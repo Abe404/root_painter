@@ -2,7 +2,7 @@
     "app_name": "RootPainter",
     "author": "Abraham George Smith",
     "main_module": "src/main/python/main.py",
-    "version": "0.2.5",
+    "version": "0.2.6",
     "hidden_imports": ["pywt._extensions._cwt",
                        "skimage.io._plugins.pil_plugin",
                        "pkg_resources.py2_warn"]

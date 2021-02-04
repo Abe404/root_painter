@@ -16,6 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import os
 import shutil
+from os.path import join
 
 def fix_app():
     """
@@ -63,10 +64,23 @@ def fix_app():
         build_dir = './target/RootPainter'
 
 
-    # Copy missing orb file.
-    skimage_dir = os.path.join(site_packages_dir, 'skimage')
-    orb_path = os.path.join(skimage_dir, 'feature/_orb_descriptor_positions.py')
-    shutil.copyfile(orb_path, os.path.join(build_dir, 'skimage/feature/_orb_descriptor_positions.py'))
+    # Copy missing orb files
+    skimage_dir = join(site_packages_dir, 'skimage')
+
+    orbpy_src = join(skimage_dir, 'feature/_orb_descriptor_positions.py')
+    orbpy_target = join(build_dir, 'skimage/feature/_orb_descriptor_positions.py')
+    shutil.copyfile(orbpy_src, orbpy_target)
+
+    # copy missing orb plugin file
+    orbtxt_src = join(skimage_dir, 'feature/orb_descriptor_positions.txt')
+    orbtxt_target = join(build_dir, 'skimage/io/_plugins/orb_descriptor_positions.txt')
+    shutil.copyfile(orbtxt_src, orbtxt_target)
+
+
+    # Copy missing tiffile plugin
+    tif_src = join(skimage_dir, 'io/_plugins/tifffile_plugin.py')
+    tif_target = join(build_dir, 'skimage/io/_plugins/tifffile_plugin.py')
+    shutil.copyfile(tif_src, tif_target)
 
 
 if __name__ == '__main__':

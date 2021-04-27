@@ -736,10 +736,10 @@ class AboutWindow(QtWidgets.QWidget):
         paper: 'RootPainter: Deep Learning Segmentation of Biological Images with Corrective Annotation'
         <br />
         <br />
-        Version: 0.2.6
+        Version: 0.2.7
         <br />
         <br />
-        Copyright (C) 2020 Abraham George Smith
+        Copyright (C) 2021 Abraham George Smith
         <br />
         <br />
         This program is free software: you can redistribute it and/or modify

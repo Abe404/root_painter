@@ -197,7 +197,7 @@ class Trainer():
         train_annot_dirs = self.train_config['train_annot_dirs']
         val_annot_dirs = self.train_config['val_annot_dirs']
         new_annot_mtimes = []
-        for annot_dir in train_annot_dirs + val_annot_dirs
+        for annot_dir in train_annot_dirs + val_annot_dirs:
             for fname in ls(annot_dir):
                 fpath = os.path.join(annot_dir, fname)
                 new_annot_mtimes.append(os.path.getmtime(fpath))
@@ -251,7 +251,13 @@ class Trainer():
         loss_sum = 0
         for step, (photo_tiles,
                    foreground_tiles,
-                   defined_tiles) in enumerate(train_loader):
+                   defined_tiles,
+                   classes) in enumerate(train_loader):
+
+            print('photo tiles_shape', photo_tiles.shape)
+            print('foreground_tiles shape', foreground_tiles.shape)
+            print('defined_tiles shape', defined_tiles.shape)
+            print('classes ', classes)
 
             self.check_for_instructions()
             photo_tiles = photo_tiles.cuda()
@@ -424,9 +430,10 @@ class Trainer():
 
         # Segmentations are always saved as PNG.
         
-        out_paths = [os.path.join(seg_dir, cname, os.path.splitext(fname)[0] + '.png'),
-                     for cname in classes]
-
+        out_paths = []
+        for c in classes:
+            out_paths.append(os.path.join(seg_dir, c,
+                                          os.path.splitext(fname)[0] + '.png'))
         if os.path.isfile(out_path[0]):
             print('Skip because found existing segmentation file')
             return

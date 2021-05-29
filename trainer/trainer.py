@@ -388,6 +388,11 @@ class Trainer():
         """
         in_dir = segment_config['dataset_dir']
         seg_dir = segment_config['seg_dir']
+        
+        classes = ['foreground']
+        if hasattr(segment_config, 'classes'): 
+            classes = segment_config['classes']
+
         if "file_names" in segment_config:
             fnames = segment_config['file_names']
         else:
@@ -403,12 +408,14 @@ class Trainer():
             # if latest is not found then create a model with random weights
             # and use that.
             if not model_paths:
-                create_first_model_with_random_weights(model_dir)
+                create_first_model_with_random_weights(model_dir, classes)
                 model_paths = model_utils.get_latest_model_paths(model_dir, 1)
+
         start = time.time()
         for fname in fnames:
             self.segment_file(in_dir, seg_dir, fname,
-                              model_paths, sync_save=len(fnames) == 1)
+                              model_paths, classes,
+                              sync_save=len(fnames) == 1)
         duration = time.time() - start
         print(f'Seconds to segment {len(fnames)} images: ', round(duration, 3))
 

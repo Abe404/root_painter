@@ -178,7 +178,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
     """ Average predictions from each model specified in model_paths """
     pred_count = 0
     class_pred_sums = [None] * len(classes)
-    class_idx = range(classes)
+    class_idx = range(len(classes))
     # then add predictions from the previous models to form an ensemble
     for model_path in model_paths:
         cnn = load_model(model_path, classes)

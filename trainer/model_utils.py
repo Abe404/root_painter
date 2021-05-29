@@ -237,6 +237,7 @@ def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
         batches.append(tiles_for_gpu)
 
     class_output_tiles = [[]] * len(classes)
+
     for gpu_tiles in batches:
         outputs = cnn(gpu_tiles)
         for i in range(len(classes)):
@@ -251,9 +252,9 @@ def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
             else:
                 predicted = foreground_probs
             pred_np = predicted.data.cpu().numpy()
-            out_tiles = pred_np.reshape((len(gpu_tiles), out_w, out_w))
-            for out_tile in out_tiles:
-                class_output_tiles[i].append(out_tile)
+        out_tiles = pred_np.reshape((len(gpu_tiles), out_w, out_w))
+        for out_tile in out_tiles:
+            class_output_tiles[i].append(out_tile)
 
         assert len(output_tiles) == len(coords), (
             f'{len(output_tiles)} {len(coords)}')

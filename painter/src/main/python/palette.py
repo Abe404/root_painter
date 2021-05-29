@@ -41,6 +41,8 @@ class BrushEditWidget(QtWidgets.QWidget):
     def initUI(self, show_remove):
         # Provide user with a way to edit the brush name
         self.layout = QtWidgets.QHBoxLayout()
+
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.name_edit = QtWidgets.QLineEdit()
         self.name_edit.setText(self.name)
         self.name_edit.textChanged.connect(self.text_changed)
@@ -72,9 +74,10 @@ class PaletteEditWidget(QtWidgets.QWidget):
 
     def initUI(self):
         label = QtWidgets.QLabel()
-        label.setText("Palette: Edit your brushes")
+        label.setText("Classes:")
         self.layout = QtWidgets.QVBoxLayout()
         self.setLayout(self.layout)
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.addWidget(label)
 
         # Use a container for the brushes so the add brush widget can go after.
@@ -85,8 +88,7 @@ class PaletteEditWidget(QtWidgets.QWidget):
 
         # Default brush
         self.add_brush('foreground', show_remove=False)
-
-        self.add_brush_btn = QtWidgets.QPushButton('Add brush')
+        self.add_brush_btn = QtWidgets.QPushButton('Add class')
         self.add_brush_btn.clicked.connect(self.add_brush)
         self.layout.addWidget(self.add_brush_btn)
 

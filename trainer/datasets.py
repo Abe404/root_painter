@@ -33,24 +33,27 @@ from file_utils import ls
 import im_utils
 import elastic
 
-def elastic_transform(photo, annot):
+def elastic_transform(photo, annots):
     def_map = elastic.get_elastic_map(photo.shape,
                                       scale=random.random(),
                                       intensity=0.4 + (0.6 * random.random()))
     photo = elastic.transform_image(photo, def_map)
-    annot = elastic.transform_image(annot, def_map, channels=2)
-    annot = np.round(annot).astype(np.int64)
-    return photo, annot
+    new_annots = []
+    for annot in annots:
+        new_annot = elastic.transform_image(annot, def_map, channels=2)
+        new_annot = np.round(new_annot).astype(np.int64)
+        new_annots.append(new_annot)
+    return photo, new_annots
 
-def guassian_noise_transform(photo, annot):
+def guassian_noise_transform(photo, annots):
     sigma = np.abs(np.random.normal(0, scale=0.09))
     photo = im_utils.add_gaussian_noise(photo, sigma)
-    return photo, annot
+    return photo, annots
 
-def salt_pepper_transform(photo, annot):
+def salt_pepper_transform(photo, annots):
     salt_intensity = np.abs(np.random.normal(0.0, 0.008))
     photo = im_utils.add_salt_pepper(photo, salt_intensity)
-    return photo, annot
+    return photo, annots
 
 
 class UNetTransformer():
@@ -59,7 +62,7 @@ class UNetTransformer():
         self.color_jit = ColorJitter(brightness=0.3, contrast=0.3,
                                      saturation=0.2, hue=0.001)
 
-    def transform(self, photo, annot):
+    def transform(self, photo, annots):
 
         transforms = random.sample([elastic_transform,
                                     guassian_noise_transform,
@@ -68,22 +71,22 @@ class UNetTransformer():
 
         for transform in transforms:
             if random.random() < 0.8:
-                photo, annot = transform(photo, annot)
-
+                photo, annot = transform(photo, annots)
+        
         if random.random() < 0.5:
             photo = np.fliplr(photo)
-            annot = np.fliplr(annot)
+            annots = [np.fliplr(a) for a in annots]
 
         return photo, annot
 
-    def color_jit_transform(self, photo, annot):
+    def color_jit_transform(self, photo, annots):
         # TODO check skimage docs for something cleaner to convert
         # from float to int
         photo = rescale_intensity(photo, out_range=(0, 255))
         photo = Image.fromarray((photo).astype(np.int8), mode='RGB')
         photo = self.color_jit(photo)  # returns PIL image
         photo = img_as_float32(np.array(photo))  # return back to numpy
-        return photo, annot
+        return photo, annots
 
 
 class TrainDataset(Dataset):

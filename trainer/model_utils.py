@@ -173,7 +173,7 @@ def save_if_better(model_dir, cur_model, prev_model_path,
         return True
     return False
 
-def ensemble_segment(model_paths, image, bs, in_w, out_w, classes
+def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
                      threshold=0.5):
     """ Average predictions from each model specified in model_paths """
     pred_count = 0

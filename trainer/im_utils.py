@@ -104,7 +104,7 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
             assert image.shape[2] == 3 # should be RGB
 
             # also return fname for debugging purposes.
-            return image, annots, classes fname
+            return image, annots, classes, fname
 
         except Exception as e:
             # This could be due to an empty annotation saved by the user.

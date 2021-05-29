@@ -189,7 +189,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
             if class_pred_sums[i] is not None:
                 class_pred_sums[i] += pred_map
             else:
-                class_pred_sums[i] = preds_map
+                class_pred_sums[i] = pred_map
         pred_count += 1
         # get flipped version too (test time augmentation)
         flipped_im = np.fliplr(image)

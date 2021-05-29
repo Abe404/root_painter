@@ -53,8 +53,7 @@ class CreateProjectWidget(QtWidgets.QWidget):
         self.add_im_dir_widget()
         self.add_radio_widget()
         self.add_model_btn()
-        if False:
-            self.add_palette_widget() 
+        self.add_palette_widget() 
         self.add_info_label()
         self.add_create_btn()
 
@@ -238,13 +237,17 @@ class CreateProjectWidget(QtWidgets.QWidget):
             'name': project_name,
             'dataset': dataset,
             'original_model_file': original_model_file,
-            'location': str(PurePosixPath(project_location)),
-            'file_names': all_fnames
+            'location': str(PurePosixPath(project_location))
         }
+
         # only add classes info if the palette is defined.
         # otherwise the server will default to single class (fg/bg)
         if hasattr(self, 'palette_edit_widget'):
             project_info['classes'] = self.palette_edit_widget.get_brush_data()
+
+        # add these at the end because it makes the json more readable
+        # to have the short entries at the top.
+        project_info['file_names'] = all_fnames
 
         with open(proj_file_path, 'w') as json_file:
             json.dump(project_info, json_file, indent=4)

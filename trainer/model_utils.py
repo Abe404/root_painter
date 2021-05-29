@@ -256,7 +256,7 @@ def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
             for out_tile in out_tiles:
                 class_output_tiles[i].append(out_tile)
 
-        assert len(output_tiles) == len(coords), (
+        assert len(class_output_tiles[0]) == len(coords), (
             f'{len(output_tiles)} {len(coords)}')
     class_pred_maps = []
     for i in range(len(classes)):

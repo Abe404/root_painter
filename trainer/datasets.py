@@ -134,9 +134,11 @@ class TrainDataset(Dataset):
         while True:
             x_in = math.floor(random.random() * right_lim)
             y_in = math.floor(random.random() * bottom_lim)
-            annot_tiles = [p[y_in:y_in+self.in_w,
-                                  x_in:x_in+self.in_w]
-                           for p in in padded_annots]
+            annot_tiles = []
+            for padded_annot in padded_annots:
+                annot_tile = padded_annot[y_in:y_in+self.in_w, x_in:x_in+self.in_w]
+                annot_tiles.append(annot_tile)
+            
             # if there is any annotation defined in this region then use it.
             if np.sum(annot_tiles) > 0:
                 break

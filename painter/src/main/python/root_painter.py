@@ -124,6 +124,21 @@ class RootPainter(QtWidgets.QMainWindow):
                                             'segmentation project (.seg_proj) file')
             self.init_missing_project_ui()
 
+
+    def get_train_annot_dir():
+        # taking into account the current class.
+        if hasattr(self, self.cur_class):
+            return self.proj_location / 'annotations' / self.cur_class / 'train'
+        else:
+            return self.proj_location / 'annotations' / 'train'
+
+    def get_val_annot_dir():
+        # taking into account the current class.
+        if hasattr(self, self.cur_class):
+            return self.proj_location / 'annotations' / self.cur_class / 'val'
+        else:
+            return self.proj_location / 'annotations' / 'val'
+
     def open_project(self, proj_file_path):
         # extract json
         with open(proj_file_path, 'r') as json_file:
@@ -134,12 +149,11 @@ class RootPainter(QtWidgets.QMainWindow):
             self.image_fnames = settings['file_names']
             self.seg_dir = self.proj_location / 'segmentations'
             self.log_dir = self.proj_location / 'logs'
-
-
             train_annot_dirs = []
             val_annot_dirs = []
             if hasattr(settings, 'classes'):
                 self.classes = settings['classes']
+                self.cur_class = self.classes[0]
                 for c in classes:
                     train_annot_dirs.append(self.proj_location / 'annotations' / c / 'train')
                     val_annot_dirs.append(self.proj_location / 'annotations' / c / 'val')
@@ -174,27 +188,27 @@ class RootPainter(QtWidgets.QMainWindow):
             self.image_path = os.path.join(self.dataset_dir, fname)
             self.update_window_title()
             self.seg_path = os.path.join(self.seg_dir, fname)
-            self.annot_path = get_annot_path(fname, self.train_annot_dir,
-                                             self.val_annot_dir)
+            self.annot_path = get_annot_path(fname, self.get_train_annot_dir(),
+                                             self.get_val_annot_dir())
             self.init_active_project_ui()
             self.track_changes()
 
-
     def update_file(self, fpath):
+
         # Save current annotation (if it exists) before moving on
         self.save_annotation()
 
         # save current annotation first
         fname = os.path.basename(fpath)
+
         # set first image from project to be current image
         self.image_path = os.path.join(self.dataset_dir, fname)
         self.png_fname = os.path.splitext(fname)[0] + '.png'
         self.seg_path = os.path.join(self.seg_dir, self.png_fname)
         self.annot_path = get_annot_path(self.png_fname,
-                                         self.train_annot_dir,
-                                         self.val_annot_dir)
+                                         self.get_train_annot_dir(),
+                                         self.get_val_annot_dir())
         self.update_image()
-
 
         self.scene.history = []
         self.scene.redo_list = []
@@ -772,8 +786,8 @@ class RootPainter(QtWidgets.QMainWindow):
         content = {
             "model_dir": self.model_dir,
             "dataset_dir": self.dataset_dir,
-            "train_annot_dir": self.train_annot_dir,
-            "val_annot_dir": self.val_annot_dir,
+            "train_annot_dir": self.train_annot_dirs,
+            "val_annot_dir": self.val_annot_dirs,
             "seg_dir": self.seg_dir,
             "log_dir": self.log_dir,
             "message_dir": self.message_dir
@@ -917,9 +931,10 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def save_annotation(self):
         if self.scene.annot_pixmap:
+
             self.annot_path = maybe_save_annotation(self.proj_location,
                                                     self.scene.annot_pixmap,
                                                     self.annot_path,
                                                     self.png_fname,
-                                                    self.train_annot_dir,
-                                                    self.val_annot_dir)
+                                                    self.get_train_annot_dir()
+                                                    self.get_val_annot_dir())

@@ -243,7 +243,7 @@ def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
             class_channel_idx = i * 2 # output channel index for this class
             # softmax each pair of foreground, background channels.
             class_output = outputs[class_channel_idx:class_channel_idx+2]
-            softmaxed = softmax(softmaxed, 1)
+            softmaxed = softmax(class_output, 1)
             foreground_probs = softmaxed[:, 1, :]  # just the foreground probability.
             if threshold is not None:
                 predicted = foreground_probs > threshold

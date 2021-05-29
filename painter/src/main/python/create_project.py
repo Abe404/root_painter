@@ -1,5 +1,6 @@
 """
 Copyright (C) 2020 Abraham George Smith
+Copyright (C) 2021 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,6 +28,7 @@ from PyQt5 import QtCore
 
 from im_utils import is_image
 from name_edit_widget import NameEditWidget
+from palette import PaletteEditWidget
 
 class CreateProjectWidget(QtWidgets.QWidget):
 
@@ -51,6 +53,7 @@ class CreateProjectWidget(QtWidgets.QWidget):
         self.add_im_dir_widget()
         self.add_radio_widget()
         self.add_model_btn()
+        self.add_palette_widget() 
         self.add_info_label()
         self.add_create_btn()
 
@@ -95,6 +98,11 @@ class CreateProjectWidget(QtWidgets.QWidget):
 
         self.model_label.setVisible(False)
         self.specify_model_btn.setVisible(False)
+
+    def add_palette_widget(self):
+        self.palette_edit_widget = PaletteEditWidget()
+        self.palette_edit_widget.changed.connect(self.validate)
+        self.layout.addWidget(self.palette_edit_widget)
 
     def add_info_label(self):
         info_label = QtWidgets.QLabel()
@@ -145,6 +153,12 @@ class CreateProjectWidget(QtWidgets.QWidget):
             self.info_label.setText(message)
             self.create_project_btn.setEnabled(False)
             return
+
+        if len(self.palette_edit_widget.get_brush_data()) < 2:
+            self.info_label.setText('At least one foreground class must be specified')
+            self.create_project_btn.setEnabled(False)
+            return
+
         self.project_location = os.path.join('projects', self.proj_name)
         if os.path.exists(os.path.join(self.sync_dir, self.project_location)):
             self.info_label.setText(f"Project with name {self.proj_name} already exists")
@@ -230,7 +244,8 @@ class CreateProjectWidget(QtWidgets.QWidget):
             'dataset': dataset,
             'original_model_file': original_model_file,
             'location': str(PurePosixPath(project_location)),
-            'file_names': all_fnames
+            'file_names': all_fnames,
+            'classes': self.palette_edit_widget.get_brush_data()
         }
         with open(proj_file_path, 'w') as json_file:
             json.dump(project_info, json_file, indent=4)

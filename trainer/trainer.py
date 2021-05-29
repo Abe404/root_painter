@@ -434,7 +434,7 @@ class Trainer():
         for c in classes:
             out_paths.append(os.path.join(seg_dir, c,
                                           os.path.splitext(fname)[0] + '.png'))
-        if os.path.isfile(out_path[0]):
+        if os.path.isfile(out_paths[0]):
             print('Skip because found existing segmentation file')
             return
         if not os.path.isfile(fpath):

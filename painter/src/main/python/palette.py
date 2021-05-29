@@ -33,12 +33,12 @@ class BrushEditWidget(QtWidgets.QWidget):
     changed = QtCore.pyqtSignal()
     removed = QtCore.pyqtSignal()
 
-    def __init__(self, name):
+    def __init__(self, name, show_remove):
         super().__init__()
         self.name = name
-        self.initUI()
+        self.initUI(show_remove)
 
-    def initUI(self):
+    def initUI(self, show_remove):
         # Provide user with a way to edit the brush name
         self.layout = QtWidgets.QHBoxLayout()
         self.name_edit = QtWidgets.QLineEdit()
@@ -46,9 +46,10 @@ class BrushEditWidget(QtWidgets.QWidget):
         self.name_edit.textChanged.connect(self.text_changed)
         self.layout.addWidget(self.name_edit)
 
-        self.remove_btn = QtWidgets.QPushButton('Remove')
-        self.remove_btn.clicked.connect(self.removed.emit)
-        self.layout.addWidget(self.remove_btn)
+        if show_remove:
+            self.remove_btn = QtWidgets.QPushButton('Remove')
+            self.remove_btn.clicked.connect(self.removed.emit)
+            self.layout.addWidget(self.remove_btn)
 
         self.setLayout(self.layout)
 
@@ -66,6 +67,7 @@ class PaletteEditWidget(QtWidgets.QWidget):
 
     def __init__(self):
         super().__init__()
+        self.brush_widgets = []
         self.initUI()
 
     def initUI(self):
@@ -81,28 +83,21 @@ class PaletteEditWidget(QtWidgets.QWidget):
         self.brushes_container.setLayout(self.brushes_layout)
         self.layout.addWidget(self.brushes_container)
 
-        
-        # These are the default brushes
-        # name
-        default_brushes = [('Foreground', '1')]
-        
-        self.brush_widgets = []
-        for name, _ in default_brushes:
-            self.add_brush(name)
+        # Default brush
+        self.add_brush('Foreground', show_remove=False)
 
         self.add_brush_btn = QtWidgets.QPushButton('Add brush')
         self.add_brush_btn.clicked.connect(self.add_brush)
         self.layout.addWidget(self.add_brush_btn)
 
     def get_new_name(self):
-        return f"Brush {len(self.brush_widgets)}"
+        return f"Brush {len(self.brush_widgets) + 1}"
 
-
-    def add_brush(self, name=None):
+    def add_brush(self, name=None, show_remove=True):
         if not name:
             name = self.get_new_name()
 
-        brush = BrushEditWidget(name)
+        brush = BrushEditWidget(name, show_remove)
         self.brush_widgets.append(brush)
 
         brush.removed.connect(self.remove_brush)
@@ -116,15 +111,9 @@ class PaletteEditWidget(QtWidgets.QWidget):
         self.changed.emit()
 
     def get_brush_data(self):
-        """ Used for saving the brush data to JSON file """
-       
+        """ Used for saving the class names to JSON file """
         # Background cannot be edited or removed
-        brush_data = [
-            ('Background', 'W'),
-        ]
-
+        brush_data = ['Background']
         for brush_widget in self.brush_widgets:
-            # name, keyboard shortcut
-            brush_data.append([brush_widget.name,
-                               str(len(brush_data))])
+            brush_data.append(brush_widget.name)
         return brush_data

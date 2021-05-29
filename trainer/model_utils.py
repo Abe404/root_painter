@@ -38,8 +38,8 @@ def get_latest_model_paths(model_dir, k):
     fpaths = [os.path.join(model_dir, f) for f in fnames]
     return fpaths
 
-def load_model(model_path):
-    model = UNetGNRes()
+def load_model(model_path, classes):
+    model = UNetGNRes(classes)
     try:
         model.load_state_dict(torch.load(model_path))
         model = torch.nn.DataParallel(model)
@@ -49,12 +49,12 @@ def load_model(model_path):
     model.cuda()
     return model
 
-def create_first_model_with_random_weights(model_dir):
+def create_first_model_with_random_weights(model_dir, classes):
     # used when no model was specified on project creation.
     model_num = 1
     model_name = str(model_num).zfill(6)
     model_name += '_' + str(int(round(time.time()))) + '.pkl'
-    model = UNetGNRes()
+    model = UNetGNRes(classes)
     model = torch.nn.DataParallel(model)
     model_path = os.path.join(model_dir, model_name)
     torch.save(model.state_dict(), model_path)
@@ -62,9 +62,9 @@ def create_first_model_with_random_weights(model_dir):
     return model
 
 
-def get_prev_model(model_dir):
+def get_prev_model(model_dir, classes):
     prev_path = get_latest_model_paths(model_dir, k=1)[0]
-    prev_model = load_model(prev_path)
+    prev_model = load_model(prev_path, classes)
     return prev_model, prev_path
 
 def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
@@ -173,32 +173,41 @@ def save_if_better(model_dir, cur_model, prev_model_path,
         return True
     return False
 
-def ensemble_segment(model_paths, image, bs, in_w, out_w,
+def ensemble_segment(model_paths, image, bs, in_w, out_w, classes
                      threshold=0.5):
     """ Average predictions from each model specified in model_paths """
-    pred_sum = None
     pred_count = 0
+    class_pred_sums = [None] * len(classes)
+    class_idx = range(classes)
     # then add predictions from the previous models to form an ensemble
     for model_path in model_paths:
-        cnn = load_model(model_path)
+        cnn = load_model(model_path, classes)
         cnn.half()
-        preds = unet_segment(cnn, image,
-                             bs, in_w, out_w, threshold=None)
-        if pred_sum is not None:
-            pred_sum += preds
-        else:
-            pred_sum = preds
+        pred_maps = unet_segment(cnn, image,
+                                bs, in_w, out_w, classes, threshold=None)
+        for i, pred_map in enumerate(pred_maps): 
+            if class_pred_sums[i] is not None:
+                class_pred_sums[i] += preds
+            else:
+                class_pred_sums[i] = preds
         pred_count += 1
         # get flipped version too (test time augmentation)
         flipped_im = np.fliplr(image)
-        flipped_pred = unet_segment(cnn, flipped_im, bs, in_w,
-                                    out_w, threshold=None)
-        pred_sum += np.fliplr(flipped_pred)
+        flipped_pred_maps = unet_segment(cnn, flipped_im, bs, in_w,
+                                         out_w, classes, threshold=None)
+
+        for i, flipped_pred in enumerate(flipped_pred_maps): 
+            pred_map = np.fliplr(flipped_pred)
+            class_pred_sums[i] += pred_map
         pred_count += 1
-    foreground_probs = pred_sum / pred_count
-    predicted = foreground_probs > threshold
-    predicted = predicted.astype(int)
-    return predicted
+
+    class_pred_maps = []
+    for pred_sum in class_pred_sums:
+        mean_pred_map = pred_sum / pred_count
+        predicted = mean_pred_map > threshold
+        predicted = predicted.astype(int)
+        class_pred_maps.append(predicted)
+    return class_pred_maps
 
 def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
     """

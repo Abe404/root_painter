@@ -101,7 +101,7 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
                                            os.path.splitext(fname)[0])
 
             image = load_image(image_path)
-                        assert image.shape[2] == 3 # should be RGB
+            assert image.shape[2] == 3 # should be RGB
 
             # also return fname for debugging purposes.
             return image, annots, classes fname

@@ -431,9 +431,13 @@ class Trainer():
         # Segmentations are always saved as PNG.
         
         out_paths = []
-        for c in classes:
-            out_paths.append(os.path.join(seg_dir, c,
-                                          os.path.splitext(fname)[0] + '.png'))
+        if len(classes) > 1:
+            for c in classes:
+                out_paths.append(os.path.join(seg_dir, c,
+                                              os.path.splitext(fname)[0] + '.png'))
+        else:
+            out_paths.append(os.path.join(seg_dir, os.path.splitext(fname)[0] + '.png'))
+
         if os.path.isfile(out_paths[0]):
             print('Skip because found existing segmentation file')
             return

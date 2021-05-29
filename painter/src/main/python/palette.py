@@ -84,14 +84,14 @@ class PaletteEditWidget(QtWidgets.QWidget):
         self.layout.addWidget(self.brushes_container)
 
         # Default brush
-        self.add_brush('Foreground', show_remove=False)
+        self.add_brush('foreground', show_remove=False)
 
         self.add_brush_btn = QtWidgets.QPushButton('Add brush')
         self.add_brush_btn.clicked.connect(self.add_brush)
         self.layout.addWidget(self.add_brush_btn)
 
     def get_new_name(self):
-        return f"Brush {len(self.brush_widgets) + 1}"
+        return f"class_{len(self.brush_widgets) + 1}"
 
     def add_brush(self, name=None, show_remove=True):
         if not name:
@@ -112,8 +112,4 @@ class PaletteEditWidget(QtWidgets.QWidget):
 
     def get_brush_data(self):
         """ Used for saving the class names to JSON file """
-        # Background cannot be edited or removed
-        brush_data = ['Background']
-        for brush_widget in self.brush_widgets:
-            brush_data.append(brush_widget.name)
-        return brush_data
+        return [b.name for b in self.brush_widgets]

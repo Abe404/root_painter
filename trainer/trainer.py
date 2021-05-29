@@ -127,6 +127,7 @@ class Trainer():
                                              os.path.normpath(v))
             else:
                 new_config[k] = v
+            
         return new_config
 
     def check_for_instructions(self):
@@ -164,10 +165,22 @@ class Trainer():
     def start_training(self, config):
         if not self.training:
             self.train_config = config
+
+            # as train_annot_dir and val_annot_dir
+            # are lists in the multi-class case.
+            # convert to list containing one item for single class case
+            # to allow consistent handling of the variables.
+            if type(self.train_config['train_annot_dir']) == list:
+                self.train_config['train_annot_dirs'] = [self.train_config['train_annot_dir']]
+                self.train_config['val_annot_dirs'] = [self.train_config['val_annot_dir']]
+            else:
+                self.train_config['train_annot_dirs'] = self.train_config['train_annot_dir']
+                self.train_config['val_annot_dirs'] = self.train_config['val_annot_dir']
+
             self.epochs_without_progress = 0
             self.msg_dir = self.train_config['message_dir']
             model_dir = self.train_config['model_dir']
-            self.train_set = TrainDataset(self.train_config['train_annot_dir'],
+            self.train_set = TrainDataset(self.train_config['train_annot_dirs'],
                                           self.train_config['dataset_dir'],
                                           self.in_w, self.out_w)
             model_paths = model_utils.get_latest_model_paths(model_dir, 1)
@@ -181,10 +194,10 @@ class Trainer():
             self.training = True
 
     def reset_progress_if_annots_changed(self):
-        train_annot_dir = self.train_config['train_annot_dir']
-        val_annot_dir = self.train_config['val_annot_dir']
+        train_annot_dirs = self.train_config['train_annot_dirs']
+        val_annot_dirs = self.train_config['val_annot_dirs']
         new_annot_mtimes = []
-        for annot_dir in [train_annot_dir, val_annot_dir]:
+        for annot_dir in train_annot_dirs + val_annot_dirs
             for fname in ls(annot_dir):
                 fpath = os.path.join(annot_dir, fname)
                 new_annot_mtimes.append(os.path.getmtime(fpath))
@@ -198,12 +211,24 @@ class Trainer():
         """ write a message for the user (client) """
         Path(os.path.join(self.msg_dir, message)).touch()
 
+    def train_and_val_annotation_exists(self):
+        train_annot_dirs = self.train_config['train_annot_dirs']
+        val_annot_dirs = self.train_config['val_annot_dirs']
+        found_train_annot = False
+        for d in train_annot_dirs:
+            if [is_photo(a) for a in ls(d)]:
+                found_train_annot = True
+
+        found_val_annot = False
+        for d in val_annot_dirs:
+            if [is_photo(a) for a in ls(d)]:
+                found_val_annot = True
+        return found_train_annot and found_val_annot
+
     def train_one_epoch(self):
-        train_annot_dir = self.train_config['train_annot_dir']
-        val_annot_dir = self.train_config['val_annot_dir']
-        if not [is_photo(a) for a in ls(train_annot_dir)]:
-            return
-        if not [is_photo(a) for a in ls(val_annot_dir)]:
+
+        if not train_and_val_annotation_exists():
+            # no training until data ready
             return
 
         if self.first_loop:

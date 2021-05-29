@@ -936,5 +936,5 @@ class RootPainter(QtWidgets.QMainWindow):
                                                     self.scene.annot_pixmap,
                                                     self.annot_path,
                                                     self.png_fname,
-                                                    self.get_train_annot_dir()
+                                                    self.get_train_annot_dir(),
                                                     self.get_val_annot_dir())

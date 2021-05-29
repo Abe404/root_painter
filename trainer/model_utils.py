@@ -243,7 +243,11 @@ def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
         for i in range(len(classes)):
             class_channel_idx = i * 2 # output channel index for this class
             # softmax each pair of foreground, background channels.
+            print('class channel_idx', class_channel_idx)
+            print('gpu_tiles shape = ', gpu_tiles.shape)
+            print('outputs shape', outputs.shape)
             class_output = outputs[class_channel_idx:class_channel_idx+2]
+            print('outputs shape', class_output.shape)
             softmaxed = softmax(class_output, 1)
             foreground_probs = softmaxed[:, 1, :]  # just the foreground probability.
             if threshold is not None:
@@ -252,9 +256,9 @@ def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
             else:
                 predicted = foreground_probs
             pred_np = predicted.data.cpu().numpy()
-        out_tiles = pred_np.reshape((len(gpu_tiles), out_w, out_w))
-        for out_tile in out_tiles:
-            class_output_tiles[i].append(out_tile)
+            out_tiles = pred_np.reshape((len(gpu_tiles), out_w, out_w))
+            for out_tile in out_tiles:
+                class_output_tiles[i].append(out_tile)
 
         assert len(output_tiles) == len(coords), (
             f'{len(output_tiles)} {len(coords)}')

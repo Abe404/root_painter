@@ -312,7 +312,6 @@ class RootPainter(QtWidgets.QMainWindow):
         if not self.annot_visible:
             self.annot_pixmap_holder.setPixmap(self.blank_pixmap)
 
-
     def segment_image(self, image_fnames):
         # send instruction to segment the new image.
         content = {
@@ -320,7 +319,8 @@ class RootPainter(QtWidgets.QMainWindow):
             "seg_dir": self.seg_dir,
             "file_names": image_fnames,
             "message_dir": self.message_dir,
-            "model_dir": self.model_dir
+            "model_dir": self.model_dir,
+            "classes": self.classes
         }
         self.send_instruction('segment', content)
 

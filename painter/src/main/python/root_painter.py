@@ -125,16 +125,16 @@ class RootPainter(QtWidgets.QMainWindow):
             self.init_missing_project_ui()
 
 
-    def get_train_annot_dir():
+    def get_train_annot_dir(self):
         # taking into account the current class.
-        if hasattr(self, self.cur_class):
+        if hasattr(self, 'cur_class'):
             return self.proj_location / 'annotations' / self.cur_class / 'train'
         else:
             return self.proj_location / 'annotations' / 'train'
 
-    def get_val_annot_dir():
+    def get_val_annot_dir(self):
         # taking into account the current class.
-        if hasattr(self, self.cur_class):
+        if hasattr(self, 'cur_class'):
             return self.proj_location / 'annotations' / self.cur_class / 'val'
         else:
             return self.proj_location / 'annotations' / 'val'

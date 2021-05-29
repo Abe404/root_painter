@@ -165,6 +165,9 @@ class Trainer():
     def start_training(self, config):
         if not self.training:
             self.train_config = config
+            classes = ['foreground']
+            if hasattr(self.train_config, 'classes'): 
+                classes = self.train_config['classes']
 
             # as train_annot_dir and val_annot_dir
             # are lists in the multi-class case.
@@ -184,10 +187,11 @@ class Trainer():
                                           self.train_config['dataset_dir'],
                                           self.in_w, self.out_w)
             model_paths = model_utils.get_latest_model_paths(model_dir, 1)
+
             if model_paths:
-                self.model = model_utils.load_model(model_paths[0])
+                self.model = model_utils.load_model(model_paths[0], classes)
             else:
-                self.model = create_first_model_with_random_weights(model_dir)
+                self.model = create_first_model_with_random_weights(model_dir, classes)
             self.optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01,
                                              momentum=0.99, nesterov=True)
             self.model.train()

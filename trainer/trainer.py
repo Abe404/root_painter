@@ -231,7 +231,7 @@ class Trainer():
 
     def train_one_epoch(self):
 
-        if not train_and_val_annotation_exists():
+        if not self.train_and_val_annotation_exists():
             # no training until data ready
             return
 

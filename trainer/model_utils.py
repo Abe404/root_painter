@@ -2,6 +2,7 @@
 Utilities for working with the U-Net models
 
 Copyright (C) 2020 Abraham George Smith
+Copyright (C) 2021 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,6 +22,7 @@ import os
 import time
 import glob
 import numpy as np
+from pathlib import Path
 import torch
 from torch.nn.functional import softmax
 from skimage.io import imread
@@ -65,16 +67,24 @@ def get_prev_model(model_dir):
     prev_model = load_model(prev_path)
     return prev_model, prev_path
 
-def get_val_metrics(cnn, val_annot_dir, dataset_dir, in_w, out_w, bs):
+def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
     """
     Return the TP, FP, TN, FN, defined_sum, duration
     for the {cnn} on the validation set
 
     TODO - This is too similar to the train loop. Merge both and use flags.
     """
+    assert type(val_annot_dirs) == list
     start = time.time()
-    fnames = ls(val_annot_dir)
-    fnames = [a for a in fnames if im_utils.is_photo(a)]
+    fnames = []
+    dirnames = []
+    for val_annot_dir in val_annot_dirs:
+        class_annots = ls(val_annot_dir)
+        for fname in class_annots:
+            if im_utils.is_photo(fname):
+                fnames.append(fname)
+                dirnames.append(val_annot_dir)
+        
     cnn.half()
     # TODO: In order to speed things up, be a bit smarter here
     # by only segmenting the parts of the image where we have
@@ -86,9 +96,14 @@ def get_val_metrics(cnn, val_annot_dir, dataset_dir, in_w, out_w, bs):
     tns = 0
     fns = 0
     defined_sum = 0
-    for fname in fnames:
-        annot_path = os.path.join(val_annot_dir,
+    foregrounds = []
+    backgrounds = []
+    classes = []
+    
+    for dirname, fname in zip(dirnames, fnames):
+        annot_path = os.path.join(dirname,
                                   os.path.splitext(fname)[0] + '.png')
+    
         # reading the image may throw an exception.
         # I suspect this is due to it being only partially written to disk
         # simply retry if this happens.
@@ -104,24 +119,40 @@ def get_val_metrics(cnn, val_annot_dir, dataset_dir, in_w, out_w, bs):
         annot = np.array(annot)
         foreground = annot[:, :, 0].astype(bool).astype(int)
         background = annot[:, :, 1].astype(bool).astype(int)
-        image_path_part = os.path.join(dataset_dir, os.path.splitext(fname)[0])
-        image_path = glob.glob(image_path_part + '.*')[0]
-        image = im_utils.load_image(image_path)
-        predicted = unet_segment(cnn, image, bs, in_w,
-                                 out_w, threshold=0.5)
+        foregrounds.append(foreground)
+        backgrounds.append(background)
+
+        # Assuming class name is in annotation path
+        # i.e annotations/{class_name}/train/annot1.png,annot2.png..
+        class_name = Path(train_annot_dir).parts[-2]
+        classes.append(class_name)
+
+    # Prediction should include channels for each class.
+    image_path_part = os.path.join(dataset_dir, os.path.splitext(fname)[0])
+    image_path = glob.glob(image_path_part + '.*')[0]
+    image = im_utils.load_image(image_path)
+
+    # predictions for all classes
+    class_pred_maps = unet_segment(cnn, image, bs, in_w,
+                                         out_w, classes, threshold=0.5)
+
+    for pred, foreground, background, class_name in zip(class_pred_maps, foregrounds,
+                                                        backgrounds, classes):
+        # for each individual annotation, associated with a specific class.
         # mask defines which pixels are defined in the annotation.
         mask = foreground + background
         mask = mask.astype(bool).astype(int)
-        predicted *= mask
-        predicted = predicted.astype(bool).astype(int)
+        pred *= mask
+        pred = pred.astype(bool).astype(int)
         y_defined = mask.reshape(-1)
-        y_pred = predicted.reshape(-1)[y_defined > 0]
+        y_pred = pred.reshape(-1)[y_defined > 0]
         y_true = foreground.reshape(-1)[y_defined > 0]
         tps += np.sum(np.logical_and(y_pred == 1, y_true == 1))
         tns += np.sum(np.logical_and(y_pred == 0, y_true == 0))
         fps += np.sum(np.logical_and(y_pred == 1, y_true == 0))
         fns += np.sum(np.logical_and(y_pred == 0, y_true == 1))
         defined_sum += np.sum(y_defined > 0)
+
     duration = round(time.time() - start, 3)
     metrics = get_metrics(tps, fps, tns, fns, defined_sum, duration)
     return metrics
@@ -169,7 +200,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w,
     predicted = predicted.astype(int)
     return predicted
 
-def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
+def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
     """
     Threshold set to None means probabilities returned without thresholding.
     """
@@ -196,25 +227,31 @@ def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
         tiles_for_gpu = tiles_for_gpu.half()
         batches.append(tiles_for_gpu)
 
-    output_tiles = []
+    class_output_tiles = [[]] * len(classes)
     for gpu_tiles in batches:
         outputs = cnn(gpu_tiles)
-        softmaxed = softmax(outputs, 1)
-        foreground_probs = softmaxed[:, 1, :]  # just the foreground probability.
-        if threshold is not None:
-            predicted = foreground_probs > threshold
-            predicted = predicted.view(-1).int()
-        else:
-            predicted = foreground_probs
+        for i in range(len(classes)):
+            class_channel_idx = i * 2 # output channel index for this class
+            # softmax each pair of foreground, background channels.
+            class_output = outputs[class_channel_idx:class_channel_idx+2]
+            softmaxed = softmax(softmaxed, 1)
+            foreground_probs = softmaxed[:, 1, :]  # just the foreground probability.
+            if threshold is not None:
+                predicted = foreground_probs > threshold
+                predicted = predicted.view(-1).int()
+            else:
+                predicted = foreground_probs
+            pred_np = predicted.data.cpu().numpy()
+            out_tiles = pred_np.reshape((len(gpu_tiles), out_w, out_w))
+            for out_tile in out_tiles:
+                class_output_tiles[i].append(out_tile)
 
-        pred_np = predicted.data.cpu().numpy()
-        out_tiles = pred_np.reshape((len(gpu_tiles), out_w, out_w))
-        for out_tile in out_tiles:
-            output_tiles.append(out_tile)
-
-    assert len(output_tiles) == len(coords), (
-        f'{len(output_tiles)} {len(coords)}')
-
-    reconstructed = im_utils.reconstruct_from_tiles(output_tiles, coords,
-                                                    image.shape[:-1])
-    return reconstructed
+        assert len(output_tiles) == len(coords), (
+            f'{len(output_tiles)} {len(coords)}')
+    class_pred_maps = []
+    for i in range(len(classes)):
+        # reconstruct for each class
+        reconstructed = im_utils.reconstruct_from_tiles(class_output_tiles[i],
+                                                        coords, image.shape[:-1])
+        class_pred_maps.append(reconstructed)
+    return class_pred_maps

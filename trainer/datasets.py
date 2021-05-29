@@ -28,7 +28,7 @@ from PIL import Image
 from skimage import img_as_float32
 from skimage.exposure import rescale_intensity
 
-from im_utils import load_train_image_and_annot
+from im_utils import load_train_image_and_annots
 from file_utils import ls
 import im_utils
 import elastic
@@ -87,13 +87,13 @@ class UNetTransformer():
 
 
 class TrainDataset(Dataset):
-    def __init__(self, train_annot_dir, dataset_dir, in_w, out_w):
+    def __init__(self, train_annot_dirs, dataset_dir, in_w, out_w):
         """
         in_w and out_w are the tile size in pixels
         """
         self.in_w = in_w
         self.out_w = out_w
-        self.train_annot_dir = train_annot_dir
+        self.train_annot_dirs = train_annot_dirs
         self.dataset_dir = dataset_dir
         self.augmentor = UNetTransformer()
 
@@ -103,8 +103,9 @@ class TrainDataset(Dataset):
         return max(612, len(ls(self.train_annot_dir)) * 2)
 
     def __getitem__(self, _):
-        image, annot, fname = load_train_image_and_annot(self.dataset_dir,
-                                                         self.train_annot_dir)
+        # get an image and all annotations associated with it
+        image, annots, classes, fname = load_train_image_and_annots(self.dataset_dir,
+                                                                    self.train_annot_dirs)
         tile_pad = (self.in_w - self.out_w) // 2
 
         # ensures each pixel is sampled with equal chance
@@ -112,10 +113,13 @@ class TrainDataset(Dataset):
         padded_w = image.shape[1] + (im_pad_w * 2)
         padded_h = image.shape[0] + (im_pad_w * 2)
         padded_im = im_utils.pad(image, im_pad_w)
-
+        
         # This speeds up the padding.
-        annot = annot[:, :, :2]
-        padded_annot = im_utils.pad(annot, im_pad_w)
+        padded_annots = []
+        for annot in annots:
+            annot = annot[:, :, :2]
+            padded_annots.append(im_utils.pad(annot, im_pad_w))
+
         right_lim = padded_w - self.in_w
         bottom_lim = padded_h - self.in_w
 
@@ -127,16 +131,18 @@ class TrainDataset(Dataset):
         while True:
             x_in = math.floor(random.random() * right_lim)
             y_in = math.floor(random.random() * bottom_lim)
-            annot_tile = padded_annot[y_in:y_in+self.in_w,
-                                      x_in:x_in+self.in_w]
-            if np.sum(annot_tile) > 0:
+            annot_tiles = [p[y_in:y_in+self.in_w,
+                                  x_in:x_in+self.in_w]
+                           for p in in padded_annots]
+            # if there is any annotation defined in this region then use it.
+            if np.sum(annot_tiles) > 0:
                 break
 
         im_tile = padded_im[y_in:y_in+self.in_w,
                             x_in:x_in+self.in_w]
-
-        assert annot_tile.shape == (self.in_w, self.in_w, 2), (
-            f" shape is {annot_tile.shape} for tile from {fname}")
+        for annot_tile in annot_tiles:
+            assert annot_tile.shape == (self.in_w, self.in_w, 2), (
+                f" shape is {annot_tile.shape} for tile from {fname}")
 
         assert im_tile.shape == (self.in_w, self.in_w, 3), (
             f" shape is {im_tile.shape} for tile from {fname}")
@@ -146,20 +152,28 @@ class TrainDataset(Dataset):
         im_tile, annot_tile = self.augmentor.transform(im_tile, annot_tile)
         im_tile = im_utils.normalize_tile(im_tile)
 
-        foreground = np.array(annot_tile)[:, :, 0]
-        background = np.array(annot_tile)[:, :, 1]
+        # need list of foregrounds and masks for all tiles.
+        foregrounds = []
+        masks = []
+        for annot_tile in annot_tiles:
+            foreground = np.array(annot_tile)[:, :, 0]
+            background = np.array(annot_tile)[:, :, 1]
 
-        # Annotion is cropped post augmentation to ensure
-        # elastic grid doesn't remove the edges.
-        foreground = foreground[tile_pad:-tile_pad, tile_pad:-tile_pad]
-        background = background[tile_pad:-tile_pad, tile_pad:-tile_pad]
-        # mask specified pixels of annotation which are defined
-        mask = foreground + background
-        mask = mask.astype(np.float32)
-        mask = torch.from_numpy(mask)
-        foreground = foreground.astype(np.int64)
-        foreground = torch.from_numpy(foreground)
+            # Annotion is cropped post augmentation to ensure
+            # elastic grid doesn't remove the edges.
+            foreground = foreground[tile_pad:-tile_pad, tile_pad:-tile_pad]
+            background = background[tile_pad:-tile_pad, tile_pad:-tile_pad]
+            # mask specified pixels of annotation which are defined
+            mask = foreground + background
+            mask = mask.astype(np.float32)
+            mask = torch.from_numpy(mask)
+            masks.append(mask)
+
+            foreground = foreground.astype(np.int64)
+            foreground = torch.from_numpy(foreground)
+            foregrounds.append(foreground)
+
         im_tile = im_tile.astype(np.float32)
         im_tile = np.moveaxis(im_tile, -1, 0)
         im_tile = torch.from_numpy(im_tile)
-        return im_tile, foreground, mask
+        return im_tile, foregrounds, masks, classes

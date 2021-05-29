@@ -20,6 +20,7 @@ import os
 import time
 import glob
 import shutil
+from pathlib import Path
 from math import ceil
 import random
 import numpy as np
@@ -43,7 +44,16 @@ def normalize_tile(tile):
     assert np.max(tile) <= 1, f"tile max {np.max(tile)}"
     return tile
 
-def load_train_image_and_annot(dataset_dir, train_annot_dir):
+def load_train_image_and_annots(dataset_dir, train_annot_dirs):
+    """
+    returns
+        image (np.array) - image data
+        annots (list(np.array)) - annotations associated with fname
+        classes (list(string)) - classes for each annot,
+                                 taken from annot directory name
+        fname - file name
+    """
+    
     max_attempts = 60
     attempts = 0
     while attempts < max_attempts:
@@ -54,21 +64,48 @@ def load_train_image_and_annot(dataset_dir, train_annot_dir):
         # (just try again)
         try:
             # This might take ages, profile and optimize
-            fnames = ls(train_annot_dir)
-            fnames = [a for a in fnames if is_photo(a)]
-            fname = random.sample(fnames, 1)[0]
-            annot_path = os.path.join(train_annot_dir, fname)
-            image_path_part = os.path.join(dataset_dir,
-                                           os.path.splitext(fname)[0])
+            fnames = []
+            all_classes = [] # each annotation corresponds to an individual class.
+            all_dirs = []
+            for train_annot_dir in train_annot_dirs:
+                annot_fnames = ls(train_annot_dir)
+                fnames += annot_fnames
+                # Assuming class name is in annotation path
+                # i.e annotations/{class_name}/train/annot1.png,annot2.png..
+                class_name = Path(train_annot_dir).parts[-2]
+                all_classes += [class_name] * len(annot_names)
+                all_dirs += [train_annot_dir] * len(annot_names)
+
+            fname = random.sample(range(fnames), 1)[0]
+            
+            # triggers retry if assertion fails
+            assert is_photo(fname), f'{fname} is not a photo'
+
+            # annots and classes associated with fname 
+            indices = [i for i, f in enumerate(fnames) if f == fname]
+            classes = [all_classes[i] for i in indices]
+            annot_dirs = [all_dirs[i] for i in indices]
+            annots = []
+
+            for annot_dir in annot_dirs:
+                annot_path = os.path.join(annot_dir, fname)
+                annot = imread(annot_path).astype(bool)
+                # Why would we have annotations without content?
+                assert np.sum(annot) > 0
+                annots.append(annot)
+
             # it's possible the image has a different extenstion
             # so use glob to get it
             image_path = glob.glob(image_path_part + '.*')[0]
+            image_path_part = os.path.join(dataset_dir,
+                                           os.path.splitext(fname)[0])
+
             image = load_image(image_path)
-            annot = imread(annot_path).astype(bool)
-            assert np.sum(annot) > 0
-            assert image.shape[2] == 3 # should be RGB
+                        assert image.shape[2] == 3 # should be RGB
+
             # also return fname for debugging purposes.
-            return image, annot, fname
+            return image, annots, classes fname
+
         except Exception as e:
             # This could be due to an empty annotation saved by the user.
             # Which happens rarely due to deleting all labels in an 

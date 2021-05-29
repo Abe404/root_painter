@@ -146,7 +146,7 @@ class Trainer():
                     config = self.fix_config_paths(json.loads(contents))
                     getattr(self, name)(config)
             except Exception as e:
-                print('Exception parsing instruction', e)
+                print('Exception parsing instruction', e, traceback.format_exc())
                 self.log(f'Exception parsing instruction,{e},{traceback.format_exc()}')
                 return False
         else:

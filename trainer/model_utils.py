@@ -18,11 +18,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # pylint: disable=C0111, R0913, R0914, W0511
+
+# bs doesn't conform to naming style
+# pylint: disable=C0103
+
+# too general exception
+# pylint: disable=W0703
+
+# too many statements
+# pylint: disable=R0915
+
+# torch has no 'from_numpy' member
+# pylint: disable=E1101
+
 import os
 import time
 import glob
-import numpy as np
 from pathlib import Path
+import numpy as np
 import torch
 from torch.nn.functional import softmax
 from skimage.io import imread
@@ -43,6 +56,8 @@ def load_model(model_path, classes):
     try:
         model.load_state_dict(torch.load(model_path))
         model = torch.nn.DataParallel(model)
+    # bare except
+    # pylint: disable=W0702
     except:
         model = torch.nn.DataParallel(model)
         model.load_state_dict(torch.load(model_path))
@@ -74,7 +89,7 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
 
     TODO - This is too similar to the train loop. Merge both and use flags.
     """
-    assert type(val_annot_dirs) == list
+    assert isinstance(val_annot_dirs, list), 'val dir should be list'
     start = time.time()
     fnames = []
     dirnames = []
@@ -84,7 +99,7 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
             if im_utils.is_photo(fname):
                 fnames.append(fname)
                 dirnames.append(val_annot_dir)
-        
+
     cnn.half()
     # TODO: In order to speed things up, be a bit smarter here
     # by only segmenting the parts of the image where we have
@@ -99,11 +114,11 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
     foregrounds = []
     backgrounds = []
     classes = []
-    
+
     for dirname, fname in zip(dirnames, fnames):
         annot_path = os.path.join(dirname,
                                   os.path.splitext(fname)[0] + '.png')
-    
+
         # reading the image may throw an exception.
         # I suspect this is due to it being only partially written to disk
         # simply retry if this happens.
@@ -124,7 +139,7 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
 
         # Assuming class name is in annotation path
         # i.e annotations/{class_name}/train/annot1.png,annot2.png..
-        class_name = Path(train_annot_dir).parts[-2]
+        class_name = Path(dirname).parts[-2]
         classes.append(class_name)
 
     # Prediction should include channels for each class.
@@ -178,14 +193,13 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
     """ Average predictions from each model specified in model_paths """
     pred_count = 0
     class_pred_sums = [None] * len(classes)
-    class_idx = range(len(classes))
     # then add predictions from the previous models to form an ensemble
     for model_path in model_paths:
         cnn = load_model(model_path, classes)
         cnn.half()
         pred_maps = unet_segment(cnn, image,
                                 bs, in_w, out_w, classes, threshold=None)
-        for i, pred_map in enumerate(pred_maps): 
+        for i, pred_map in enumerate(pred_maps):
             if class_pred_sums[i] is not None:
                 class_pred_sums[i] += pred_map
             else:
@@ -196,7 +210,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
         flipped_pred_maps = unet_segment(cnn, flipped_im, bs, in_w,
                                          out_w, classes, threshold=None)
 
-        for i, flipped_pred in enumerate(flipped_pred_maps): 
+        for i, flipped_pred in enumerate(flipped_pred_maps):
             pred_map = np.fliplr(flipped_pred)
             class_pred_sums[i] += pred_map
         pred_count += 1
@@ -257,7 +271,7 @@ def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
                 class_output_tiles[i].append(out_tile)
 
         assert len(class_output_tiles[0]) == len(coords), (
-            f'{len(output_tiles)} {len(coords)}')
+            f'{len(class_output_tiles[0])} {len(coords)}')
     class_pred_maps = []
     for i in range(len(classes)):
         # reconstruct for each class

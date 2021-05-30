@@ -183,11 +183,11 @@ class Trainer():
             # convert to list containing one item for single class case
             # to allow consistent handling of the variables.
             if isinstance(self.train_config['train_annot_dir'], list):
-                self.train_config['train_annot_dirs'] = [self.train_config['train_annot_dir']]
-                self.train_config['val_annot_dirs'] = [self.train_config['val_annot_dir']]
-            else:
                 self.train_config['train_annot_dirs'] = self.train_config['train_annot_dir']
                 self.train_config['val_annot_dirs'] = self.train_config['val_annot_dir']
+            else:
+                self.train_config['train_annot_dirs'] = [self.train_config['train_annot_dir']]
+                self.train_config['val_annot_dirs'] = [self.train_config['val_annot_dir']]
 
             self.epochs_without_progress = 0
             self.msg_dir = self.train_config['message_dir']

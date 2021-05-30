@@ -18,6 +18,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # pylint: disable=C0111,R0913
+
+# fp doesn't conform to naming style
+# pylint: disable=C0103
+
 from datetime import datetime
 import numpy as np
 

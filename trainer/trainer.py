@@ -268,8 +268,11 @@ class Trainer():
                    classes) in enumerate(train_loader):
 
             print('photo tiles_shape', photo_tiles.shape)
-            print('foreground_tiles shape', foreground_tiles.shape)
-            print('defined_tiles shape', defined_tiles.shape)
+            print('foreground_tiles len', len(foreground_tiles))
+            print('foreground_tiles[0] shape', foreground_tiles[0].shape)
+            print('defined_tiles type', type(defined_tiles))
+            print('defined_tiles len', len(defined_tiles))
+            print('defined_tiles[0] shape', defined_tiles[0].shape)
             print('classes ', classes)
 
             self.check_for_instructions()

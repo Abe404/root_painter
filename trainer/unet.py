@@ -22,6 +22,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+# x doesn't conform to naming style
+# pylint: disable=C0103
+
 import torch.nn as nn
 
 class DownBlock(nn.Module):

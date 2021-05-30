@@ -60,6 +60,11 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
 
     max_attempts = 60
     attempts = 0
+
+    # these two are used for debugging to allow printing of one of the paths that failed.
+    latest_im_path = None
+    latest_annot_path = None
+
     while attempts < max_attempts:
         attempts += 1
         # file systems are unpredictable.
@@ -93,6 +98,7 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
 
             for annot_dir in annot_dirs:
                 annot_path = os.path.join(annot_dir, fname)
+                latest_annot_path = annot_path
                 annot = imread(annot_path).astype(bool)
                 # Why would we have annotations without content?
                 assert np.sum(annot) > 0
@@ -103,6 +109,7 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
             image_path_part = os.path.join(dataset_dir,
                                            os.path.splitext(fname)[0])
             image_path = glob.glob(image_path_part + '.*')[0]
+            latest_im_path = image_path
             image = load_image(image_path)
             assert image.shape[2] == 3 # should be RGB
 
@@ -116,7 +123,8 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
             # give it some time and try again.
             time.sleep(0.1)
     if attempts == max_attempts:
-        raise Exception('Could not load annotation and photo')
+        raise Exception(f'Could not load annotation and photo, latest im:'
+                        f'{latest_im_path}, latest annot:{latest_annot_path}')
 
 
 def pad(image, width: int, mode='reflect', constant_values=0):

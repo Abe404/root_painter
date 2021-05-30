@@ -26,6 +26,7 @@ import glob
 import shutil
 from pathlib import Path
 from math import ceil
+import traceback
 import random
 import numpy as np
 import skimage.util as skim_util
@@ -65,7 +66,7 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
     latest_im_path = None
     latest_annot_path = None
 
-    while attempts < max_attempts:
+    while True:
         attempts += 1
         # file systems are unpredictable.
         # We may have problems reading the file.
@@ -116,16 +117,16 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
             # also return fname for debugging purposes.
             return image, annots, classes, fname
 
-        except Exception:
+        except Exception as e:
             # This could be due to an empty annotation saved by the user.
             # Which happens rarely due to deleting all labels in an
             # existing annotation and is not a problem.
             # give it some time and try again.
             time.sleep(0.1)
-    if attempts == max_attempts:
-        raise Exception(f'Could not load annotation and photo, latest im:'
-                        f'{latest_im_path}, latest annot:{latest_annot_path}')
-
+            if attempts >= max_attempts:
+                raise Exception(f'Could not load annotation and photo, latest im:'
+                                f'{latest_im_path}, latest annot:{latest_annot_path}'
+                                f', Exception {e} {traceback.format_exc()}')
 
 def pad(image, width: int, mode='reflect', constant_values=0):
     # only pad the first two dimensions

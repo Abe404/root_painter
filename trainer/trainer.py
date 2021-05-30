@@ -16,6 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 # pylint: disable=W0511, E1136, C0111, R0902, R0914, W0703, R0913, R0915
+# torch has no sum member
+# pylint: disable=E1101
+# invalid name (single characters used for exceptions etc)
+# pylint: disable=C0103
+
+
 # W0511 is TODO
 import os
 import time
@@ -95,7 +101,8 @@ class Trainer():
                 self.check_for_instructions()
             except Exception as e:
                 print('Exception check_for_instructions', e, traceback.format_exc())
-                self.log(f'Exception check_for_instructions instruction,{e},{traceback.format_exc()}')
+                self.log(f'Exception check_for_instructions instruction,{e},'
+                         f'{traceback.format_exc()}')
             if self.training:
                 # can take a while so checks for
                 # new instructions are also made inside
@@ -127,7 +134,7 @@ class Trainer():
                                              os.path.normpath(v))
             else:
                 new_config[k] = v
-            
+
         return new_config
 
     def check_for_instructions(self):
@@ -166,14 +173,16 @@ class Trainer():
         if not self.training:
             self.train_config = config
             classes = ['foreground']
-            if hasattr(self.train_config, 'classes'): 
+            if hasattr(self.train_config, 'classes'):
                 classes = self.train_config['classes']
+            else:
+                self.train_config['classes'] = classes
 
             # as train_annot_dir and val_annot_dir
             # are lists in the multi-class case.
             # convert to list containing one item for single class case
             # to allow consistent handling of the variables.
-            if type(self.train_config['train_annot_dir']) == list:
+            if isinstance(self.train_config['train_annot_dir'], list):
                 self.train_config['train_annot_dirs'] = [self.train_config['train_annot_dir']]
                 self.train_config['val_annot_dirs'] = [self.train_config['val_annot_dir']]
             else:
@@ -341,7 +350,8 @@ class Trainer():
                                   val_annot_dir=self.train_config['val_annot_dirs'],
                                   dataset_dir=self.train_config['dataset_dir'],
                                   in_w=self.in_w, out_w=self.out_w, bs=self.bs)
-        prev_model, prev_path = model_utils.get_prev_model(model_dir)
+        prev_model, prev_path = model_utils.get_prev_model(model_dir,
+                                                           self.train_config['classes'])
         cur_metrics = get_val_metrics(copy.deepcopy(self.model))
         prev_metrics = get_val_metrics(prev_model)
         self.log_metrics('cur_val', cur_metrics)
@@ -398,9 +408,9 @@ class Trainer():
         """
         in_dir = segment_config['dataset_dir']
         seg_dir = segment_config['seg_dir']
-        
+
         classes = ['foreground']
-        if hasattr(segment_config, 'classes'): 
+        if hasattr(segment_config, 'classes'):
             classes = segment_config['classes']
 
         if "file_names" in segment_config:
@@ -433,7 +443,7 @@ class Trainer():
         fpath = os.path.join(in_dir, fname)
 
         # Segmentations are always saved as PNG.
-        
+
         out_paths = []
         if len(classes) > 1:
             for c in classes:
@@ -467,8 +477,8 @@ class Trainer():
             seg_maps = ensemble_segment(model_paths, photo, self.bs,
                                         self.in_w, self.out_w, classes)
             print(f'ensemble segment {fname}, dur', round(time.time() - seg_start, 2))
-            
-            # The segmentation for each class is saved in seperate file 
+
+            # The segmentation for each class is saved in seperate file
             for segmented, out_path in zip(seg_maps, out_paths):
                 # catch warnings as low contrast is ok here.
                 with warnings.catch_warnings():

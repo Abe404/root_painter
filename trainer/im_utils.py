@@ -16,6 +16,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # pylint: disable=C0111,E1102,C0103,W0703,W0511,E1136
+
+# Too many local variables
+# pylint: disable=R0914
+
 import os
 import time
 import glob
@@ -53,7 +57,7 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
                                  taken from annot directory name
         fname - file name
     """
-    
+
     max_attempts = 60
     attempts = 0
     while attempts < max_attempts:
@@ -73,15 +77,15 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
                 # Assuming class name is in annotation path
                 # i.e annotations/{class_name}/train/annot1.png,annot2.png..
                 class_name = Path(train_annot_dir).parts[-2]
-                all_classes += [class_name] * len(annot_names)
-                all_dirs += [train_annot_dir] * len(annot_names)
+                all_classes += [class_name] * len(annot_fnames)
+                all_dirs += [train_annot_dir] * len(annot_fnames)
 
             fname = random.sample(range(fnames), 1)[0]
-            
+
             # triggers retry if assertion fails
             assert is_photo(fname), f'{fname} is not a photo'
 
-            # annots and classes associated with fname 
+            # annots and classes associated with fname
             indices = [i for i, f in enumerate(fnames) if f == fname]
             classes = [all_classes[i] for i in indices]
             annot_dirs = [all_dirs[i] for i in indices]
@@ -96,19 +100,18 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
 
             # it's possible the image has a different extenstion
             # so use glob to get it
-            image_path = glob.glob(image_path_part + '.*')[0]
             image_path_part = os.path.join(dataset_dir,
                                            os.path.splitext(fname)[0])
-
+            image_path = glob.glob(image_path_part + '.*')[0]
             image = load_image(image_path)
             assert image.shape[2] == 3 # should be RGB
 
             # also return fname for debugging purposes.
             return image, annots, classes, fname
 
-        except Exception as e:
+        except Exception:
             # This could be due to an empty annotation saved by the user.
-            # Which happens rarely due to deleting all labels in an 
+            # Which happens rarely due to deleting all labels in an
             # existing annotation and is not a problem.
             # give it some time and try again.
             time.sleep(0.1)

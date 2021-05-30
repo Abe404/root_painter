@@ -72,5 +72,5 @@ def ensure_required_folders_exist(sync_dir):
     # executing old instructions can get confusing for users
     instructions_dir = os.path.join(sync_dir_abs, 'instructions')
     files = glob.glob(instructions_dir + '/*')
-    for f in files:
-        os.remove(f)
+    for file_path in files:
+        os.remove(file_path)

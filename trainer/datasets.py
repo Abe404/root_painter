@@ -160,7 +160,7 @@ class TrainDataset(Dataset):
 
         im_tile = img_as_float32(im_tile)
         im_tile = im_utils.normalize_tile(im_tile)
-        im_tile, annot_tile = self.augmentor.transform(im_tile, annot_tile)
+        im_tile, annot_tiles = self.augmentor.transform(im_tile, annot_tiles)
         im_tile = im_utils.normalize_tile(im_tile)
 
         # need list of foregrounds and masks for all tiles.

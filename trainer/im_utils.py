@@ -86,7 +86,7 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
                 all_classes += [class_name] * len(annot_fnames)
                 all_dirs += [train_annot_dir] * len(annot_fnames)
 
-            fname = random.sample(range(fnames), 1)[0]
+            fname = random.sample(fnames, 1)[0]
 
             # triggers retry if assertion fails
             assert is_photo(fname), f'{fname} is not a photo'

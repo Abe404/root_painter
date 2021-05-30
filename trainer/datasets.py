@@ -16,10 +16,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # pylint: disable=C0111, R0913, R0903, R0914, W0511
+
+# torch has no 'from_numpy'
+# pylint: disable=E1101
+
 import random
 import math
-import os
-
 import numpy as np
 import torch
 from torch.utils.data import Dataset
@@ -55,7 +57,6 @@ def salt_pepper_transform(photo, annots):
     photo = im_utils.add_salt_pepper(photo, salt_intensity)
     return photo, annots
 
-
 class UNetTransformer():
     """ Data Augmentation """
     def __init__(self):
@@ -72,7 +73,7 @@ class UNetTransformer():
         for transform in transforms:
             if random.random() < 0.8:
                 photo, annot = transform(photo, annots)
-        
+
         if random.random() < 0.5:
             photo = np.fliplr(photo)
             annots = [np.fliplr(a) for a in annots]
@@ -103,7 +104,12 @@ class TrainDataset(Dataset):
     def __len__(self):
         # use at least 612 but when dataset gets bigger start to expand
         # to prevent validation from taking all the time (relatively)
-        return max(612, len(ls(self.train_annot_dir)) * 2)
+        annot_lengths = []
+        for dir_path in self.train_annot_dirs:
+            annot_lengths.append(len(ls(dir_path)))
+        mean_annot_len = np.mean(annot_lengths)
+        # For the single class case, behaviour will not change from previous system
+        return max(612, mean_annot_len * 2)
 
     def __getitem__(self, _):
         # get an image and all annotations associated with it
@@ -116,7 +122,7 @@ class TrainDataset(Dataset):
         padded_w = image.shape[1] + (im_pad_w * 2)
         padded_h = image.shape[0] + (im_pad_w * 2)
         padded_im = im_utils.pad(image, im_pad_w)
-        
+
         # This speeds up the padding.
         padded_annots = []
         for annot in annots:
@@ -138,7 +144,7 @@ class TrainDataset(Dataset):
             for padded_annot in padded_annots:
                 annot_tile = padded_annot[y_in:y_in+self.in_w, x_in:x_in+self.in_w]
                 annot_tiles.append(annot_tile)
-            
+
             # if there is any annotation defined in this region then use it.
             if np.sum(annot_tiles) > 0:
                 break

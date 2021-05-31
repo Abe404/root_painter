@@ -72,13 +72,13 @@ class UNetTransformer():
 
         for transform in transforms:
             if random.random() < 0.8:
-                photo, annot = transform(photo, annots)
+                photo, annots = transform(photo, annots)
 
         if random.random() < 0.5:
             photo = np.fliplr(photo)
             annots = [np.fliplr(a) for a in annots]
 
-        return photo, annot
+        return photo, annots
 
     def color_jit_transform(self, photo, annots):
         # TODO check skimage docs for something cleaner to convert

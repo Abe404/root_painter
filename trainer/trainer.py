@@ -262,9 +262,9 @@ class Trainer():
         fns = 0
         defined_total = 0
         loss_sum = 0
-        for step, (photo_tiles,
-                   foreground_tiles,
-                   defined_tiles,
+        for step, (im_tiles,
+                   fg_tiles,
+                   bg_tiles,
                    classes) in enumerate(train_loader):
 
             self.check_for_instructions()
@@ -272,11 +272,42 @@ class Trainer():
             total_loss = None
 
             self.optimizer.zero_grad()
-            photo_tiles = photo_tiles.cuda()
-            outputs = self.model(photo_tiles)
+            im_tiles = im_tile.cuda()
+            outputs = self.model(im_tiles)
+            
+            """
+            split the batch up into instances
+                im_tile, im_fg_tiles, im_bg_tiles, im_classes
+
+                im_tile - a singular patch from an image
+
+                im_fg_tile - a list of fg_tiles for the patch
+                             each fg_tile is foreground labels
+                             for an individual class.
+
+                im_bg_tiles - a list of bg_tiles for the patch
+                              each bg_tile is background labels
+                              for an individual class.
+                
+                classes - a list of strings, where each string
+                          is the name of a class. These class names
+                          correspond to the im_fg_tiles and im_bg_tiles
+            """
+
+             
+            print('net outputs shape', outputs.shape)
+            print('fg_tiles len', len(fg_tiles))
+            print('fg_tiles[0].shape', fg_tiles.shape[0])
+            print('masks len', len(masks))
+            print('masks[0] shape', masks[0].shape)
 
             # sum the loss for each class present in the annotations.
-            for class_name, fg_tiles, masks in zip(classes, foreground_tiles, defined_tiles):
+            for class_name, fg_tiles, masks in zip(classes[0], foreground_tiles, defined_tiles):
+                # TODO get to the individual instance level for computing loss.
+
+                print('fg_tiles.shape', fg_tiles.shape)
+                print('masks.shape', masks.shape)
+                print('class_name', class_name)
                 class_idx = self.train_config['classes'].index(class_name)
                 fg_tiles = fg_tiles.cuda()
                 masks = masks.cuda()

@@ -277,6 +277,9 @@ class Trainer():
 
             # sum the loss for each class present in the annotations.
             for class_name, fg_tiles, masks in zip(classes, foreground_tiles, defined_tiles):
+                print('fg_tiles.shape', fg_tiles.shape)
+                print('masks.shape', masks.shape)
+                print('class_name', class_name)
                 class_idx = self.train_config['classes'].index(class_name)
                 fg_tiles = fg_tiles.cuda()
                 masks = masks.cuda()

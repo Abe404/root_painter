@@ -267,53 +267,57 @@ class Trainer():
                    defined_tiles,
                    classes) in enumerate(train_loader):
 
-            print('photo tiles_shape', photo_tiles.shape)
-            print('foreground_tiles len', len(foreground_tiles))
-            print('foreground_tiles[0] shape', foreground_tiles[0].shape)
-            print('defined_tiles type', type(defined_tiles))
-            print('defined_tiles len', len(defined_tiles))
-            print('defined_tiles[0] shape', defined_tiles[0].shape)
-            print('classes ', classes)
-
             self.check_for_instructions()
-            photo_tiles = photo_tiles.cuda()
-            foreground_tiles = foreground_tiles.cuda()
-            defined_tiles = defined_tiles.cuda()
+
+            total_loss = None
+
             self.optimizer.zero_grad()
+            photo_tiles = photo_tiles.cuda()
             outputs = self.model(photo_tiles)
-            softmaxed = softmax(outputs, 1)
-            # just the foreground probability.
-            foreground_probs = softmaxed[:, 1, :]
-            # remove any of the predictions for which we don't have ground truth
-            # Set outputs to 0 where annotation undefined so that
-            # The network can predict whatever it wants without any penalty.
-            outputs[:, 0] *= defined_tiles
-            outputs[:, 1] *= defined_tiles
-            loss = criterion(outputs, foreground_tiles)
-            loss.backward()
+
+            # sum the loss for each class present in the annotations.
+            for class_name, fg_tiles, masks in zip(classes, foreground_tiles, defined_tiles):
+                class_idx = self.train_config['classes'].index(class_name)
+                fg_tiles = fg_tiles.cuda()
+                masks = masks.cuda()
+                class_output = outputs[:, class_idx:class_idx+2]
+                softmaxed = softmax(class_output, 1)
+                # just the foreground probability.
+                foreground_probs = softmaxed[:, 1, :]
+                # remove any of the predictions for which we don't have ground truth
+                # Set outputs to 0 where annotation undefined so that
+                # The network can predict whatever it wants without any penalty.
+                outputs[:, 0] *= masks
+                outputs[:, 1] *= masks
+                if total_loss is None:
+                    total_loss = criterion(outputs, foreground_tiles)
+                else:
+                    total_loss += criterion(outputs, foreground_tiles)
+
+                foreground_probs *= defined_tiles
+                predicted = foreground_probs > 0.5
+
+                # we only want to calculate metrics on the
+                # part of the predictions for which annotations are defined
+                # so remove all predictions and foreground labels where
+                # we didn't have any annotation.
+                defined_list = defined_tiles.view(-1)
+                preds_list = predicted.view(-1)[defined_list > 0]
+                foregrounds_list = foreground_tiles.view(-1)[defined_list > 0]
+
+                # # calculate all the false positives, false negatives etc
+                tps += torch.sum((foregrounds_list == 1) * (preds_list == 1)).cpu().numpy()
+                tns += torch.sum((foregrounds_list == 0) * (preds_list == 0)).cpu().numpy()
+                fps += torch.sum((foregrounds_list == 0) * (preds_list == 1)).cpu().numpy()
+                fns += torch.sum((foregrounds_list == 1) * (preds_list == 0)).cpu().numpy()
+                defined_total += torch.sum(defined_list > 0).cpu().numpy()
+                loss_sum += total_loss.item() # float
+
+            total_loss.backward()
             self.optimizer.step()
-            foreground_probs *= defined_tiles
-            predicted = foreground_probs > 0.5
-
-            # we only want to calculate metrics on the
-            # part of the predictions for which annotations are defined
-            # so remove all predictions and foreground labels where
-            # we didn't have any annotation.
-
-            defined_list = defined_tiles.view(-1)
-            preds_list = predicted.view(-1)[defined_list > 0]
-            foregrounds_list = foreground_tiles.view(-1)[defined_list > 0]
-
-            # # calculate all the false positives, false negatives etc
-            tps += torch.sum((foregrounds_list == 1) * (preds_list == 1)).cpu().numpy()
-            tns += torch.sum((foregrounds_list == 0) * (preds_list == 0)).cpu().numpy()
-            fps += torch.sum((foregrounds_list == 0) * (preds_list == 1)).cpu().numpy()
-            fns += torch.sum((foregrounds_list == 1) * (preds_list == 0)).cpu().numpy()
-            defined_total += torch.sum(defined_list > 0).cpu().numpy()
-            loss_sum += loss.item() # float
             sys.stdout.write(f"Training {(step+1) * self.bs}/"
                              f"{len(train_loader.dataset)} "
-                             f" loss={round(loss.item(), 3)} \r")
+                             f" loss={round(total_loss.item(), 3)} \r")
             self.check_for_instructions() # could update training parameter
             if not self.training:
                 return

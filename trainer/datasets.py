@@ -165,7 +165,7 @@ class TrainDataset(Dataset):
 
         # need list of foregrounds and masks for all tiles.
         foregrounds = []
-        masks = []
+        backgrounds = []
         for annot_tile in annot_tiles:
             foreground = np.array(annot_tile)[:, :, 0]
             background = np.array(annot_tile)[:, :, 1]
@@ -174,17 +174,16 @@ class TrainDataset(Dataset):
             # elastic grid doesn't remove the edges.
             foreground = foreground[tile_pad:-tile_pad, tile_pad:-tile_pad]
             background = background[tile_pad:-tile_pad, tile_pad:-tile_pad]
-            # mask specified pixels of annotation which are defined
-            mask = foreground + background
-            mask = mask.astype(np.float32)
-            mask = torch.from_numpy(mask)
-            masks.append(mask)
 
             foreground = foreground.astype(np.int64)
             foreground = torch.from_numpy(foreground)
             foregrounds.append(foreground)
 
+            background = background.astype(np.int64)
+            background = torch.from_numpy(background)
+            backgrounds.append(background)
+
         im_tile = im_tile.astype(np.float32)
         im_tile = np.moveaxis(im_tile, -1, 0)
         im_tile = torch.from_numpy(im_tile)
-        return im_tile, foregrounds, masks, classes
+        return im_tile, foregrounds, backgrounds, classes

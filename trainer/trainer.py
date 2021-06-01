@@ -293,20 +293,25 @@ class Trainer():
                           is the name of a class. These class names
                           correspond to the im_fg_tiles and im_bg_tiles
             """
-
              
             print('net outputs shape', outputs.shape)
             print('fg_tiles len', len(fg_tiles))
             print('fg_tiles[0].shape', fg_tiles.shape[0])
-            print('masks len', len(masks))
-            print('masks[0] shape', masks[0].shape)
-
+            print('bg_tiles len', len(bg_tiles))
+            print('bg_tiles[0] shape', bg_tiles[0].shape)
+            
+            # create mask for each individual fg/bg pair
+            # mask specified pixels of annotation which are defined
+            # mask = foreground + background
+            # mask = mask.astype(np.float32)
+            # mask = torch.from_numpy(mask)
+ 
             # sum the loss for each class present in the annotations.
 
             # TODO get to the individual instance level for computing loss.
-            for class_name, fg_tiles, masks in zip(classes[0], foreground_tiles, defined_tiles):
+            for class_name, fg_tiles, bg_tiles in zip(classes[0], fg_tiles, bg_tiles):
                 print('fg_tiles.shape', fg_tiles.shape)
-                print('masks.shape', masks.shape)
+                print('bg_tiles.shape', fg_tiles.shape)
                 print('class_name', class_name)
                 class_idx = self.train_config['classes'].index(class_name)
                 fg_tiles = fg_tiles.cuda()

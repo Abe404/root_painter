@@ -302,9 +302,9 @@ class Trainer():
             print('masks[0] shape', masks[0].shape)
 
             # sum the loss for each class present in the annotations.
-            for class_name, fg_tiles, masks in zip(classes[0], foreground_tiles, defined_tiles):
-                # TODO get to the individual instance level for computing loss.
 
+            # TODO get to the individual instance level for computing loss.
+            for class_name, fg_tiles, masks in zip(classes[0], foreground_tiles, defined_tiles):
                 print('fg_tiles.shape', fg_tiles.shape)
                 print('masks.shape', masks.shape)
                 print('class_name', class_name)

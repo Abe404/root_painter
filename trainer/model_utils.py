@@ -93,13 +93,14 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
     start = time.time()
     fnames = []
     dirnames = []
+    # get all the annotations for validation
+    # including their file name and class (containing dir name)
     for val_annot_dir in val_annot_dirs:
         class_annots = ls(val_annot_dir)
         for fname in class_annots:
             if im_utils.is_photo(fname):
                 fnames.append(fname)
                 dirnames.append(val_annot_dir)
-
     cnn.half()
     # TODO: In order to speed things up, be a bit smarter here
     # by only segmenting the parts of the image where we have
@@ -118,7 +119,7 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
     for dirname, fname in zip(dirnames, fnames):
         annot_path = os.path.join(dirname,
                                   os.path.splitext(fname)[0] + '.png')
-
+        print('loading annotation from ', annot_path)
         # reading the image may throw an exception.
         # I suspect this is due to it being only partially written to disk
         # simply retry if this happens.
@@ -141,32 +142,52 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
         # i.e annotations/{class_name}/train/annot1.png,annot2.png..
         class_name = Path(dirname).parts[-2]
         classes.append(class_name)
+    
+        # Prediction should include channels for each class.
+        image_path_part = os.path.join(dataset_dir, os.path.splitext(fname)[0])
+        image_path = glob.glob(image_path_part + '.*')[0]
 
-    # Prediction should include channels for each class.
-    image_path_part = os.path.join(dataset_dir, os.path.splitext(fname)[0])
-    image_path = glob.glob(image_path_part + '.*')[0]
-    image = im_utils.load_image(image_path)
+        # TODO: This is a bit inefficient - It would make more sense to first identify which
+        #       images have annotations and then go through those images one by one,
+        #       loading all associated annotations.
+    
+        print('load image from', image_path)
 
-    # predictions for all classes
-    class_pred_maps = unet_segment(cnn, image, bs, in_w,
-                                         out_w, classes, threshold=0.5)
+        image = im_utils.load_image(image_path)
 
-    for pred, foreground, background, class_name in zip(class_pred_maps, foregrounds,
-                                                        backgrounds, classes):
-        # for each individual annotation, associated with a specific class.
-        # mask defines which pixels are defined in the annotation.
-        mask = foreground + background
-        mask = mask.astype(bool).astype(int)
-        pred *= mask
-        pred = pred.astype(bool).astype(int)
-        y_defined = mask.reshape(-1)
-        y_pred = pred.reshape(-1)[y_defined > 0]
-        y_true = foreground.reshape(-1)[y_defined > 0]
-        tps += np.sum(np.logical_and(y_pred == 1, y_true == 1))
-        tns += np.sum(np.logical_and(y_pred == 0, y_true == 0))
-        fps += np.sum(np.logical_and(y_pred == 1, y_true == 0))
-        fns += np.sum(np.logical_and(y_pred == 0, y_true == 1))
-        defined_sum += np.sum(y_defined > 0)
+        print('image shape = ', image.shape)
+        print('annot shape = ', annot.shape)
+
+        # predictions for all classes
+        class_pred_maps = unet_segment(cnn, image, bs, in_w,
+                                       out_w, classes, threshold=0.5)
+
+        print('class pred maps type', type(class_pred_maps))
+
+        if isinstance(class_pred_maps, list):
+            print('class pred maps[0].shape', class_pred_maps[0].shape)
+        else:
+            print('class pred maps.shape', class_pred_maps.shape)
+        
+        print('forgrounds[0].shape', foregrounds[0].shape)
+        print('backtrounds[0].shape', backgrounds[0].shape)
+
+        for pred, foreground, background, class_name in zip(class_pred_maps, foregrounds,
+                                                            backgrounds, classes):
+            # for each individual annotation, associated with a specific class.
+            # mask defines which pixels are defined in the annotation.
+            mask = foreground + background
+            mask = mask.astype(bool).astype(int)
+            pred *= mask
+            pred = pred.astype(bool).astype(int)
+            y_defined = mask.reshape(-1)
+            y_pred = pred.reshape(-1)[y_defined > 0]
+            y_true = foreground.reshape(-1)[y_defined > 0]
+            tps += np.sum(np.logical_and(y_pred == 1, y_true == 1))
+            tns += np.sum(np.logical_and(y_pred == 0, y_true == 0))
+            fps += np.sum(np.logical_and(y_pred == 1, y_true == 0))
+            fns += np.sum(np.logical_and(y_pred == 0, y_true == 1))
+            defined_sum += np.sum(y_defined > 0)
 
     duration = round(time.time() - start, 3)
     metrics = get_metrics(tps, fps, tns, fns, defined_sum, duration)
@@ -224,6 +245,9 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
     return class_pred_maps
 
 def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
+
+    # dont need classes input here.
+    # we can see how many classes are output by dividing num output channels by 2
     """
     Threshold set to None means probabilities returned without thresholding.
     """
@@ -233,6 +257,8 @@ def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
     tiles, coords = im_utils.get_tiles(image,
                                        in_tile_shape=(in_w, in_w, 3),
                                        out_tile_shape=(out_w, out_w))
+    print('image tiles len = ', len(tiles))
+    print('image coords len = ', len(coords))
     tile_idx = 0
     batches = []
     while tile_idx < len(tiles):
@@ -252,12 +278,22 @@ def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
 
     class_output_tiles = [[]] * len(classes)
 
+    #image shape =  (788, 788, 3)
+    #annot shape =  (788, 788, 4)
+    print('batches len = ', len(batches))
     for gpu_tiles in batches:
+        print('gpu tiles shape', gpu_tiles.shape)
+        # gpu tiles shape torch.Size([3, 3, 572, 572])
         outputs = cnn(gpu_tiles)
-        for i in range(len(classes)):
-            class_channel_idx = i * 2 # output channel index for this class
-            # softmax each pair of foreground, background channels.
-            class_output = outputs[:, class_channel_idx:class_channel_idx+2]
+        print('outputs shape', outputs.shape)
+        # outputs shape torch.Size([3, 2, 500, 500])
+        # bg channel index for each class in network output.
+        class_idxs = [x * 2 for x in range(outputs.shape[1] // 2)]
+        for i in class_idxs:
+            class_output = outputs[:, i:i+2]
+            print('class output shape', class_output.shape)
+            # class output shape torch.Size([3, 2, 500, 500])
+
             softmaxed = softmax(class_output, 1)
             foreground_probs = softmaxed[:, 1, :]  # just the foreground probability.
             if threshold is not None:
@@ -270,9 +306,12 @@ def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
             for out_tile in out_tiles:
                 class_output_tiles[i].append(out_tile)
 
-        assert len(class_output_tiles[0]) == len(coords), (
-            f'{len(class_output_tiles[0])} {len(coords)}')
+
+    # why could this be?
+    assert len(class_output_tiles[0]) == len(coords), (
+        f'{len(class_output_tiles[0])} {len(coords)}')
     class_pred_maps = []
+
     for i in range(len(classes)):
         # reconstruct for each class
         reconstructed = im_utils.reconstruct_from_tiles(class_output_tiles[i],

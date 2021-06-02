@@ -127,14 +127,14 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def get_train_annot_dir(self):
         # taking into account the current class.
-        if hasattr(self, 'cur_class'):
+        if len(self.classes) > 1:
             return self.proj_location / 'annotations' / self.cur_class / 'train'
         else:
             return self.proj_location / 'annotations' / 'train'
 
     def get_val_annot_dir(self):
         # taking into account the current class.
-        if hasattr(self, 'cur_class'):
+        if len(self.classes) > 1:
             return self.proj_location / 'annotations' / self.cur_class / 'val'
         else:
             return self.proj_location / 'annotations' / 'val'
@@ -160,6 +160,9 @@ class RootPainter(QtWidgets.QMainWindow):
                 self.train_annot_dirs = train_annot_dirs
                 self.val_annot_dirs = val_annot_dirs
             else:         
+                self.classes = ['annotations'] # default class for single class project.
+                self.cur_class = self.classes[0]
+
                 self.train_annot_dirs = [self.proj_location / 'annotations' / 'train']
                 self.val_annot_dirs = [self.proj_location / 'annotations' / 'val']
             

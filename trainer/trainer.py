@@ -20,7 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # pylint: disable=E1101
 # invalid name (single characters used for exceptions etc)
 # pylint: disable=C0103
-
+# string statement had no effect
+# pylint: disable=W0105
 
 # W0511 is TODO
 import os
@@ -172,7 +173,7 @@ class Trainer():
     def start_training(self, config):
         if not self.training:
             self.train_config = config
-            classes = ['foreground']
+            classes = ['annotations']
             if hasattr(self.train_config, 'classes'):
                 classes = self.train_config['classes']
             else:
@@ -253,7 +254,7 @@ class Trainer():
                                   # 12 workers is good for performance
                                   # on 2 RTX2080 Tis
                                   # 0 workers is good for debugging
-                                  num_workers=12, drop_last=False, pin_memory=True)
+                                  num_workers=0, drop_last=False, pin_memory=True)
         epoch_start = time.time()
         self.model.train()
         tps = 0
@@ -262,21 +263,24 @@ class Trainer():
         fns = 0
         defined_total = 0
         loss_sum = 0
-        for step, (im_tiles,
-                   fg_tiles,
-                   bg_tiles,
-                   classes) in enumerate(train_loader):
+        for step, (batch_im_tiles,
+                   batch_fg_tiles,
+                   batch_bg_tiles,
+                   batch_classes) in enumerate(train_loader):
 
             self.check_for_instructions()
-
             total_loss = None
 
             self.optimizer.zero_grad()
-            im_tiles = im_tile.cuda()
-            outputs = self.model(im_tiles)
-            
+            batch_im_tiles = batch_im_tiles.cuda()
+            outputs = self.model(batch_im_tiles)
             """
-            split the batch up into instances
+            Example shapes:
+                outputs: (4, 2, 500, 500) (batch_size, fg/bg, height, width)
+                fg_tiles[0]: (4, 500, 500) (batch_size, height, width)
+                bg_tiles[0]: (4, 500, 500) (batch_size, height, width)
+
+            We want to split the batch up into instances
                 im_tile, im_fg_tiles, im_bg_tiles, im_classes
 
                 im_tile - a singular patch from an image
@@ -288,58 +292,66 @@ class Trainer():
                 im_bg_tiles - a list of bg_tiles for the patch
                               each bg_tile is background labels
                               for an individual class.
-                
+
                 classes - a list of strings, where each string
                           is the name of a class. These class names
                           correspond to the im_fg_tiles and im_bg_tiles
             """
-             
-            print('net outputs shape', outputs.shape)
-            print('fg_tiles len', len(fg_tiles))
-            print('fg_tiles[0].shape', fg_tiles.shape[0])
-            print('bg_tiles len', len(bg_tiles))
-            print('bg_tiles[0] shape', bg_tiles[0].shape)
-            
+
             # create mask for each individual fg/bg pair
             # mask specified pixels of annotation which are defined
-            # mask = foreground + background
-            # mask = mask.astype(np.float32)
-            # mask = torch.from_numpy(mask)
- 
             # sum the loss for each class present in the annotations.
 
             # TODO get to the individual instance level for computing loss.
-            for class_name, fg_tiles, bg_tiles in zip(classes[0], fg_tiles, bg_tiles):
-                print('fg_tiles.shape', fg_tiles.shape)
-                print('bg_tiles.shape', fg_tiles.shape)
-                print('class_name', class_name)
-                class_idx = self.train_config['classes'].index(class_name)
-                fg_tiles = fg_tiles.cuda()
-                masks = masks.cuda()
-                class_output = outputs[:, class_idx:class_idx+2]
-                softmaxed = softmax(class_output, 1)
+            for im_idx in range(outputs.shape[0]):
+                output = outputs[im_idx]
+                classname = batch_classes[0][im_idx]
+                fg_tile = batch_fg_tiles[0][im_idx]
+                bg_tile = batch_bg_tiles[0][im_idx]
+
+                # used for determining which channel of the network output to work with.
+                class_idx = self.train_config['classes'].index(classname)
+                """
+                Shapes:
+                    output: (2, 500, 500) (bg/fg, height, width)
+                    class_name: string
+                    fg_tile: (500, 500)
+                    bg_tile: (500, 500)
+                """
+
+                fg_tile = fg_tile.cuda()
+                bg_tile = bg_tile.cuda()
+                mask = fg_tile + bg_tile
+
+                # this doesn't change anything as class_idx is 0
+                class_output = output[class_idx:class_idx+2]
+                softmaxed = softmax(class_output, 0)
                 # just the foreground probability.
-                foreground_probs = softmaxed[:, 1, :]
+                foreground_probs = softmaxed[1]
                 # remove any of the predictions for which we don't have ground truth
                 # Set outputs to 0 where annotation undefined so that
                 # The network can predict whatever it wants without any penalty.
-                outputs[:, 0] *= masks
-                outputs[:, 1] *= masks
-                if total_loss is None:
-                    total_loss = criterion(outputs, foreground_tiles)
-                else:
-                    total_loss += criterion(outputs, foreground_tiles)
 
-                foreground_probs *= defined_tiles
+                # add batch dimension to allow loss computation.
+                output = torch.unsqueeze(output, 0)
+                fg_tile = torch.unsqueeze(fg_tile, 0)
+                masked_output = output * mask
+                masked_fg = fg_tile * mask
+                if total_loss is None:
+                    total_loss = criterion(masked_output, masked_fg)
+                else:
+                    total_loss += criterion(masked_output, masked_fg)
+
+                foreground_probs *= mask
                 predicted = foreground_probs > 0.5
 
                 # we only want to calculate metrics on the
                 # part of the predictions for which annotations are defined
                 # so remove all predictions and foreground labels where
                 # we didn't have any annotation.
-                defined_list = defined_tiles.view(-1)
+                defined_list = mask.view(-1)
                 preds_list = predicted.view(-1)[defined_list > 0]
-                foregrounds_list = foreground_tiles.view(-1)[defined_list > 0]
+                foregrounds_list = fg_tile.view(-1)[defined_list > 0]
 
                 # # calculate all the false positives, false negatives etc
                 tps += torch.sum((foregrounds_list == 1) * (preds_list == 1)).cpu().numpy()
@@ -390,7 +402,7 @@ class Trainer():
         # TODO consider implementing checkpointer class to maintain
         # this state.
         get_val_metrics = partial(model_utils.get_val_metrics,
-                                  val_annot_dir=self.train_config['val_annot_dirs'],
+                                  val_annot_dirs=self.train_config['val_annot_dirs'],
                                   dataset_dir=self.train_config['dataset_dir'],
                                   in_w=self.in_w, out_w=self.out_w, bs=self.bs)
         prev_model, prev_path = model_utils.get_prev_model(model_dir,
@@ -452,7 +464,7 @@ class Trainer():
         in_dir = segment_config['dataset_dir']
         seg_dir = segment_config['seg_dir']
 
-        classes = ['foreground']
+        classes = ['annotations'] # default class name for backwards compatability.
         if hasattr(segment_config, 'classes'):
             classes = segment_config['classes']
 
@@ -530,7 +542,7 @@ class Trainer():
                     seg_alpha = np.zeros((segmented.shape[0], segmented.shape[1], 4))
                     seg_alpha[segmented > 0] = [0, 1.0, 1.0, 0.7]
                     # Conver to uint8 to save as png without warning
-                    seg_alpha  = (seg_alpha * 255).astype(np.uint8)
+                    seg_alpha = (seg_alpha * 255).astype(np.uint8)
 
                     if sync_save:
                         # other wise do sync because we don't want to delete the segment

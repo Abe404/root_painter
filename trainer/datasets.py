@@ -109,7 +109,7 @@ class TrainDataset(Dataset):
             annot_lengths.append(len(ls(dir_path)))
         mean_annot_len = np.mean(annot_lengths)
         # For the single class case, behaviour will not change from previous system
-        return max(612, mean_annot_len * 2)
+        return max(12, round(mean_annot_len * 2))
 
     def __getitem__(self, _):
         # get an image and all annotations associated with it

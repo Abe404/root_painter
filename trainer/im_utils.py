@@ -62,7 +62,8 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
     max_attempts = 60
     attempts = 0
 
-    # these two are used for debugging to allow printing of one of the paths that failed.
+    # these two are used for debugging to allow
+    # printing of one of the paths that failed.
     latest_im_path = None
     latest_annot_path = None
 
@@ -75,13 +76,16 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
         try:
             # This might take ages, profile and optimize
             fnames = []
-            all_classes = [] # each annotation corresponds to an individual class.
+             # each annotation corresponds to an individual class.
+            all_classes = []
             all_dirs = []
             for train_annot_dir in train_annot_dirs:
                 annot_fnames = ls(train_annot_dir)
                 fnames += annot_fnames
                 # Assuming class name is in annotation path
                 # i.e annotations/{class_name}/train/annot1.png,annot2.png..
+                class_name = Path(train_annot_dir).parts[-2]
+
                 class_name = Path(train_annot_dir).parts[-2]
                 all_classes += [class_name] * len(annot_fnames)
                 all_dirs += [train_annot_dir] * len(annot_fnames)

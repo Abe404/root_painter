@@ -109,12 +109,13 @@ class TrainDataset(Dataset):
             annot_lengths.append(len(ls(dir_path)))
         mean_annot_len = np.mean(annot_lengths)
         # For the single class case, behaviour will not change from previous system
-        return max(12, round(mean_annot_len * 2))
+        return max(612, round(mean_annot_len * 2))
 
     def __getitem__(self, _):
         # get an image and all annotations associated with it
-        image, annots, classes, fname = load_train_image_and_annots(self.dataset_dir,
-                                                                    self.train_annot_dirs)
+        (image, annots,
+         classes, fname) = load_train_image_and_annots(self.dataset_dir,
+                                                       self.train_annot_dirs)
         tile_pad = (self.in_w - self.out_w) // 2
 
         # ensures each pixel is sampled with equal chance
@@ -142,7 +143,8 @@ class TrainDataset(Dataset):
             y_in = math.floor(random.random() * bottom_lim)
             annot_tiles = []
             for padded_annot in padded_annots:
-                annot_tile = padded_annot[y_in:y_in+self.in_w, x_in:x_in+self.in_w]
+                annot_tile = padded_annot[y_in:y_in+self.in_w,
+                                          x_in:x_in+self.in_w]
                 annot_tiles.append(annot_tile)
 
             # if there is any annotation defined in this region then use it.

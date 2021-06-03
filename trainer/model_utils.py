@@ -107,19 +107,20 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
     # some annotation defined.
     # implement a 'partial segment' which exlcudes tiles with no
     # annotation defined.
+
     tps = 0
     fps = 0
     tns = 0
     fns = 0
     defined_sum = 0
-    foregrounds = []
-    backgrounds = []
-    classes = []
 
     for dirname, fname in zip(dirnames, fnames):
         annot_path = os.path.join(dirname,
                                   os.path.splitext(fname)[0] + '.png')
-        print('loading annotation from ', annot_path)
+        foregrounds = []
+        backgrounds = []
+        classes = []
+
         # reading the image may throw an exception.
         # I suspect this is due to it being only partially written to disk
         # simply retry if this happens.
@@ -151,26 +152,14 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
         #       images have annotations and then go through those images one by one,
         #       loading all associated annotations.
     
-        print('load image from', image_path)
-
         image = im_utils.load_image(image_path)
-
-        print('image shape = ', image.shape)
-        print('annot shape = ', annot.shape)
 
         # predictions for all classes
         class_pred_maps = unet_segment(cnn, image, bs, in_w,
-                                       out_w, classes, threshold=0.5)
+                                       out_w, threshold=0.5)
 
-        print('class pred maps type', type(class_pred_maps))
-
-        if isinstance(class_pred_maps, list):
-            print('class pred maps[0].shape', class_pred_maps[0].shape)
-        else:
-            print('class pred maps.shape', class_pred_maps.shape)
-        
-        print('forgrounds[0].shape', foregrounds[0].shape)
-        print('backtrounds[0].shape', backgrounds[0].shape)
+        # the annotation is 729 by 729, so how is it possible for the
+        # foregrounds and backgrounds to have dimensions of 786by786????
 
         for pred, foreground, background, class_name in zip(class_pred_maps, foregrounds,
                                                             backgrounds, classes):
@@ -219,7 +208,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
         cnn = load_model(model_path, classes)
         cnn.half()
         pred_maps = unet_segment(cnn, image,
-                                bs, in_w, out_w, classes, threshold=None)
+                                bs, in_w, out_w, threshold=None)
         for i, pred_map in enumerate(pred_maps):
             if class_pred_sums[i] is not None:
                 class_pred_sums[i] += pred_map
@@ -229,7 +218,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
         # get flipped version too (test time augmentation)
         flipped_im = np.fliplr(image)
         flipped_pred_maps = unet_segment(cnn, flipped_im, bs, in_w,
-                                         out_w, classes, threshold=None)
+                                         out_w, threshold=None)
 
         for i, flipped_pred in enumerate(flipped_pred_maps):
             pred_map = np.fliplr(flipped_pred)
@@ -244,7 +233,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
         class_pred_maps.append(predicted)
     return class_pred_maps
 
-def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
+def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
 
     # dont need classes input here.
     # we can see how many classes are output by dividing num output channels by 2
@@ -257,8 +246,6 @@ def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
     tiles, coords = im_utils.get_tiles(image,
                                        in_tile_shape=(in_w, in_w, 3),
                                        out_tile_shape=(out_w, out_w))
-    print('image tiles len = ', len(tiles))
-    print('image coords len = ', len(coords))
     tile_idx = 0
     batches = []
     while tile_idx < len(tiles):
@@ -275,44 +262,44 @@ def unet_segment(cnn, image, bs, in_w, out_w, classes, threshold=0.5):
         tiles_for_gpu.cuda()
         tiles_for_gpu = tiles_for_gpu.half()
         batches.append(tiles_for_gpu)
-
-    class_output_tiles = [[]] * len(classes)
-
-    #image shape =  (788, 788, 3)
-    #annot shape =  (788, 788, 4)
-    print('batches len = ', len(batches))
+    
+    class_output_tiles = None # list of tiles for each class
     for gpu_tiles in batches:
-        print('gpu tiles shape', gpu_tiles.shape)
         # gpu tiles shape torch.Size([3, 3, 572, 572])
         outputs = cnn(gpu_tiles)
-        print('outputs shape', outputs.shape)
         # outputs shape torch.Size([3, 2, 500, 500])
         # bg channel index for each class in network output.
         class_idxs = [x * 2 for x in range(outputs.shape[1] // 2)]
-        for i in class_idxs:
-            class_output = outputs[:, i:i+2]
-            print('class output shape', class_output.shape)
-            # class output shape torch.Size([3, 2, 500, 500])
 
-            softmaxed = softmax(class_output, 1)
-            foreground_probs = softmaxed[:, 1, :]  # just the foreground probability.
+        if class_output_tiles is None:
+            class_output_tiles = [[] for _ in class_idxs]
+
+        # output: (batch_size, bg/fg...bg/fg, height, width)
+
+        for i, class_idx in enumerate(class_idxs):
+            class_output = outputs[:, class_idx:class_idx+2]
+            # class_output : (batch_size, bg/fg, height, width)
+
+            softmaxed = softmax(class_output, 1) 
+            # softmaxed: (4, 2, 500, 500)
+
+            foreground_probs = softmaxed[:, 1]  # just the foreground probability.
+            # foreground_probs: (batch_size, 500, 500)
             if threshold is not None:
                 predicted = foreground_probs > threshold
-                predicted = predicted.view(-1).int()
+                predicted = predicted.int()
             else:
                 predicted = foreground_probs
             pred_np = predicted.data.cpu().numpy()
-            out_tiles = pred_np.reshape((len(gpu_tiles), out_w, out_w))
-            for out_tile in out_tiles:
+            for out_tile in pred_np:
                 class_output_tiles[i].append(out_tile)
-
 
     # why could this be?
     assert len(class_output_tiles[0]) == len(coords), (
         f'{len(class_output_tiles[0])} {len(coords)}')
     class_pred_maps = []
 
-    for i in range(len(classes)):
+    for i in range(len(class_output_tiles)):
         # reconstruct for each class
         reconstructed = im_utils.reconstruct_from_tiles(class_output_tiles[i],
                                                         coords, image.shape[:-1])

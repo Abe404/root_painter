@@ -120,6 +120,9 @@ class Trainer():
             if k == 'file_names':
                 # names dont need a path appending
                 new_config[k] = v
+            elif k == 'classes':
+                # classes dont need a path appending
+                new_config[k] = v
             elif isinstance(v, list):
                 # if its a list fix each string in the list.
                 new_list = []
@@ -174,7 +177,7 @@ class Trainer():
         if not self.training:
             self.train_config = config
             classes = ['annotations']
-            if hasattr(self.train_config, 'classes'):
+            if 'classes' in self.train_config:
                 classes = self.train_config['classes']
             else:
                 self.train_config['classes'] = classes
@@ -310,6 +313,7 @@ class Trainer():
                 bg_tile = batch_bg_tiles[0][im_idx]
 
                 # used for determining which channel of the network output to work with.
+
                 class_idx = self.train_config['classes'].index(classname)
                 """
                 Shapes:
@@ -465,7 +469,7 @@ class Trainer():
         seg_dir = segment_config['seg_dir']
 
         classes = ['annotations'] # default class name for backwards compatability.
-        if hasattr(segment_config, 'classes'):
+        if 'classes' in segment_config:
             classes = segment_config['classes']
 
         if "file_names" in segment_config:

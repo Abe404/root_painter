@@ -151,10 +151,10 @@ class RootPainter(QtWidgets.QMainWindow):
             self.log_dir = self.proj_location / 'logs'
             train_annot_dirs = []
             val_annot_dirs = []
-            if hasattr(settings, 'classes'):
+            if "classes" in settings:
                 self.classes = settings['classes']
                 self.cur_class = self.classes[0]
-                for c in classes:
+                for c in self.classes:
                     train_annot_dirs.append(self.proj_location / 'annotations' / c / 'train')
                     val_annot_dirs.append(self.proj_location / 'annotations' / c / 'val')
                 self.train_annot_dirs = train_annot_dirs
@@ -190,7 +190,7 @@ class RootPainter(QtWidgets.QMainWindow):
             # set first image from project to be current image
             self.image_path = os.path.join(self.dataset_dir, fname)
             self.update_window_title()
-            self.seg_path = os.path.join(self.seg_dir, fname)
+            self.seg_path = os.path.join(self.seg_dir, self.cur_class, fname)
             self.annot_path = get_annot_path(fname, self.get_train_annot_dir(),
                                              self.get_val_annot_dir())
             self.init_active_project_ui()
@@ -207,7 +207,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # set first image from project to be current image
         self.image_path = os.path.join(self.dataset_dir, fname)
         self.png_fname = os.path.splitext(fname)[0] + '.png'
-        self.seg_path = os.path.join(self.seg_dir, self.png_fname)
+        self.seg_path = os.path.join(self.seg_dir, self.cur_class, self.png_fname)
         self.annot_path = get_annot_path(self.png_fname,
                                          self.get_train_annot_dir(),
                                          self.get_val_annot_dir())
@@ -323,7 +323,7 @@ class RootPainter(QtWidgets.QMainWindow):
             "file_names": image_fnames,
             "message_dir": self.message_dir,
             "model_dir": self.model_dir,
-            "classes": self.classes
+            "classes": self.classes # used for saving segmentation output to correct directories.
         }
         self.send_instruction('segment', content)
 
@@ -793,7 +793,8 @@ class RootPainter(QtWidgets.QMainWindow):
             "val_annot_dir": self.val_annot_dirs,
             "seg_dir": self.seg_dir,
             "log_dir": self.log_dir,
-            "message_dir": self.message_dir
+            "message_dir": self.message_dir,
+            "classes": self.classes
         }
         self.send_instruction('start_training', content)
 

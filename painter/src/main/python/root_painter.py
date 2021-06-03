@@ -196,6 +196,25 @@ class RootPainter(QtWidgets.QMainWindow):
             self.init_active_project_ui()
             self.track_changes()
 
+
+    def update_class(self, class_name):
+        self.cur_class = class_name
+
+        self.seg_path = os.path.join(self.seg_dir,
+                                     self.cur_class,
+                                     self.png_fname)
+
+        self.annot_path = get_annot_path(self.png_fname,
+                                         self.get_train_annot_dir(),
+                                         self.get_val_annot_dir())
+        self.scene.history = []
+        self.scene.redo_list = []
+
+        self.update_seg()
+        self.update_annot()
+
+
+
     def update_file(self, fpath):
 
         # Save current annotation (if it exists) before moving on
@@ -489,7 +508,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # Required so graphics scene can track mouse up when mouse is not pressed
         self.graphics_view.setMouseTracking(True)
         self.scene = scene
-        self.nav = NavWidget(self.image_fnames)
+        self.nav = NavWidget(self.image_fnames, self.classes)
         self.update_file(self.image_path)
 
         # bottom bar
@@ -519,6 +538,7 @@ class RootPainter(QtWidgets.QMainWindow):
 
         # Nav
         self.nav.file_change.connect(self.update_file)
+        self.nav.class_change.connect(self.update_class)
 
         self.nav.image_path = self.image_path
         self.nav.update_nav_label()

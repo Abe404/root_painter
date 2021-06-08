@@ -198,6 +198,10 @@ class RootPainter(QtWidgets.QMainWindow):
 
 
     def update_class(self, class_name):
+
+        # Save current annotation (if it exists) before moving on
+        self.save_annotation()
+
         self.cur_class = class_name
 
         self.seg_path = os.path.join(self.seg_dir,
@@ -437,10 +441,6 @@ class RootPainter(QtWidgets.QMainWindow):
             self.create_dataset_widget.show()
         create_dataset_btn.clicked.connect(show_create_dataset)
         layout.addWidget(create_dataset_btn)
-
-
-        
-
         self.setWindowTitle("RootPainter")
         self.resize(layout.sizeHint())
 

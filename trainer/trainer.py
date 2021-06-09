@@ -36,6 +36,7 @@ from functools import partial
 import copy
 import traceback
 
+
 import numpy as np
 import torch
 from torch.nn.functional import softmax
@@ -48,6 +49,7 @@ from model_utils import ensemble_segment
 from model_utils import create_first_model_with_random_weights
 import model_utils
 from model_utils import save_if_better
+import data_utils
 
 from im_utils import is_photo, load_image, save_then_move
 from file_utils import ls
@@ -254,6 +256,7 @@ class Trainer():
             self.log('Starting Training')
 
         train_loader = DataLoader(self.train_set, self.bs, shuffle=True,
+                                  collate_fn=data_utils.collate_fn,  
                                   # 12 workers is good for performance
                                   # on 2 RTX2080 Tis
                                   # 0 workers is good for debugging

@@ -46,6 +46,7 @@ from extract_count import ExtractCountWidget
 from extract_regions import ExtractRegionsWidget
 from extract_length import ExtractLengthWidget
 from extract_comp import ExtractCompWidget
+from convert_seg import ConvertSegForRVEWidget
 from graphics_scene import GraphicsScene
 from graphics_view import CustomGraphicsView
 from nav import NavWidget
@@ -365,7 +366,6 @@ class RootPainter(QtWidgets.QMainWindow):
 
         self.add_measurements_menu(menu_bar)
         self.add_extras_menu(menu_bar)
-
         self.add_about_menu(menu_bar)
 
         ### Add project btns to open window (so it shows something useful)
@@ -397,6 +397,14 @@ class RootPainter(QtWidgets.QMainWindow):
         comp_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extract composites', self)
         comp_btn.triggered.connect(self.show_extract_comp)
         extras_menu.addAction(comp_btn)
+
+        conv_to_rve_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                            'Convert segmentations for RhizoVision Explorer',
+                                             self)
+        conv_to_rve_btn.triggered.connect(self.show_conv_to_rve)
+        extras_menu.addAction(conv_to_rve_btn)
+
+
 
     def add_about_menu(self, menu_bar):
         about_menu = menu_bar.addMenu('About')
@@ -555,7 +563,7 @@ class RootPainter(QtWidgets.QMainWindow):
         menu_bar.clear()
 
         self.project_menu = menu_bar.addMenu("Project")
-        # Open project
+
         self.close_project_action = QtWidgets.QAction(QtGui.QIcon(""), "Close project", self)
         self.project_menu.addAction(self.close_project_action)
         self.close_project_action.triggered.connect(self.close_project_window)
@@ -730,6 +738,12 @@ class RootPainter(QtWidgets.QMainWindow):
     def show_extract_comp(self):
         self.extract_comp_widget = ExtractCompWidget()
         self.extract_comp_widget.show()
+
+    def show_conv_to_rve(self):
+        """ show window to convert segmentations
+            to RhizoVision Explorer compatible format """
+        self.convert_to_rve_widget = ConvertSegForRVEWidget()
+        self.convert_to_rve_widget.show()
 
     def stop_training(self):
         self.info_label.setText("Stopping training...")

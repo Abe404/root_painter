@@ -19,12 +19,15 @@ import glob
 import random
 from pathlib import Path
 import itertools
+import json
+from random import shuffle
 
 import numpy as np
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from skimage.io import imread, imsave
 from skimage.color import rgba2rgb
+from im_utils import is_image
 
 # Avoiding bug with truncated images,
 # "Reason: "broken data stream when reading image file"
@@ -79,7 +82,7 @@ def get_file_pieces(im, target_size):
     widths = [im_w // p[1] for p in possible_pieces]
     heights = [im_h // p[0] for p in possible_pieces]
 
-    # and then get the ratio between width and height
+    # and then get the ratio between width and height
     ratios = [width/height for (width, height) in zip(widths, heights)]
 
     squareness = [abs(r - 1) for r in ratios]
@@ -89,7 +92,7 @@ def get_file_pieces(im, target_size):
     # how close is the size to the target size
     size_dists = [abs(p - (target_size * target_size)) for p in pix_counts]
 
-    # scale 0-1
+    # scale 0-1
     size_dists = np.array(size_dists) / (np.max(size_dists) + 1e-5)
 
     assert min(size_dists) >= 0
@@ -107,7 +110,7 @@ def get_file_pieces(im, target_size):
     if h_pieces == 1 and w_pieces == 1:
         return [im]
 
-    # now get the actual pieces from the image.
+    # now get the actual pieces from the image.
     pieces = []
     for hi in range(h_pieces):
         for wi in range(w_pieces):
@@ -147,6 +150,7 @@ class CreationProgressWidget(BaseProgressWidget):
         self.creation_thread.progress_change.connect(self.onCountChanged)
         self.creation_thread.done.connect(self.done)
         self.creation_thread.start()
+
 
 class CreationThread(QtCore.QThread):
     """
@@ -218,7 +222,7 @@ class CreateDatasetWidget(QtWidgets.QWidget):
         radio_widget.setLayout(radio_layout)
         layout.addWidget(radio_widget)
 
-        # Add radio, use random weight or specify model file.
+        # Add radio, use random weight or specify model file.
         radio = QtWidgets.QRadioButton("All Images")
         radio.setChecked(True)
         radio.name = "all"
@@ -230,7 +234,7 @@ class CreateDatasetWidget(QtWidgets.QWidget):
         radio.toggled.connect(self.on_radio_clicked)
         radio_layout.addWidget(radio)
 
-        # num ims input
+        # num ims input
         num_ims_widget = QtWidgets.QWidget()
         layout.addWidget(num_ims_widget)
         num_ims_widget_layout = QtWidgets.QHBoxLayout()
@@ -295,7 +299,7 @@ class CreateDatasetWidget(QtWidgets.QWidget):
         create_btn.setEnabled(False)
         self.create_btn = create_btn
 
-        # call validation error
+        # call validation error
         im_size_edit_widget.setValue(self.im_size_default)
 
     def validate(self):
@@ -385,3 +389,33 @@ class CreateDatasetWidget(QtWidgets.QWidget):
 
         self.image_dialog.fileSelected.connect(output_selected)
         self.image_dialog.open()
+
+
+def check_extend_dataset(main_window, dataset_dir, prev_fnames, proj_file_path):
+
+    all_image_names = [f for f in os.listdir(dataset_dir) if is_image(f)]
+
+    new_image_names = [f for f in all_image_names if f not in prev_fnames]
+
+    button_reply = QtWidgets.QMessageBox.question(main_window,
+        'Confirm',
+        f"There are {len(new_image_names)} new images in the dataset."
+        " Are you sure you want to extend the project to include these new images?",
+        QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, 
+        QtWidgets.QMessageBox.No)
+
+    if button_reply == QtWidgets.QMessageBox.Yes:
+        # shuffle the new file names
+        shuffle(new_image_names)
+        # load the project json for reading and writing
+        settings = json.load(open(proj_file_path, 'r'))
+        # read the file_names
+        all_file_names = settings['file_names'] + new_image_names
+        settings['file_names'] = all_file_names
+
+        # Add the new_files to the list
+        # then save the json again
+        json.dump(settings, open(proj_file_path, 'w'), indent=4)
+        return True, all_file_names
+    else:
+        return False, all_image_names

@@ -40,7 +40,7 @@ from PIL import Image
 
 from about import AboutWindow, LicenseWindow
 from create_project import CreateProjectWidget
-from create_dataset import CreateDatasetWidget
+from create_dataset import CreateDatasetWidget, check_extend_dataset
 from segment_folder import SegmentFolderWidget
 from extract_count import ExtractCountWidget
 from extract_regions import ExtractRegionsWidget
@@ -141,6 +141,8 @@ class RootPainter(QtWidgets.QMainWindow):
             self.model_dir = self.proj_location / 'models'
 
             self.message_dir = self.proj_location / 'messages'
+
+            self.proj_file_path = proj_file_path
     
             # If there are any annotations which have already been saved
             # then go through the annotations in the order specified
@@ -392,7 +394,7 @@ class RootPainter(QtWidgets.QMainWindow):
         self.setWindowTitle("RootPainter")
         self.resize(layout.sizeHint())
 
-    def add_extras_menu(self, menu_bar):
+    def add_extras_menu(self, menu_bar, project_open=False):
         extras_menu = menu_bar.addMenu('Extras')
         comp_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extract composites', self)
         comp_btn.triggered.connect(self.show_extract_comp)
@@ -403,6 +405,21 @@ class RootPainter(QtWidgets.QMainWindow):
                                              self)
         conv_to_rve_btn.triggered.connect(self.show_conv_to_rve)
         extras_menu.addAction(conv_to_rve_btn)
+
+        if project_open:
+            extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
+            def update_dataset_after_check():
+                was_extended, file_names = check_extend_dataset(self,
+                                                                self.dataset_dir,
+                                                                self.image_fnames,
+                                                                self.proj_file_path)
+                if was_extended:
+                    self.image_fnames = file_names
+                    self.nav.all_fnames = file_names
+                    self.nav.update_nav_label()
+            extend_dataset_btn.triggered.connect(update_dataset_after_check)
+            extras_menu.addAction(extend_dataset_btn)
+
 
 
 
@@ -701,7 +718,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # segment_image_btn.triggered.connect(self.segment_current_image)
         # network_menu.addAction(segment_image_btn)
         self.add_measurements_menu(menu_bar)
-        self.add_extras_menu(menu_bar)
+        self.add_extras_menu(menu_bar, project_open=True)
 
 
     def add_measurements_menu(self, menu_bar):

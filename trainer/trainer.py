@@ -130,9 +130,12 @@ class Trainer():
         return new_config
 
     def check_for_instructions(self):
-        for fname in ls(self.instruction_dir):
-            if self.execute_instruction(fname):
-                os.remove(os.path.join(self.instruction_dir, fname))
+        try:
+            for fname in ls(self.instruction_dir):
+                if self.execute_instruction(fname):
+                    os.remove(os.path.join(self.instruction_dir, fname))
+        except Exception as e:
+            print('Exception checking for instruction', e)
 
     def execute_instruction(self, fname):
         fpath = os.path.join(self.instruction_dir, fname)

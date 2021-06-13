@@ -32,10 +32,7 @@ def fix_path(path, sync_dir):
     sync_dir_forward = str(sync_dir).replace('\\', '/')
     path_str = path_str.replace(sync_dir_forward, '')
 
-    # only remove first character if it is a forward slash
-    if path_str[0] == '/':
-        return path_str[1:]
-    return path_str
+    return path_str[1:]
 
 
 def fix_instruction_paths(old_config, sync_dir):

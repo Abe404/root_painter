@@ -53,8 +53,7 @@ class CreateProjectWidget(QtWidgets.QWidget):
         self.add_im_dir_widget()
         self.add_radio_widget()
         self.add_model_btn()
-        if False:
-            self.add_palette_widget() 
+        self.add_palette_widget() 
         self.add_info_label()
         self.add_create_btn()
 
@@ -149,10 +148,14 @@ class CreateProjectWidget(QtWidgets.QWidget):
 
         cur_files = os.listdir(self.selected_dir)
         cur_files = [is_image(f) for f in cur_files]
-
         if not cur_files:
             message = "Folder contains no images."
             self.info_label.setText(message)
+            self.create_project_btn.setEnabled(False)
+            return
+
+        if len(self.palette_edit_widget.get_brush_data()) < 2:
+            self.info_label.setText('At least one foreground class must be specified')
             self.create_project_btn.setEnabled(False)
             return
 
@@ -172,8 +175,10 @@ class CreateProjectWidget(QtWidgets.QWidget):
             self.selected_dir = self.photo_dialog.selectedFiles()[0]
             self.directory_label.setText('Image directory: ' + self.selected_dir)
             self.validate()
+
         self.photo_dialog.fileSelected.connect(output_selected)
         self.photo_dialog.open()
+
 
     def select_model(self):
         options = QtWidgets.QFileDialog.Options()
@@ -239,13 +244,9 @@ class CreateProjectWidget(QtWidgets.QWidget):
             'dataset': dataset,
             'original_model_file': original_model_file,
             'location': str(PurePosixPath(project_location)),
-            'file_names': all_fnames
+            'file_names': all_fnames,
+            'classes': self.palette_edit_widget.get_brush_data()
         }
-        # only add classes info if the palette is defined.
-        # otherwise the server will default to single class (fg/bg)
-        if hasattr(self, 'palette_edit_widget'):
-            project_info['classes'] = self.palette_edit_widget.get_brush_data()
-
         with open(proj_file_path, 'w') as json_file:
             json.dump(project_info, json_file, indent=4)
         self.created.emit(proj_file_path)

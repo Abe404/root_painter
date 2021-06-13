@@ -19,15 +19,12 @@ import glob
 import random
 from pathlib import Path
 import itertools
-import json
-from random import shuffle
 
 import numpy as np
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from skimage.io import imread, imsave
 from skimage.color import rgba2rgb
-from im_utils import is_image
 
 # Avoiding bug with truncated images,
 # "Reason: "broken data stream when reading image file"
@@ -150,7 +147,6 @@ class CreationProgressWidget(BaseProgressWidget):
         self.creation_thread.progress_change.connect(self.onCountChanged)
         self.creation_thread.done.connect(self.done)
         self.creation_thread.start()
-
 
 class CreationThread(QtCore.QThread):
     """
@@ -389,33 +385,3 @@ class CreateDatasetWidget(QtWidgets.QWidget):
 
         self.image_dialog.fileSelected.connect(output_selected)
         self.image_dialog.open()
-
-
-def check_extend_dataset(main_window, dataset_dir, prev_fnames, proj_file_path):
-
-    all_image_names = [f for f in os.listdir(dataset_dir) if is_image(f)]
-
-    new_image_names = [f for f in all_image_names if f not in prev_fnames]
-
-    button_reply = QtWidgets.QMessageBox.question(main_window,
-        'Confirm',
-        f"There are {len(new_image_names)} new images in the dataset."
-        " Are you sure you want to extend the project to include these new images?",
-        QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, 
-        QtWidgets.QMessageBox.No)
-
-    if button_reply == QtWidgets.QMessageBox.Yes:
-        # shuffle the new file names
-        shuffle(new_image_names)
-        # load the project json for reading and writing
-        settings = json.load(open(proj_file_path, 'r'))
-        # read the file_names
-        all_file_names = settings['file_names'] + new_image_names
-        settings['file_names'] = all_file_names
-
-        # Add the new_files to the list
-        # then save the json again
-        json.dump(settings, open(proj_file_path, 'w'), indent=4)
-        return True, all_file_names
-    else:
-        return False, all_image_names

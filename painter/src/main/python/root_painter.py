@@ -40,7 +40,7 @@ from PIL import Image
 
 from about import AboutWindow, LicenseWindow
 from create_project import CreateProjectWidget
-from create_dataset import CreateDatasetWidget, check_extend_dataset
+from create_dataset import CreateDatasetWidget
 from segment_folder import SegmentFolderWidget
 from extract_count import ExtractCountWidget
 from extract_regions import ExtractRegionsWidget
@@ -124,21 +124,6 @@ class RootPainter(QtWidgets.QMainWindow):
                                             'segmentation project (.seg_proj) file')
             self.init_missing_project_ui()
 
-
-    def get_train_annot_dir():
-        # taking into account the current class.
-        if hasattr(self, self.cur_class):
-            return self.proj_location / 'annotations' / self.cur_class / 'train'
-        else:
-            return self.proj_location / 'annotations' / 'train'
-
-    def get_val_annot_dir():
-        # taking into account the current class.
-        if hasattr(self, self.cur_class):
-            return self.proj_location / 'annotations' / self.cur_class / 'val'
-        else:
-            return self.proj_location / 'annotations' / 'val'
-
     def open_project(self, proj_file_path):
         # extract json
         with open(proj_file_path, 'r') as json_file:
@@ -151,10 +136,10 @@ class RootPainter(QtWidgets.QMainWindow):
             self.log_dir = self.proj_location / 'logs'
             self.train_annot_dir = self.proj_location / 'annotations' / 'train'
             self.val_annot_dir = self.proj_location / 'annotations' / 'val'
+
             self.model_dir = self.proj_location / 'models'
 
             self.message_dir = self.proj_location / 'messages'
-            self.proj_file_path = proj_file_path
     
             # If there are any annotations which have already been saved
             # then go through the annotations in the order specified
@@ -176,27 +161,27 @@ class RootPainter(QtWidgets.QMainWindow):
             self.image_path = os.path.join(self.dataset_dir, fname)
             self.update_window_title()
             self.seg_path = os.path.join(self.seg_dir, fname)
-            self.annot_path = get_annot_path(fname, self.get_train_annot_dir(),
-                                             self.get_val_annot_dir())
+            self.annot_path = get_annot_path(fname, self.train_annot_dir,
+                                             self.val_annot_dir)
             self.init_active_project_ui()
             self.track_changes()
 
-    def update_file(self, fpath):
 
+    def update_file(self, fpath):
         # Save current annotation (if it exists) before moving on
         self.save_annotation()
 
         # save current annotation first
         fname = os.path.basename(fpath)
-
         # set first image from project to be current image
         self.image_path = os.path.join(self.dataset_dir, fname)
         self.png_fname = os.path.splitext(fname)[0] + '.png'
         self.seg_path = os.path.join(self.seg_dir, self.png_fname)
         self.annot_path = get_annot_path(self.png_fname,
-                                         self.get_train_annot_dir(),
-                                         self.get_val_annot_dir())
+                                         self.train_annot_dir,
+                                         self.val_annot_dir)
         self.update_image()
+
 
         self.scene.history = []
         self.scene.redo_list = []
@@ -404,32 +389,14 @@ class RootPainter(QtWidgets.QMainWindow):
         create_dataset_btn.clicked.connect(show_create_dataset)
         layout.addWidget(create_dataset_btn)
 
-
-        
-
         self.setWindowTitle("RootPainter")
         self.resize(layout.sizeHint())
 
-    def add_extras_menu(self, menu_bar, project_open=False):
+    def add_extras_menu(self, menu_bar):
         extras_menu = menu_bar.addMenu('Extras')
-
         comp_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extract composites', self)
         comp_btn.triggered.connect(self.show_extract_comp)
         extras_menu.addAction(comp_btn)
-
-        if project_open:
-            extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
-            def update_dataset_after_check():
-                was_extended, file_names = check_extend_dataset(self,
-                                                                self.dataset_dir,
-                                                                self.image_fnames,
-                                                                self.proj_file_path)
-                if was_extended:
-                    self.image_fnames = file_names
-                    self.nav.all_fnames = file_names
-                    self.nav.update_nav_label()
-            extend_dataset_btn.triggered.connect(update_dataset_after_check)
-            extras_menu.addAction(extend_dataset_btn)
 
     def add_about_menu(self, menu_bar):
         about_menu = menu_bar.addMenu('About')
@@ -726,7 +693,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # segment_image_btn.triggered.connect(self.segment_current_image)
         # network_menu.addAction(segment_image_btn)
         self.add_measurements_menu(menu_bar)
-        self.add_extras_menu(menu_bar, project_open=True)
+        self.add_extras_menu(menu_bar)
 
 
     def add_measurements_menu(self, menu_bar):
@@ -774,8 +741,8 @@ class RootPainter(QtWidgets.QMainWindow):
         content = {
             "model_dir": self.model_dir,
             "dataset_dir": self.dataset_dir,
-            "train_annot_dir": self.train_annot_dirs,
-            "val_annot_dir": self.val_annot_dirs,
+            "train_annot_dir": self.train_annot_dir,
+            "val_annot_dir": self.val_annot_dir,
             "seg_dir": self.seg_dir,
             "log_dir": self.log_dir,
             "message_dir": self.message_dir
@@ -919,10 +886,9 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def save_annotation(self):
         if self.scene.annot_pixmap:
-
             self.annot_path = maybe_save_annotation(self.proj_location,
                                                     self.scene.annot_pixmap,
                                                     self.annot_path,
                                                     self.png_fname,
-                                                    self.get_train_annot_dir()
-                                                    self.get_val_annot_dir())
+                                                    self.train_annot_dir,
+                                                    self.val_annot_dir)

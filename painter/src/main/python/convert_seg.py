@@ -105,7 +105,7 @@ class ConvertSegForRVEWidget(QtWidgets.QWidget):
 
         info_label = QtWidgets.QLabel()
         info_label.setText("Segmentation directory and output directory"
-                           "must be specified.")
+                           " must be specified.")
         layout.addWidget(info_label)
         self.info_label = info_label
 

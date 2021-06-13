@@ -149,32 +149,20 @@ class RootPainter(QtWidgets.QMainWindow):
             self.image_fnames = settings['file_names']
             self.seg_dir = self.proj_location / 'segmentations'
             self.log_dir = self.proj_location / 'logs'
-            train_annot_dirs = []
-            val_annot_dirs = []
-            if hasattr(settings, 'classes'):
-                self.classes = settings['classes']
-                self.cur_class = self.classes[0]
-                for c in classes:
-                    train_annot_dirs.append(self.proj_location / 'annotations' / c / 'train')
-                    val_annot_dirs.append(self.proj_location / 'annotations' / c / 'val')
-                self.train_annot_dirs = train_annot_dirs
-                self.val_annot_dirs = val_annot_dirs
-            else:         
-                self.train_annot_dirs = [self.proj_location / 'annotations' / 'train']
-                self.val_annot_dirs = [self.proj_location / 'annotations' / 'val']
-            
+            self.train_annot_dir = self.proj_location / 'annotations' / 'train'
+            self.val_annot_dir = self.proj_location / 'annotations' / 'val'
             self.model_dir = self.proj_location / 'models'
 
             self.message_dir = self.proj_location / 'messages'
             self.proj_file_path = proj_file_path
-
+    
             # If there are any annotations which have already been saved
             # then go through the annotations in the order specified
             # by self.image_fnames
             # and set fname (current image) to be the last image with annotation
             last_with_annot = last_fname_with_annotations(self.image_fnames,
-                                                          self.train_annot_dirs,
-                                                          self.val_annot_dirs)
+                                                          self.train_annot_dir,
+                                                          self.val_annot_dir)
             if last_with_annot:
                 fname = last_with_annot
             else:

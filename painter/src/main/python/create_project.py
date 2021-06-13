@@ -53,7 +53,8 @@ class CreateProjectWidget(QtWidgets.QWidget):
         self.add_im_dir_widget()
         self.add_radio_widget()
         self.add_model_btn()
-        self.add_palette_widget() 
+        if False:
+            self.add_palette_widget() 
         self.add_info_label()
         self.add_create_btn()
 
@@ -189,7 +190,7 @@ class CreateProjectWidget(QtWidgets.QWidget):
     def create_project(self):
         project_name = self.proj_name
         project_location = Path(self.project_location)
-        classes = self.palette_edit_widget.get_brush_data()
+
         dataset_path = os.path.abspath(self.selected_dir)
         datasets_dir = str(self.sync_dir / 'datasets')
     
@@ -204,19 +205,8 @@ class CreateProjectWidget(QtWidgets.QWidget):
         os.makedirs(self.sync_dir / project_location)
         proj_file_path = (self.sync_dir / project_location /
                           (project_name + '.seg_proj'))
-       
-        if len(classes) > 1:
-            # Create annotation folder for each class
-            for class_name in classes:
-                os.makedirs(self.sync_dir / project_location /
-                            'annotations' / class_name / 'train')
-                os.makedirs(self.sync_dir / project_location /
-                            'annotations' / class_name / 'val')
-        else:
-            # Create only the 'annotation' folder
-            os.makedirs(self.sync_dir / project_location / 'annotations' / 'train')
-            os.makedirs(self.sync_dir / project_location / 'annotations' / 'val')
-
+        os.makedirs(self.sync_dir / project_location / 'annotations' / 'train')
+        os.makedirs(self.sync_dir / project_location / 'annotations' / 'val')
         os.makedirs(self.sync_dir / project_location / 'segmentations')
         os.makedirs(self.sync_dir / project_location / 'models')
         os.makedirs(self.sync_dir / project_location / 'messages')
@@ -248,17 +238,13 @@ class CreateProjectWidget(QtWidgets.QWidget):
             'name': project_name,
             'dataset': dataset,
             'original_model_file': original_model_file,
-            'location': str(PurePosixPath(project_location))
+            'location': str(PurePosixPath(project_location)),
+            'file_names': all_fnames
         }
-
         # only add classes info if the palette is defined.
         # otherwise the server will default to single class (fg/bg)
         if hasattr(self, 'palette_edit_widget'):
-            project_info['classes'] = classes
-
-        # add these at the end because it makes the json more readable
-        # to have the short entries at the top.
-        project_info['file_names'] = all_fnames
+            project_info['classes'] = self.palette_edit_widget.get_brush_data()
 
         with open(proj_file_path, 'w') as json_file:
             json.dump(project_info, json_file, indent=4)

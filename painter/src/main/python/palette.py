@@ -41,8 +41,6 @@ class BrushEditWidget(QtWidgets.QWidget):
     def initUI(self, show_remove):
         # Provide user with a way to edit the brush name
         self.layout = QtWidgets.QHBoxLayout()
-
-        self.layout.setContentsMargins(0, 0, 0, 0)
         self.name_edit = QtWidgets.QLineEdit()
         self.name_edit.setText(self.name)
         self.name_edit.textChanged.connect(self.text_changed)
@@ -74,10 +72,9 @@ class PaletteEditWidget(QtWidgets.QWidget):
 
     def initUI(self):
         label = QtWidgets.QLabel()
-        label.setText("Classes:")
+        label.setText("Palette: Edit your brushes")
         self.layout = QtWidgets.QVBoxLayout()
         self.setLayout(self.layout)
-        self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.addWidget(label)
 
         # Use a container for the brushes so the add brush widget can go after.
@@ -87,13 +84,14 @@ class PaletteEditWidget(QtWidgets.QWidget):
         self.layout.addWidget(self.brushes_container)
 
         # Default brush
-        self.add_brush('foreground', show_remove=False)
-        self.add_brush_btn = QtWidgets.QPushButton('Add class')
+        self.add_brush('Foreground', show_remove=False)
+
+        self.add_brush_btn = QtWidgets.QPushButton('Add brush')
         self.add_brush_btn.clicked.connect(self.add_brush)
         self.layout.addWidget(self.add_brush_btn)
 
     def get_new_name(self):
-        return f"class_{len(self.brush_widgets) + 1}"
+        return f"Brush {len(self.brush_widgets) + 1}"
 
     def add_brush(self, name=None, show_remove=True):
         if not name:
@@ -114,4 +112,8 @@ class PaletteEditWidget(QtWidgets.QWidget):
 
     def get_brush_data(self):
         """ Used for saving the class names to JSON file """
-        return [b.name for b in self.brush_widgets]
+        # Background cannot be edited or removed
+        brush_data = ['Background']
+        for brush_widget in self.brush_widgets:
+            brush_data.append(brush_widget.name)
+        return brush_data

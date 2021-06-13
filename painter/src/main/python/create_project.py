@@ -53,7 +53,8 @@ class CreateProjectWidget(QtWidgets.QWidget):
         self.add_im_dir_widget()
         self.add_radio_widget()
         self.add_model_btn()
-        self.add_palette_widget() 
+        if False:
+            self.add_palette_widget() 
         self.add_info_label()
         self.add_create_btn()
 
@@ -154,10 +155,11 @@ class CreateProjectWidget(QtWidgets.QWidget):
             self.create_project_btn.setEnabled(False)
             return
 
-        if len(self.palette_edit_widget.get_brush_data()) < 2:
-            self.info_label.setText('At least one foreground class must be specified')
-            self.create_project_btn.setEnabled(False)
-            return
+        if False:
+            if len(self.palette_edit_widget.get_brush_data()) < 2:
+                self.info_label.setText('At least one foreground class must be specified')
+                self.create_project_btn.setEnabled(False)
+                return
 
         self.project_location = os.path.join('projects', self.proj_name)
         if os.path.exists(os.path.join(self.sync_dir, self.project_location)):
@@ -244,9 +246,9 @@ class CreateProjectWidget(QtWidgets.QWidget):
             'dataset': dataset,
             'original_model_file': original_model_file,
             'location': str(PurePosixPath(project_location)),
-            'file_names': all_fnames,
-            'classes': self.palette_edit_widget.get_brush_data()
+            'file_names': all_fnames
         }
+        # 'classes': self.palette_edit_widget.get_brush_data()
         with open(proj_file_path, 'w') as json_file:
             json.dump(project_info, json_file, indent=4)
         self.created.emit(proj_file_path)

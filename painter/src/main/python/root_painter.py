@@ -194,7 +194,9 @@ class RootPainter(QtWidgets.QMainWindow):
             # set first image from project to be current image
             self.image_path = os.path.join(self.dataset_dir, fname)
             self.update_window_title()
-            self.seg_path = os.path.join(self.seg_dir, self.cur_class, fname)
+
+
+            
             self.annot_path = get_annot_path(fname, self.get_train_annot_dir(),
                                              self.get_val_annot_dir())
             self.init_active_project_ui()
@@ -207,11 +209,6 @@ class RootPainter(QtWidgets.QMainWindow):
         self.save_annotation()
 
         self.cur_class = class_name
-
-        self.seg_path = os.path.join(self.seg_dir,
-                                     self.cur_class,
-                                     self.png_fname)
-
         self.annot_path = get_annot_path(self.png_fname,
                                          self.get_train_annot_dir(),
                                          self.get_val_annot_dir())
@@ -221,7 +218,13 @@ class RootPainter(QtWidgets.QMainWindow):
         self.update_seg()
         self.update_annot()
 
-
+    def get_seg_path(self):
+        if hasattr(self, 'classes') and len(self.classes) > 1:
+            return os.path.join(self.seg_dir,
+                                self.cur_class,
+                                self.png_fname)
+        else:
+            return os.path.join(self.seg_dir, self.png_fname)
 
     def update_file(self, fpath):
 
@@ -234,7 +237,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # set first image from project to be current image
         self.image_path = os.path.join(self.dataset_dir, fname)
         self.png_fname = os.path.splitext(fname)[0] + '.png'
-        self.seg_path = os.path.join(self.seg_dir, self.cur_class, self.png_fname)
+        
         self.annot_path = get_annot_path(self.png_fname,
                                          self.get_train_annot_dir(),
                                          self.get_val_annot_dir())
@@ -282,9 +285,9 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def update_seg(self):
         # if seg file is present then load.
-        if os.path.isfile(self.seg_path):
-            self.seg_mtime = os.path.getmtime(self.seg_path)
-            self.seg_pixmap = QtGui.QPixmap(self.seg_path)
+        if os.path.isfile(self.get_seg_path()):
+            self.seg_mtime = os.path.getmtime(self.get_seg_path())
+            self.seg_pixmap = QtGui.QPixmap(self.get_seg_path())
             self.nav.next_image_button.setText('Save && Next >')
             if hasattr(self, 'vis_widget'):
                 self.vis_widget.seg_checkbox.setText('Segmentation (S)')
@@ -593,14 +596,14 @@ class RootPainter(QtWidgets.QMainWindow):
                     os.remove(os.path.join(self.message_dir, m))
                 except Exception as e:
                     print('Caught exception when trying to detele msg', e)
-            if hasattr(self, 'seg_path') and os.path.isfile(self.seg_path):
+            if os.path.isfile(self.get_seg_path()):
                 try:
                     # seg mtime is not actually used any more.
-                    new_mtime = os.path.getmtime(self.seg_path)
+                    new_mtime = os.path.getmtime(self.get_seg_path())
                     # seg_mtime is None before the seg is loaded.
                     if not self.seg_mtime:
                         print('load seg from file.')
-                        self.seg_pixmap = QtGui.QPixmap(self.seg_path)
+                        self.seg_pixmap = QtGui.QPixmap(self.get_seg_path())
                         self.seg_mtime = new_mtime
                         self.nav.next_image_button.setText('Save && Next >')
                         self.nav.next_image_button.setEnabled(True)

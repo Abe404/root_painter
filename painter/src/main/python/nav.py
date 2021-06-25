@@ -59,10 +59,12 @@ class NavWidget(QtWidgets.QWidget):
         nav.setLayout(nav_layout)
         nav.setMaximumWidth(600)
 
-        self.cb = QtWidgets.QComboBox()
-        self.cb.addItems(self.classes)
-        self.cb.currentIndexChanged.connect(self.selection_change)
-        nav_layout.addWidget(self.cb)
+        # only need a way to change 
+        if len(self.classes) > 1:
+            self.cb = QtWidgets.QComboBox()
+            self.cb.addItems(self.classes)
+            self.cb.currentIndexChanged.connect(self.selection_change)
+            nav_layout.addWidget(self.cb)
 
         container_layout = QtWidgets.QHBoxLayout()
         container_layout.setAlignment(Qt.AlignCenter)

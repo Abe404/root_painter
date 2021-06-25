@@ -15,20 +15,24 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
+import numpy as np
 
 def collate_fn(batch):
     num_items = len(batch)
     im_tiles = []
-    batch_fgs = []
-    batch_bgs = []
-    batch_classes = []
+
+    batch_class_data = []
 
     for i in range(num_items):
         item = batch[i]
-        im_tiles.append(item[0])
-        batch_fgs.append(item[0])
-        batch_bgs.append(item[0])
-        batch_classes.append(item[0])
 
-    return batch_tiles, batch_fgs, batch_bgs, batch_classes
+        class_data = {}
+
+        im_tiles.append(item[0])
+
+        batch_fgs.append(item[1])
+        batch_bgs.append(item[2])
+        batch_classes.append(item[3])
+
+    im_tiles = np.array(im_tiles)
+    return im_tiles, batch_fgs, batch_bgs, batch_classes

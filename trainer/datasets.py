@@ -187,5 +187,4 @@ class TrainDataset(Dataset):
 
         im_tile = im_tile.astype(np.float32)
         im_tile = np.moveaxis(im_tile, -1, 0)
-        im_tile = torch.from_numpy(im_tile)
         return im_tile, foregrounds, backgrounds, classes

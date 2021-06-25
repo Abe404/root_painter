@@ -269,16 +269,18 @@ class Trainer():
         fns = 0
         defined_total = 0
         loss_sum = 0
-        for step, (batch_im_tiles,
+        for step, (im_tiles,
                    batch_fg_tiles,
                    batch_bg_tiles,
                    batch_classes) in enumerate(train_loader):
 
             self.check_for_instructions()
             total_loss = None
+        
+            print('batch im tile sshape = ', batch_im_tiles.shape)
 
             self.optimizer.zero_grad()
-            batch_im_tiles = batch_im_tiles.cuda()
+            batch_im_tiles = torch.from_numpy(batch_im_tiles).cuda()
             outputs = self.model(batch_im_tiles)
             """
             Example shapes:
@@ -304,16 +306,25 @@ class Trainer():
                           correspond to the im_fg_tiles and im_bg_tiles
             """
 
+            # For each class.
+            
+
+            # compute the loss
+
+            # add the metrics
+
             # create mask for each individual fg/bg pair
             # mask specified pixels of annotation which are defined
             # sum the loss for each class present in the annotations.
 
             # TODO get to the individual instance level for computing loss.
             for im_idx in range(outputs.shape[0]):
+
                 output = outputs[im_idx]
-                classname = batch_classes[0][im_idx]
-                fg_tile = batch_fg_tiles[0][im_idx]
-                bg_tile = batch_bg_tiles[0][im_idx]
+                classname = batch_classes[im_idx][0]
+                fg_tile = batch_fg_tiles[im_idx][0]
+                bg_tile = batch_bg_tiles[im_idx][0]
+
 
                 # used for determining which channel of the network output to work with.
 
@@ -333,6 +344,7 @@ class Trainer():
                 # this doesn't change anything as class_idx is 0
                 class_output = output[class_idx:class_idx+2]
                 softmaxed = softmax(class_output, 0)
+
                 # just the foreground probability.
                 foreground_probs = softmaxed[1]
                 # remove any of the predictions for which we don't have ground truth

@@ -151,7 +151,12 @@ class RootPainter(QtWidgets.QMainWindow):
             self.log_dir = self.proj_location / 'logs'
             train_annot_dirs = []
             val_annot_dirs = []
-            if "classes" in settings:
+
+            # if going with a single class or old style settings
+            # then use old style project structure with single train and val
+            # folder, without the class name being specified
+            if "classes" in settings and len(settings['classes']) > 1:
+                # if more than one class is present then create train and val folders for each class
                 self.classes = settings['classes']
                 self.cur_class = self.classes[0]
                 for c in self.classes:
@@ -162,7 +167,6 @@ class RootPainter(QtWidgets.QMainWindow):
             else:         
                 self.classes = ['annotations'] # default class for single class project.
                 self.cur_class = self.classes[0]
-
                 self.train_annot_dirs = [self.proj_location / 'annotations' / 'train']
                 self.val_annot_dirs = [self.proj_location / 'annotations' / 'val']
             

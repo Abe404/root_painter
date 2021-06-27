@@ -260,7 +260,7 @@ class Trainer():
                                   # 12 workers is good for performance
                                   # on 2 RTX2080 Tis
                                   # 0 workers is good for debugging
-                                  num_workers=0, drop_last=False, pin_memory=True)
+                                  num_workers=12, drop_last=False, pin_memory=True)
         epoch_start = time.time()
         self.model.train()
         tps = 0
@@ -269,15 +269,13 @@ class Trainer():
         fns = 0
         defined_total = 0
         loss_sum = 0
-        for step, (im_tiles,
+        for step, (batch_im_tiles,
                    batch_fg_tiles,
                    batch_bg_tiles,
                    batch_classes) in enumerate(train_loader):
 
             self.check_for_instructions()
             total_loss = None
-        
-            print('batch im tile sshape = ', batch_im_tiles.shape)
 
             self.optimizer.zero_grad()
             batch_im_tiles = torch.from_numpy(batch_im_tiles).cuda()
@@ -308,7 +306,6 @@ class Trainer():
 
             # For each class.
             
-
             # compute the loss
 
             # add the metrics
@@ -319,66 +316,65 @@ class Trainer():
 
             # TODO get to the individual instance level for computing loss.
             for im_idx in range(outputs.shape[0]):
-
                 output = outputs[im_idx]
-                classname = batch_classes[im_idx][0]
-                fg_tile = batch_fg_tiles[im_idx][0]
-                bg_tile = batch_bg_tiles[im_idx][0]
+                for i, classname in enumerate(batch_classes[im_idx]):
 
+                    classname = batch_classes[im_idx][i]
+                    fg_tile = batch_fg_tiles[im_idx][i]
+                    bg_tile = batch_bg_tiles[im_idx][i]
 
-                # used for determining which channel of the network output to work with.
+                    # used for determining which channel of the network output to work with.
+                    class_idx = self.train_config['classes'].index(classname)
+                    """
+                    Shapes:
+                        output: (2, 500, 500) (bg/fg, height, width)
+                        class_name: string
+                        fg_tile: (500, 500)
+                        bg_tile: (500, 500)
+                    """
 
-                class_idx = self.train_config['classes'].index(classname)
-                """
-                Shapes:
-                    output: (2, 500, 500) (bg/fg, height, width)
-                    class_name: string
-                    fg_tile: (500, 500)
-                    bg_tile: (500, 500)
-                """
+                    fg_tile = fg_tile.cuda()
+                    bg_tile = bg_tile.cuda()
+                    mask = fg_tile + bg_tile
+                    class_idx *= 2 # as each class has two channels 
+                    class_output = output[class_idx:class_idx+2]
+                    softmaxed = softmax(class_output, 1)
 
-                fg_tile = fg_tile.cuda()
-                bg_tile = bg_tile.cuda()
-                mask = fg_tile + bg_tile
+                    # just the foreground probability.
+                    foreground_probs = softmaxed[0]
+                    # remove any of the predictions for which we don't have ground truth
+                    # Set outputs to 0 where annotation undefined so that
+                    # The network can predict whatever it wants without any penalty.
 
-                # this doesn't change anything as class_idx is 0
-                class_output = output[class_idx:class_idx+2]
-                softmaxed = softmax(class_output, 0)
+                    # add batch dimension to allow loss computation.
+                    class_output = torch.unsqueeze(class_output, 0)
+                    fg_tile = torch.unsqueeze(fg_tile, 0)
+                    masked_output = class_output * mask
 
-                # just the foreground probability.
-                foreground_probs = softmaxed[1]
-                # remove any of the predictions for which we don't have ground truth
-                # Set outputs to 0 where annotation undefined so that
-                # The network can predict whatever it wants without any penalty.
+                    class_loss = criterion(masked_output, fg_tile)
+                    if total_loss is None:
+                        total_loss = class_loss
+                    else:
+                        total_loss += class_loss
 
-                # add batch dimension to allow loss computation.
-                output = torch.unsqueeze(output, 0)
-                fg_tile = torch.unsqueeze(fg_tile, 0)
-                masked_output = output * mask
-                masked_fg = fg_tile * mask
-                if total_loss is None:
-                    total_loss = criterion(masked_output, masked_fg)
-                else:
-                    total_loss += criterion(masked_output, masked_fg)
+                    foreground_probs *= mask
+                    predicted = foreground_probs > 0.5
 
-                foreground_probs *= mask
-                predicted = foreground_probs > 0.5
+                    # we only want to calculate metrics on the
+                    # part of the predictions for which annotations are defined
+                    # so remove all predictions and foreground labels where
+                    # we didn't have any annotation.
+                    defined_list = mask.view(-1)
+                    preds_list = predicted.view(-1)[defined_list > 0]
+                    foregrounds_list = fg_tile.view(-1)[defined_list > 0]
 
-                # we only want to calculate metrics on the
-                # part of the predictions for which annotations are defined
-                # so remove all predictions and foreground labels where
-                # we didn't have any annotation.
-                defined_list = mask.view(-1)
-                preds_list = predicted.view(-1)[defined_list > 0]
-                foregrounds_list = fg_tile.view(-1)[defined_list > 0]
-
-                # # calculate all the false positives, false negatives etc
-                tps += torch.sum((foregrounds_list == 1) * (preds_list == 1)).cpu().numpy()
-                tns += torch.sum((foregrounds_list == 0) * (preds_list == 0)).cpu().numpy()
-                fps += torch.sum((foregrounds_list == 0) * (preds_list == 1)).cpu().numpy()
-                fns += torch.sum((foregrounds_list == 1) * (preds_list == 0)).cpu().numpy()
-                defined_total += torch.sum(defined_list > 0).cpu().numpy()
-                loss_sum += total_loss.item() # float
+                    # # calculate all the false positives, false negatives etc
+                    tps += torch.sum((foregrounds_list == 1) * (preds_list == 1)).cpu().numpy()
+                    tns += torch.sum((foregrounds_list == 0) * (preds_list == 0)).cpu().numpy()
+                    fps += torch.sum((foregrounds_list == 0) * (preds_list == 1)).cpu().numpy()
+                    fns += torch.sum((foregrounds_list == 1) * (preds_list == 0)).cpu().numpy()
+                    defined_total += torch.sum(defined_list > 0).cpu().numpy()
+                    loss_sum += total_loss.item() # float
 
             total_loss.backward()
             self.optimizer.step()

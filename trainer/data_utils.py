@@ -20,8 +20,9 @@ import numpy as np
 def collate_fn(batch):
     num_items = len(batch)
     im_tiles = []
-
-    batch_class_data = []
+    batch_fgs = []
+    batch_bgs = []
+    batch_classes = []
 
     for i in range(num_items):
         item = batch[i]

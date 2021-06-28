@@ -36,12 +36,12 @@ from functools import partial
 import copy
 import traceback
 
-
 import numpy as np
 import torch
 from torch.nn.functional import softmax
 from torch.utils.data import DataLoader
 from loss import combined_loss as criterion
+from loss import get_batch_loss
 
 from datasets import TrainDataset
 from metrics import get_metrics, get_metrics_str, get_metric_csv_row
@@ -275,112 +275,27 @@ class Trainer():
                    batch_classes) in enumerate(train_loader):
 
             self.check_for_instructions()
-            total_loss = None
 
             self.optimizer.zero_grad()
             batch_im_tiles = torch.from_numpy(batch_im_tiles).cuda()
             outputs = self.model(batch_im_tiles)
-            """
-            Example shapes:
-                outputs: (4, 2, 500, 500) (batch_size, fg/bg, height, width)
-                fg_tiles[0]: (4, 500, 500) (batch_size, height, width)
-                bg_tiles[0]: (4, 500, 500) (batch_size, height, width)
 
-            We want to split the batch up into instances
-                im_tile, im_fg_tiles, im_bg_tiles, im_classes
+            (batch_loss, batch_tps, batch_tns,
+             batch_fps, batch_fns, defined_total) = get_batch_loss(
+                outputs, batch_fg_tiles, batch_bg_tiles,
+                batch_classes, self.train_config['classes'])
+         
+            tps += batch_tps
+            fps += batch_fps
+            tns += batch_tns
+            fns += batch_fns
 
-                im_tile - a singular patch from an image
-
-                im_fg_tile - a list of fg_tiles for the patch
-                             each fg_tile is foreground labels
-                             for an individual class.
-
-                im_bg_tiles - a list of bg_tiles for the patch
-                              each bg_tile is background labels
-                              for an individual class.
-
-                classes - a list of strings, where each string
-                          is the name of a class. These class names
-                          correspond to the im_fg_tiles and im_bg_tiles
-            """
-
-            # For each class.
-            
-            # compute the loss
-
-            # add the metrics
-
-            # create mask for each individual fg/bg pair
-            # mask specified pixels of annotation which are defined
-            # sum the loss for each class present in the annotations.
-
-            # TODO get to the individual instance level for computing loss.
-            for im_idx in range(outputs.shape[0]):
-                output = outputs[im_idx]
-                for i, classname in enumerate(batch_classes[im_idx]):
-
-                    classname = batch_classes[im_idx][i]
-                    fg_tile = batch_fg_tiles[im_idx][i]
-                    bg_tile = batch_bg_tiles[im_idx][i]
-
-                    # used for determining which channel of the network output to work with.
-                    class_idx = self.train_config['classes'].index(classname)
-                    """
-                    Shapes:
-                        output: (2, 500, 500) (bg/fg, height, width)
-                        class_name: string
-                        fg_tile: (500, 500)
-                        bg_tile: (500, 500)
-                    """
-
-                    fg_tile = fg_tile.cuda()
-                    bg_tile = bg_tile.cuda()
-                    mask = fg_tile + bg_tile
-                    class_idx *= 2 # as each class has two channels 
-                    class_output = output[class_idx:class_idx+2]
-                    softmaxed = softmax(class_output, 1)
-
-                    # just the foreground probability.
-                    foreground_probs = softmaxed[0]
-                    # remove any of the predictions for which we don't have ground truth
-                    # Set outputs to 0 where annotation undefined so that
-                    # The network can predict whatever it wants without any penalty.
-
-                    # add batch dimension to allow loss computation.
-                    class_output = torch.unsqueeze(class_output, 0)
-                    fg_tile = torch.unsqueeze(fg_tile, 0)
-                    masked_output = class_output * mask
-
-                    class_loss = criterion(masked_output, fg_tile)
-                    if total_loss is None:
-                        total_loss = class_loss
-                    else:
-                        total_loss += class_loss
-
-                    foreground_probs *= mask
-                    predicted = foreground_probs > 0.5
-
-                    # we only want to calculate metrics on the
-                    # part of the predictions for which annotations are defined
-                    # so remove all predictions and foreground labels where
-                    # we didn't have any annotation.
-                    defined_list = mask.view(-1)
-                    preds_list = predicted.view(-1)[defined_list > 0]
-                    foregrounds_list = fg_tile.view(-1)[defined_list > 0]
-
-                    # # calculate all the false positives, false negatives etc
-                    tps += torch.sum((foregrounds_list == 1) * (preds_list == 1)).cpu().numpy()
-                    tns += torch.sum((foregrounds_list == 0) * (preds_list == 0)).cpu().numpy()
-                    fps += torch.sum((foregrounds_list == 0) * (preds_list == 1)).cpu().numpy()
-                    fns += torch.sum((foregrounds_list == 1) * (preds_list == 0)).cpu().numpy()
-                    defined_total += torch.sum(defined_list > 0).cpu().numpy()
-                    loss_sum += total_loss.item() # float
-
-            total_loss.backward()
+            loss_sum += batch_loss.item() # float
+            batch_loss.backward()
             self.optimizer.step()
             sys.stdout.write(f"Training {(step+1) * self.bs}/"
                              f"{len(train_loader.dataset)} "
-                             f" loss={round(total_loss.item(), 3)} \r")
+                             f" loss={round(batch_loss.item(), 3)} \r")
             self.check_for_instructions() # could update training parameter
             if not self.training:
                 return

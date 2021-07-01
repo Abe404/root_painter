@@ -831,8 +831,8 @@ class RootPainter(QtWidgets.QMainWindow):
         content = {
             "model_dir": self.model_dir,
             "dataset_dir": self.dataset_dir,
-            "train_annot_dir": self.train_annot_dir,
-            "val_annot_dir": self.val_annot_dir,
+            "train_annot_dir": self.train_annot_dirs,
+            "val_annot_dir": self.val_annot_dirs,
             "seg_dir": self.seg_dir,
             "log_dir": self.log_dir,
             "message_dir": self.message_dir,

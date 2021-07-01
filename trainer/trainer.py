@@ -35,6 +35,7 @@ from datetime import datetime
 from functools import partial
 import copy
 import traceback
+import multiprocessing
 
 import numpy as np
 import torch
@@ -144,9 +145,12 @@ class Trainer():
         return new_config
 
     def check_for_instructions(self):
-        for fname in ls(self.instruction_dir):
-            if self.execute_instruction(fname):
-                os.remove(os.path.join(self.instruction_dir, fname))
+        try:
+            for fname in ls(self.instruction_dir):
+                if self.execute_instruction(fname):
+                    os.remove(os.path.join(self.instruction_dir, fname))
+        except Exception as e:
+            print('Exception checking for instruction', e)
 
     def execute_instruction(self, fname):
         fpath = os.path.join(self.instruction_dir, fname)
@@ -260,7 +264,9 @@ class Trainer():
                                   # 12 workers is good for performance
                                   # on 2 RTX2080 Tis
                                   # 0 workers is good for debugging
-                                  num_workers=12, drop_last=False, pin_memory=True)
+                                  # don't go above 12 workers and don't go above the number of cpus
+                                  num_workers=min(multiprocessing.cpu_count(), 12),
+                                  drop_last=False, pin_memory=True)
         epoch_start = time.time()
         self.model.train()
         tps = 0

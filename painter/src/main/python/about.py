@@ -739,7 +739,7 @@ class AboutWindow(QtWidgets.QWidget):
         Version: 0.2.7
         <br />
         <br />
-        Copyright (C) 2021 Abraham George Smith
+        Copyright (C) 2020 Abraham George Smith
         <br />
         <br />
         This program is free software: you can redistribute it and/or modify

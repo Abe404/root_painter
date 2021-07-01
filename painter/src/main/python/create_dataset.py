@@ -82,7 +82,7 @@ def get_file_pieces(im, target_size):
     widths = [im_w // p[1] for p in possible_pieces]
     heights = [im_h // p[0] for p in possible_pieces]
 
-    # and then get the ratio between width and height
+    # and then get the ratio between width and height
     ratios = [width/height for (width, height) in zip(widths, heights)]
 
     squareness = [abs(r - 1) for r in ratios]
@@ -92,7 +92,7 @@ def get_file_pieces(im, target_size):
     # how close is the size to the target size
     size_dists = [abs(p - (target_size * target_size)) for p in pix_counts]
 
-    # scale 0-1
+    # scale 0-1
     size_dists = np.array(size_dists) / (np.max(size_dists) + 1e-5)
 
     assert min(size_dists) >= 0
@@ -110,7 +110,7 @@ def get_file_pieces(im, target_size):
     if h_pieces == 1 and w_pieces == 1:
         return [im]
 
-    # now get the actual pieces from the image.
+    # now get the actual pieces from the image.
     pieces = []
     for hi in range(h_pieces):
         for wi in range(w_pieces):
@@ -222,7 +222,7 @@ class CreateDatasetWidget(QtWidgets.QWidget):
         radio_widget.setLayout(radio_layout)
         layout.addWidget(radio_widget)
 
-        # Add radio, use random weight or specify model file.
+        # Add radio, use random weight or specify model file.
         radio = QtWidgets.QRadioButton("All Images")
         radio.setChecked(True)
         radio.name = "all"
@@ -234,7 +234,7 @@ class CreateDatasetWidget(QtWidgets.QWidget):
         radio.toggled.connect(self.on_radio_clicked)
         radio_layout.addWidget(radio)
 
-        # num ims input
+        # num ims input
         num_ims_widget = QtWidgets.QWidget()
         layout.addWidget(num_ims_widget)
         num_ims_widget_layout = QtWidgets.QHBoxLayout()
@@ -299,7 +299,7 @@ class CreateDatasetWidget(QtWidgets.QWidget):
         create_btn.setEnabled(False)
         self.create_btn = create_btn
 
-        # call validation error
+        # call validation error
         im_size_edit_widget.setValue(self.im_size_default)
 
     def validate(self):

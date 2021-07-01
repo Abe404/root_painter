@@ -183,8 +183,8 @@ class RootPainter(QtWidgets.QMainWindow):
             # by self.image_fnames
             # and set fname (current image) to be the last image with annotation
             last_with_annot = last_fname_with_annotations(self.image_fnames,
-                                                          self.train_annot_dir,
-                                                          self.val_annot_dir)
+                                                          self.train_annot_dirs,
+                                                          self.val_annot_dirs)
             if last_with_annot:
                 fname = last_with_annot
             else:

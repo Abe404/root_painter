@@ -24,17 +24,17 @@ import numpy as np
 from skimage.io import imread
 
 
-def last_fname_with_annotations(fnames, train_annot_dir, val_annot_dir):
+def last_fname_with_annotations(fnames, train_annot_dirs, val_annot_dirs):
     """
     Go through fnames and return the one after
     the last in the list with an annotation.
     If no annotations are found return None.
     """
-    last_fname = None
-    val_annot_fnames = os.listdir(str(val_annot_dir))
-    train_annot_fnames = os.listdir(str(train_annot_dir))
-    annot_fnames = val_annot_fnames + train_annot_fnames
+    annot_fnames = []
+    for annot_dir in train_annot_dirs + val_annot_dirs:
+        annot_fnames += os.listdir(annot_dir)
 
+    last_fname = None
     # remove the extensions as annotations will always be PNG
     # but fnames could be JPG or other.
     annot_fnames = [os.path.splitext(f)[0] for f in annot_fnames]

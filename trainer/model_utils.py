@@ -114,13 +114,14 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
     fns = 0
     defined_sum = 0
 
+    foregrounds = []
+    backgrounds = []
+    classes = []
+
     for dirname, fname in zip(dirnames, fnames):
         annot_path = os.path.join(dirname,
                                   os.path.splitext(fname)[0] + '.png')
-        foregrounds = []
-        backgrounds = []
-        classes = []
-
+    
         # reading the image may throw an exception.
         # I suspect this is due to it being only partially written to disk
         # simply retry if this happens.
@@ -143,40 +144,41 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
         # i.e annotations/{class_name}/train/annot1.png,annot2.png..
         class_name = Path(dirname).parts[-2]
         classes.append(class_name)
-    
-        # Prediction should include channels for each class.
-        image_path_part = os.path.join(dataset_dir, os.path.splitext(fname)[0])
-        image_path = glob.glob(image_path_part + '.*')[0]
 
-        # TODO: This is a bit inefficient - It would make more sense to first identify which
-        #       images have annotations and then go through those images one by one,
-        #       loading all associated annotations.
-    
-        image = im_utils.load_image(image_path)
+    # Prediction should include channels for each class.
+    image_path_part = os.path.join(dataset_dir, os.path.splitext(fname)[0])
+    image_path = glob.glob(image_path_part + '.*')[0]
 
-        # predictions for all classes
-        class_pred_maps = unet_segment(cnn, image, bs, in_w,
-                                       out_w, threshold=0.5)
+    # TODO: This is a bit inefficient - It would make more sense to first identify which
+    #       images have annotations and then go through those images one by one,
+    #       loading all associated annotations.
 
-        # the annotation is 729 by 729, so how is it possible for the
-        # foregrounds and backgrounds to have dimensions of 786by786????
+    image = im_utils.load_image(image_path)
 
-        for pred, foreground, background, class_name in zip(class_pred_maps, foregrounds,
-                                                            backgrounds, classes):
-            # for each individual annotation, associated with a specific class.
-            # mask defines which pixels are defined in the annotation.
-            mask = foreground + background
-            mask = mask.astype(bool).astype(int)
-            pred *= mask
-            pred = pred.astype(bool).astype(int)
-            y_defined = mask.reshape(-1)
-            y_pred = pred.reshape(-1)[y_defined > 0]
-            y_true = foreground.reshape(-1)[y_defined > 0]
-            tps += np.sum(np.logical_and(y_pred == 1, y_true == 1))
-            tns += np.sum(np.logical_and(y_pred == 0, y_true == 0))
-            fps += np.sum(np.logical_and(y_pred == 1, y_true == 0))
-            fns += np.sum(np.logical_and(y_pred == 0, y_true == 1))
-            defined_sum += np.sum(y_defined > 0)
+    # predictions for all classes
+    class_pred_maps = unet_segment(cnn, image, bs, in_w,
+                                   out_w, threshold=0.5)
+
+    # the annotation is 729 by 729, so how is it possible for the
+    # foregrounds and backgrounds to have dimensions of 786by786????
+    assert len(class_pred_maps) == len(foregrounds) == len(backgrounds) == len(classes), (
+        f"{len(class_pred_maps)},{len(foregrounds)},{len(backgrounds)},{len(classes)}")
+    for pred, foreground, background, class_name in zip(class_pred_maps, foregrounds,
+                                                        backgrounds, classes):
+        # for each individual annotation, associated with a specific class.
+        # mask defines which pixels are defined in the annotation.
+        mask = foreground + background
+        mask = mask.astype(bool).astype(int)
+        pred *= mask
+        pred = pred.astype(bool).astype(int)
+        y_defined = mask.reshape(-1)
+        y_pred = pred.reshape(-1)[y_defined > 0]
+        y_true = foreground.reshape(-1)[y_defined > 0]
+        tps += np.sum(np.logical_and(y_pred == 1, y_true == 1))
+        tns += np.sum(np.logical_and(y_pred == 0, y_true == 0))
+        fps += np.sum(np.logical_and(y_pred == 1, y_true == 0))
+        fns += np.sum(np.logical_and(y_pred == 0, y_true == 1))
+        defined_sum += np.sum(y_defined > 0)
 
     duration = round(time.time() - start, 3)
     metrics = get_metrics(tps, fps, tns, fns, defined_sum, duration)

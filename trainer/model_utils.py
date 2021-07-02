@@ -82,7 +82,8 @@ def get_prev_model(model_dir, classes):
     prev_model = load_model(prev_path, classes)
     return prev_model, prev_path
 
-def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
+def get_val_metrics(cnn, val_annot_dirs, dataset_dir,
+        in_w, out_w, bs, project_classes):
     """
     Return the TP, FP, TN, FN, defined_sum, duration
     for the {cnn} on the validation set
@@ -117,7 +118,10 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
     foregrounds = []
     backgrounds = []
     classes = []
+    image_paths = [] # image path for each associated fg,bg and class
+    image_class_pred_maps = {} 
 
+    # for each val_dirname and annotation in it
     for dirname, fname in zip(dirnames, fnames):
         annot_path = os.path.join(dirname,
                                   os.path.splitext(fname)[0] + '.png')
@@ -145,26 +149,31 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir, in_w, out_w, bs):
         class_name = Path(dirname).parts[-2]
         classes.append(class_name)
 
-    # Prediction should include channels for each class.
-    image_path_part = os.path.join(dataset_dir, os.path.splitext(fname)[0])
-    image_path = glob.glob(image_path_part + '.*')[0]
+        # Prediction should include channels for each class.
+        image_path_part = os.path.join(dataset_dir, os.path.splitext(fname)[0])
+        image_path = glob.glob(image_path_part + '.*')[0]
+        image_paths.append(image_path)
+        
+        # ensure image has a prediction.
+        if not image_path in image_class_pred_maps:
+            image = im_utils.load_image(image_path)
 
-    # TODO: This is a bit inefficient - It would make more sense to first identify which
-    #       images have annotations and then go through those images one by one,
-    #       loading all associated annotations.
-
-    image = im_utils.load_image(image_path)
-
-    # predictions for all classes
-    class_pred_maps = unet_segment(cnn, image, bs, in_w,
-                                   out_w, threshold=0.5)
+            # predictions for all classes
+            class_pred_maps = unet_segment(cnn, image, bs, in_w,
+                                           out_w, threshold=0.5)
+            image_class_pred_maps[image_path] = class_pred_maps
 
     # the annotation is 729 by 729, so how is it possible for the
     # foregrounds and backgrounds to have dimensions of 786by786????
-    assert len(class_pred_maps) == len(foregrounds) == len(backgrounds) == len(classes), (
-        f"{len(class_pred_maps)},{len(foregrounds)},{len(backgrounds)},{len(classes)}")
-    for pred, foreground, background, class_name in zip(class_pred_maps, foregrounds,
-                                                        backgrounds, classes):
+    assert len(image_paths) == len(backgrounds) == len(classes), (
+        f"{len(foregrounds)},{len(backgrounds)},{len(classes)}")
+
+    for (image_path, foreground,
+         background, class_name) in zip(image_paths, foregrounds,
+                                        backgrounds, classes):
+        class_pred_maps = image_class_pred_maps[image_path] 
+        pred = class_pred_maps[project_classes.index(class_name)]
+
         # for each individual annotation, associated with a specific class.
         # mask defines which pixels are defined in the annotation.
         mask = foreground + background

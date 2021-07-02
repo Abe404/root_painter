@@ -338,9 +338,11 @@ class Trainer():
         # TODO consider implementing checkpointer class to maintain
         # this state.
         get_val_metrics = partial(model_utils.get_val_metrics,
-                                  val_annot_dirs=self.train_config['val_annot_dirs'],
-                                  dataset_dir=self.train_config['dataset_dir'],
-                                  in_w=self.in_w, out_w=self.out_w, bs=self.bs)
+            val_annot_dirs=self.train_config['val_annot_dirs'],
+            dataset_dir=self.train_config['dataset_dir'],
+            in_w=self.in_w, out_w=self.out_w, bs=self.bs,
+            project_classes=self.train_config['classes'])
+
         prev_model, prev_path = model_utils.get_prev_model(model_dir,
                                                            self.train_config['classes'])
         cur_metrics = get_val_metrics(copy.deepcopy(self.model))

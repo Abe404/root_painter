@@ -445,8 +445,8 @@ class Trainer():
         else:
             out_paths.append(os.path.join(seg_dir, os.path.splitext(fname)[0] + '.png'))
 
-        if os.path.isfile(out_paths[0]):
-            print('Skip because found existing segmentation file')
+        if all([os.path.isfile(out_path) for outpath in outpaths]):
+            print('Skip because found existing segmentation files for image')
             return
         if not os.path.isfile(fpath):
             print('Cannot segment as missing file', fpath)

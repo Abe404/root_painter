@@ -205,7 +205,7 @@ class RootPainter(QtWidgets.QMainWindow):
 
 
     def update_class(self, class_name):
-
+        print('udpate class = ', class_name)
         # Save current annotation (if it exists) before moving on
         self.save_annotation()
 
@@ -213,6 +213,7 @@ class RootPainter(QtWidgets.QMainWindow):
         self.annot_path = get_annot_path(self.png_fname,
                                          self.get_train_annot_dir(),
                                          self.get_val_annot_dir())
+
         self.scene.history = []
         self.scene.redo_list = []
 
@@ -479,8 +480,6 @@ class RootPainter(QtWidgets.QMainWindow):
             extras_menu.addAction(extend_dataset_btn)
 
 
-
-
     def add_about_menu(self, menu_bar):
         about_menu = menu_bar.addMenu('About')
         license_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'License', self)
@@ -490,6 +489,16 @@ class RootPainter(QtWidgets.QMainWindow):
         about_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'RootPainter', self)
         about_btn.triggered.connect(self.show_about_window)
         about_menu.addAction(about_btn)
+
+    def add_class_menu(self, menu_bar):
+        class_menu = menu_bar.addMenu('Classes')
+        for i, class_name in enumerate(self.classes):
+            class_action = QtWidgets.QAction(QtGui.QIcon('missing.png'), 
+                                             class_name, self)
+            # update class via nav to keep nav up to date whilst avoiding a double update.
+            class_action.triggered.connect(partial(self.nav.cb.setCurrentIndex, self.classes.index(class_name)))
+            class_action.setShortcut(str(i+1))
+            class_menu.addAction(class_action)
 
     def show_license_window(self):
         self.license_window = LicenseWindow()
@@ -778,6 +787,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # network_menu.addAction(segment_image_btn)
         self.add_measurements_menu(menu_bar)
         self.add_extras_menu(menu_bar, project_open=True)
+        self.add_class_menu(menu_bar)
 
 
     def add_measurements_menu(self, menu_bar):

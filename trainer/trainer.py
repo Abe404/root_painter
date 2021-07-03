@@ -265,7 +265,7 @@ class Trainer():
                                   # on 2 RTX2080 Tis
                                   # 0 workers is good for debugging
                                   # don't go above 12 workers and don't go above the number of cpus
-                                  num_workers=min(multiprocessing.cpu_count(), 12),
+                                  num_workers=2, #min(multiprocessing.cpu_count(), 12),
                                   drop_last=False, pin_memory=True)
         epoch_start = time.time()
         self.model.train()
@@ -445,7 +445,7 @@ class Trainer():
         else:
             out_paths.append(os.path.join(seg_dir, os.path.splitext(fname)[0] + '.png'))
 
-        if all([os.path.isfile(out_path) for outpath in outpaths]):
+        if all([os.path.isfile(out_path) for outpath in out_paths]):
             print('Skip because found existing segmentation files for image')
             return
         if not os.path.isfile(fpath):

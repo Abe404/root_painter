@@ -301,8 +301,6 @@ class Trainer():
                         oldest_item = s
                 shuffle_buffer.remove(oldest_item)
             if (epoch_updates*batch_size) > 612:
-                print('loader fin should be set to true now')
-                print('too many epoch updates')
                 break # break out but leave the updater running until we get out of this loop
 
         loader_fin = True # now we are out of the loop tell updater to stop.
@@ -354,9 +352,10 @@ class Trainer():
                 loss_sum += batch_loss.item() # float
                 batch_loss.backward()
                 self.optimizer.step()
-                sys.stdout.write(f"Training {(epoch_updates+1) * self.bs}/"
+                sys.stdout.write(f"\rTraining {(epoch_updates+1) * self.bs}/"
                     f"612"
-                    f" loss={round(batch_loss.item(), 3)} \r")
+                    f" loss={round(batch_loss.item(), 3)")
+                sys.stdout.flush()
                 self.check_for_instructions() # could update training parameter
                 if not self.training:
                     return

@@ -354,7 +354,7 @@ class Trainer():
                 self.optimizer.step()
                 sys.stdout.write(f"\rTraining {(epoch_updates+1) * self.bs}/"
                     f"612"
-                    f" loss={round(batch_loss.item(), 3)")
+                    f" loss={round(batch_loss.item(), 3)}")
                 sys.stdout.flush()
                 self.check_for_instructions() # could update training parameter
                 if not self.training:

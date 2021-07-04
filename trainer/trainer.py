@@ -62,7 +62,7 @@ from startup import startup_setup, ensure_required_folders_exist
 
 epoch_updates = 0
 shuffle_buffer = []
-batch_size = 6
+batch_size = 4
 shuffle_buffer_limit = 128 // batch_size # uses around 10GB of shared memory
 loader_fin = False
 

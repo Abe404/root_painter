@@ -36,6 +36,7 @@ from functools import partial
 import copy
 import traceback
 import multiprocessing
+from threading import Thread
 
 import numpy as np
 import torch
@@ -55,6 +56,15 @@ import data_utils
 from im_utils import is_photo, load_image, save_then_move
 from file_utils import ls
 from startup import startup_setup, ensure_required_folders_exist
+
+
+
+
+epoch_updates = 0
+shuffle_buffer = []
+batch_size = 6
+shuffle_buffer_limit = 128 // batch_size # uses around 10GB of shared memory
+loader_fin = False
 
 
 class Trainer():
@@ -249,24 +259,58 @@ class Trainer():
         return found_train_annot and found_val_annot
 
     def train_one_epoch(self):
-
+        global epoch_updates, loader_fin
+        
         if not self.train_and_val_annotation_exists():
             # no training until data ready
             return
 
+        
         if self.first_loop:
             self.first_loop = False
             self.write_message('Training started')
             self.log('Starting Training')
 
+        epoch_updates = 0 # counter to say when epoch has finished.
+        loader_fin = False # flag used to say when data loader done.
+        loader_thread = Thread(target=self.loader_worker)
+        trainer_thread = Thread(target=self.trainer_worker)
+        loader_thread.start()
+        trainer_thread.start()
+        loader_thread.join()
+        trainer_thread.join()
+     
+     
+    def loader_worker(self):
+        global loader_fin
         train_loader = DataLoader(self.train_set, self.bs, shuffle=True,
                                   collate_fn=data_utils.collate_fn,  
                                   # 12 workers is good for performance
                                   # on 2 RTX2080 Tis
                                   # 0 workers is good for debugging
                                   # don't go above 12 workers and don't go above the number of cpus
-                                  num_workers=2, #min(multiprocessing.cpu_count(), 12),
+                                  num_workers=min(multiprocessing.cpu_count(), 12),
                                   drop_last=False, pin_memory=True)
+        for step, item in enumerate(train_loader):
+            shuffle_buffer.append([0, item])
+            if len(shuffle_buffer) > shuffle_buffer_limit:
+                # remove the oldest item
+                oldest_item = shuffle_buffer[0]
+                for s in shuffle_buffer:
+                    if s[0] > oldest_item[0]:
+                        oldest_item = s
+                shuffle_buffer.remove(oldest_item)
+            if (epoch_updates*batch_size) > 612:
+                print('loader fin should be set to true now')
+                print('too many epoch updates')
+                break # break out but leave the updater running until we get out of this loop
+
+        loader_fin = True # now we are out of the loop tell updater to stop.
+
+    def trainer_worker(self):
+        global shuffle_buffer 
+        global epoch_updates
+        global loader_fin
         epoch_start = time.time()
         self.model.train()
         tps = 0
@@ -275,36 +319,61 @@ class Trainer():
         fns = 0
         defined_total = 0
         loss_sum = 0
-        for step, (batch_im_tiles,
-                   batch_fg_tiles,
-                   batch_bg_tiles,
-                   batch_classes) in enumerate(train_loader):
 
-            self.check_for_instructions()
+        while True:
+            # if the loader worker finished then it's time to stop.
+            if loader_fin:
+                break
 
-            self.optimizer.zero_grad()
-            batch_im_tiles = torch.from_numpy(batch_im_tiles).cuda()
-            outputs = self.model(batch_im_tiles)
+            if len(shuffle_buffer) > 0:
 
-            (batch_loss, batch_tps, batch_tns,
-             batch_fps, batch_fns, defined_total) = get_batch_loss(
-                outputs, batch_fg_tiles, batch_bg_tiles,
-                batch_classes, self.train_config['classes'])
-         
-            tps += batch_tps
-            fps += batch_fps
-            tns += batch_tns
-            fns += batch_fns
+                # Get least used item
+                item = shuffle_buffer[0]
+                for s in shuffle_buffer:
+                    # compare age
+                    if s[0] < item[0]:
+                        item = s
 
-            loss_sum += batch_loss.item() # float
-            batch_loss.backward()
-            self.optimizer.step()
-            sys.stdout.write(f"Training {(step+1) * self.bs}/"
-                             f"{len(train_loader.dataset)} "
-                             f" loss={round(batch_loss.item(), 3)} \r")
-            self.check_for_instructions() # could update training parameter
-            if not self.training:
-                return
+                (batch_im_tiles, batch_fg_tiles,
+                 batch_bg_tiles, batch_classes) = item[1]
+
+                self.optimizer.zero_grad()
+                batch_im_tiles = torch.from_numpy(batch_im_tiles).cuda()
+                outputs = self.model(batch_im_tiles)
+
+                (batch_loss, batch_tps, batch_tns,
+                 batch_fps, batch_fns, defined_total) = get_batch_loss(
+                    outputs, batch_fg_tiles, batch_bg_tiles,
+                    batch_classes, self.train_config['classes'])
+             
+                tps += batch_tps
+                fps += batch_fps
+                tns += batch_tns
+                fns += batch_fns
+
+                loss_sum += batch_loss.item() # float
+                batch_loss.backward()
+                self.optimizer.step()
+                sys.stdout.write(f"Training {(epoch_updates+1) * self.bs}/"
+                    f"612"
+                    f" loss={round(batch_loss.item(), 3)} \r")
+                self.check_for_instructions() # could update training parameter
+                if not self.training:
+                    return
+
+                # add to age as it will now be used in training
+                item[0] += 1 
+
+                # total steps in epoch
+                epoch_updates += 1
+        
+            # We don't want this to go on forever
+            # Perhaps something has goes wrong
+            if (epoch_updates*batch_size) > (612 * 2):
+                print('we have gone way over the limit.'
+                      'Assume data loader crashed'
+                      ' and that it is time to finish the epoch anyway.') 
+                break
 
         duration = round(time.time() - epoch_start, 3)
         print('epoch train duration', duration)
@@ -313,6 +382,7 @@ class Trainer():
         before_val_time = time.time()
         self.validation()
         print('epoch validation duration', time.time() - before_val_time)
+
 
     def log_metrics(self, name, metrics):
         fname = datetime.today().strftime('%Y-%m-%d')

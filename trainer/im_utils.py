@@ -233,6 +233,8 @@ def save_then_move(out_path, seg_alpha):
     while not copied and tries < limit:
         try:
             shutil.copy(temp_path, out_path)
+            # empty files are not good :)
+            assert os.stat(out_path).st_size > 0
             os.remove(temp_path)
             copied = True
         except Exception as _:

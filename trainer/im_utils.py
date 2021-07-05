@@ -235,7 +235,7 @@ def save_then_move(out_path, seg_alpha):
             shutil.copy(temp_path, out_path)
             os.remove(temp_path)
             copied = True
-        except Exception as _
+        except Exception as _:
             time.sleep(0.1)
     # if it still didn't work
     if not copied:

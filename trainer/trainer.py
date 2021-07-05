@@ -37,6 +37,7 @@ import copy
 import traceback
 import multiprocessing
 from threading import Thread
+from operator import itemgetter
 
 import numpy as np
 import torch
@@ -62,10 +63,7 @@ from startup import startup_setup, ensure_required_folders_exist
 
 epoch_updates = 0
 shuffle_buffer = []
-batch_size = 4
-shuffle_buffer_limit = 128 // batch_size # uses around 10GB of shared memory
 loader_fin = False
-
 
 class Trainer():
 
@@ -94,6 +92,7 @@ class Trainer():
         for i in range(torch.cuda.device_count()):
             total_mem += torch.cuda.get_device_properties(i).total_memory
         self.bs = total_mem // mem_per_item
+        self.shuffle_buffer_limit = 128  # uses around 10GB of shared memory
         print('Batch size', self.bs)
         self.optimizer = None
         # used to check for updates
@@ -282,25 +281,32 @@ class Trainer():
      
      
     def loader_worker(self):
-        global loader_fin
-        train_loader = DataLoader(self.train_set, self.bs, shuffle=True,
+        global loader_fin, shuffle_buffer
+        train_loader = DataLoader(self.train_set, self.bs,
+                                  shuffle=True,
                                   collate_fn=data_utils.collate_fn,  
                                   # 12 workers is good for performance
                                   # on 2 RTX2080 Tis
                                   # 0 workers is good for debugging
                                   # don't go above 12 workers and don't go above the number of cpus
-                                  num_workers=min(multiprocessing.cpu_count(), 12),
+                                  num_workers=12, #min(multiprocessing.cpu_count(), 12),
                                   drop_last=False, pin_memory=True)
-        for step, item in enumerate(train_loader):
-            shuffle_buffer.append([0, item])
-            if len(shuffle_buffer) > shuffle_buffer_limit:
+        
+        for step, (batch_im_tiles, batch_fg_tiles,
+                   batch_bg_tiles, batch_classes) in enumerate(train_loader):
+
+            for im_tile, fg_tiles, bg_tiles, classes in zip(
+                batch_im_tiles, batch_fg_tiles,
+                batch_bg_tiles, batch_classes):
+
+                shuffle_buffer.append([0, (im_tile, fg_tiles,
+                                           bg_tiles, classes)])
+
+            if len(shuffle_buffer) > self.shuffle_buffer_limit:
                 # remove the oldest item
-                oldest_item = shuffle_buffer[0]
-                for s in shuffle_buffer:
-                    if s[0] > oldest_item[0]:
-                        oldest_item = s
-                shuffle_buffer.remove(oldest_item)
-            if (epoch_updates*batch_size) > 612:
+                shuffle_buffer = sorted(shuffle_buffer, key=itemgetter(0))[:self.shuffle_buffer_limit]
+
+            if (epoch_updates*self.bs) > 612:
                 break # break out but leave the updater running until we get out of this loop
 
         loader_fin = True # now we are out of the loop tell updater to stop.
@@ -322,21 +328,19 @@ class Trainer():
             # if the loader worker finished then it's time to stop.
             if loader_fin:
                 break
+            
+            # must be at least a batch before processing data.
+            if len(shuffle_buffer) >= self.bs:
+                # Get least used items 
+                least_used = sorted(shuffle_buffer, key=itemgetter(0))[:self.bs]
+                batch_im_tiles = [l[1][0] for l in least_used]
+                batch_fg_tiles = [l[1][1] for l in least_used]
+                batch_bg_tiles = [l[1][2] for l in least_used]
+                batch_classes = [l[1][3] for l in least_used]
 
-            if len(shuffle_buffer) > 0:
-
-                # Get least used item
-                item = shuffle_buffer[0]
-                for s in shuffle_buffer:
-                    # compare age
-                    if s[0] < item[0]:
-                        item = s
-
-                (batch_im_tiles, batch_fg_tiles,
-                 batch_bg_tiles, batch_classes) = item[1]
-
+                batch_im_tiles = torch.from_numpy(np.array(batch_im_tiles)).cuda()
+                #print('time for prep', time.time() - t)
                 self.optimizer.zero_grad()
-                batch_im_tiles = torch.from_numpy(batch_im_tiles).cuda()
                 outputs = self.model(batch_im_tiles)
 
                 (batch_loss, batch_tps, batch_tns,
@@ -355,21 +359,22 @@ class Trainer():
                 sys.stdout.write(f"\rTraining {(epoch_updates+1) * self.bs}/"
                     f"612"
                     f" loss={round(batch_loss.item(), 3)}"
-                    f" mean updates per batch {round(np.mean([s[0] for s in shuffle_buffer]), 2)}")
+                    f" buffer_staleness={round(np.mean([s[0] for s in shuffle_buffer]), 3)}")
                 sys.stdout.flush()
                 self.check_for_instructions() # could update training parameter
                 if not self.training:
                     return
 
                 # add to age as it will now be used in training
-                item[0] += 1 
+                for item in least_used:
+                    item[0] += 1
 
                 # total steps in epoch
                 epoch_updates += 1
         
             # We don't want this to go on forever
             # Perhaps something has goes wrong
-            if (epoch_updates*batch_size) > (612 * 2):
+            if (epoch_updates*self.bs) > (612 * 2):
                 print('we have gone way over the limit.'
                       'Assume data loader crashed'
                       ' and that it is time to finish the epoch anyway.') 
@@ -506,7 +511,6 @@ class Trainer():
         fpath = os.path.join(in_dir, fname)
 
         # Segmentations are always saved as PNG.
-
         out_paths = []
         if len(classes) > 1:
             for c in classes:

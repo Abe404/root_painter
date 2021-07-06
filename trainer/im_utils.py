@@ -24,6 +24,7 @@ import os
 import time
 import glob
 import shutil
+import uuid
 from pathlib import Path
 from math import ceil
 import traceback
@@ -211,6 +212,7 @@ def tiles_from_coords(image, coords, tile_shape):
         tiles.append(tile)
     return tiles
 
+
 def save_then_move(out_path, seg_alpha):
     """ need to save in a temp folder first and
         then move to the segmentation folder after saving
@@ -221,30 +223,11 @@ def save_then_move(out_path, seg_alpha):
         as this causes errors. Thus we save and then rename.
     """
     fname = os.path.basename(out_path)
-    temp_path = os.path.join('/tmp', fname)
+    # give unique ID as images with multiple classes will have the same name
+    temp_path = os.path.join('/tmp', f"{uuid.uuid1()}_{fname}")
     imsave(temp_path, seg_alpha)
-
-
-    # this is crashing on colab. The file doesn't exist.
-    # keep trying until it exists.
-    copied = False 
-    limit = 30 # 3 seconds max
-    tries = 0
-    while not copied and tries < limit:
-        try:
-            shutil.copy(temp_path, out_path)
-            # empty files are not good :)
-            assert os.stat(out_path).st_size > 0
-            os.remove(temp_path)
-            copied = True
-        except Exception as _:
-            time.sleep(0.1)
-    # if it still didn't work
-    if not copied:
-        # try one last time and this time no try-catch.
-        # just show the exception in console output.
-        shutil.copy(temp_path, out_path)
-        os.remove(temp_path)
+    shutil.copy(temp_path, out_path)
+    os.remove(temp_path)
 
 
 def load_image(photo_path):

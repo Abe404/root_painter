@@ -604,6 +604,10 @@ class RootPainter(QtWidgets.QMainWindow):
         options_menu.addAction(pre_segment_count_action)
         pre_segment_count_action.triggered.connect(self.open_pre_segment_count_dialog)
 
+        brush_edit_action = QtWidgets.QAction(QtGui.QIcon(""), "Change brush size", self)
+        options_menu.addAction(brush_edit_action)
+        brush_edit_action.triggered.connect(self.show_brush_size_edit)
+
         # change brush colors
         change_foreground_color_action = QtWidgets.QAction(QtGui.QIcon(""),
                                                            "Foreground brush colour",
@@ -866,6 +870,13 @@ class RootPainter(QtWidgets.QMainWindow):
     def set_eraser_color(self, _event):
         self.scene.brush_color = self.scene.eraser_color
         self.update_cursor()
+
+    def show_brush_size_edit(self):
+         new_size, ok = QtWidgets.QInputDialog.getInt(self, "",
+                 "Bursh size can also be altered by holding shift and moving the cursor. \n \n \n Select brush size", self.scene.brush_size, 1, 300, 1)
+         if ok:
+             self.scene.brush_size = new_size
+             self.update_cursor()
 
     def update_cursor(self):
         brush_w = self.scene.brush_size * self.graphics_view.zoom * 0.93

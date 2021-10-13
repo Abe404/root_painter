@@ -60,7 +60,7 @@ def fix_app():
         site_packages_dir = os.path.join(env_dir, 'Lib', 'site-packages')
         build_dir = './target/RootPainter'
     elif is_linux:
-        site_packages_dir = os.path.join(env_dir, 'lib/python3.7/site-packages')
+        site_packages_dir = os.path.join(env_dir, 'lib/python3.6/site-packages')
         build_dir = './target/RootPainter'
 
 

@@ -122,8 +122,8 @@ class UNetGNRes(nn.Module):
         self.up4 = UpBlock(64)
         self.conv_out = nn.Sequential(
             nn.Conv2d(64, 2 * len(class_names), kernel_size=1, padding=0),
-            nn.ReLU(),
-            nn.GroupNorm(2 * len(class_names), 2 * len(class_names))
+            nn.ReLU()
+            #nn.GroupNorm(2 * len(class_names), 2 * len(class_names))
         )
 
     def forward(self, x):

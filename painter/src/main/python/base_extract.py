@@ -46,7 +46,8 @@ class Thread(QtCore.QThread):
             writer.writerow(self.headers)
             for i, fname in enumerate(seg_fnames):
                 self.progress_change.emit(i+1, len(seg_fnames))
-                self.extractor(self.segment_dir, fname, writer)
+                # headers allow the output options to be detected.
+                self.extractor(self.segment_dir, fname, writer, self.headers)
             self.done.emit()
 
 
@@ -108,7 +109,7 @@ class BaseExtractWidget(QtWidgets.QWidget):
     def add_info_label(self):
         info_label = QtWidgets.QLabel()
         info_label.setText("Segmentation directory and output CSV"
-                           "must be specified.")
+                           " must be specified.")
         self.layout.addWidget(info_label)
         self.info_label = info_label
 

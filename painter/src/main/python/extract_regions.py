@@ -16,12 +16,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #pylint: disable=I1101,C0111,W0201,R0903,E0611, R0902, R0914
 import os
+
 import numpy as np
 from skimage import measure
 from PIL import Image
-
+from eccentricity import eccentricity2
 from base_extract import BaseExtractWidget
-
 
 region_props_headers = ['file_name', 'x', 'y', 'diameter', 'area',
                         'perimeter', 'eccentricity']
@@ -40,7 +40,7 @@ def get_region_props(seg_dir, fname, writer):
         diameter = region.equivalent_diameter
         area = region.area
         perimeter = region.perimeter
-        eccentricity = region.eccentricity
+        eccentricity = eccentricity2(region)
         writer.writerow([name, x, y, diameter, area, perimeter, eccentricity])
 
 class ExtractRegionsWidget(BaseExtractWidget):

@@ -61,9 +61,6 @@ from startup import startup_setup, ensure_required_folders_exist
 
 
 
-epoch_updates = 0
-shuffle_buffer = []
-loader_fin = False
 
 class Trainer():
 
@@ -258,8 +255,6 @@ class Trainer():
         return found_train_annot and found_val_annot
 
     def train_one_epoch(self):
-        global epoch_updates, loader_fin
-        
         if not self.train_and_val_annotation_exists():
             # no training until data ready
             return
@@ -270,9 +265,6 @@ class Trainer():
             self.write_message('Training started')
             self.log('Starting Training')
 
-        epoch_updates = 0 # counter to say when epoch has finished.
-        loader_fin = False # flag used to say when data loader done.
-        
         train_loader = DataLoader(self.train_set, self.bs,
                                   shuffle=True,
                                   collate_fn=data_utils.collate_fn,  

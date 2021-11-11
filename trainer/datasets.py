@@ -109,8 +109,7 @@ class TrainDataset(Dataset):
             annot_lengths.append(len(ls(dir_path)))
         mean_annot_len = np.mean(annot_lengths)
         # For the single class case, behaviour will not change from previous system
-        return 612**2 # make it really big because we are introducing another method to limit dataset size.
-        # max(612, round(mean_annot_len * 2))
+        max(612, round(mean_annot_len * 2))
 
     def __getitem__(self, _):
         # get an image and all annotations associated with it

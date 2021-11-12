@@ -317,14 +317,13 @@ class Trainer():
             self.check_for_instructions() # could update training parameter
             if not self.training:
                 return
-
-    duration = round(time.time() - epoch_start, 3)
-    print('epoch train duration', duration)
-    self.log_metrics('train', get_metrics(tps, fps, tns, fns,
-                                          defined_total, duration))
-    before_val_time = time.time()
-    self.validation()
-    print('epoch validation duration', time.time() - before_val_time)
+            duration = round(time.time() - epoch_start, 3)
+        print('epoch train duration', duration)
+        self.log_metrics('train', get_metrics(tps, fps, tns, fns,
+                                              defined_total, duration))
+        before_val_time = time.time()
+        self.validation()
+        print('epoch validation duration', time.time() - before_val_time)
 
 
     def log_metrics(self, name, metrics):

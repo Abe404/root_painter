@@ -134,6 +134,7 @@ class RootPainter(QtWidgets.QMainWindow):
 
             self.proj_location = self.sync_dir / PurePath(settings['location'])
             self.image_fnames = settings['file_names']
+            self.federated_models_dir = settings['federated_models_dir']
             self.seg_dir = self.proj_location / 'segmentations'
             self.log_dir = self.proj_location / 'logs'
             self.train_annot_dir = self.proj_location / 'annotations' / 'train'
@@ -781,7 +782,8 @@ class RootPainter(QtWidgets.QMainWindow):
             "val_annot_dir": self.val_annot_dir,
             "seg_dir": self.seg_dir,
             "log_dir": self.log_dir,
-            "message_dir": self.message_dir
+            "message_dir": self.message_dir,
+            "federated_models_dir": self.federated_models_dir
         }
         self.send_instruction('start_training', content)
 

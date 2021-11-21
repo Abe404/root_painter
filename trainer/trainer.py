@@ -207,14 +207,18 @@ class Trainer():
         # averaged with the best model from the alternative node.
         # for now jsut average with self, until an alternative node is available.
         start = time.time()
-        model_path = model_utils.get_latest_model_paths(self.train_config['model_dir'], 1)[0]
-        alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
-        cur_model_dict = self.model.state_dict()
-        # Average parameters
-        for key in alt_model_dict:
-            cur_model_dict[key] = (alt_model_dict[key] + cur_model_dict[key]) / 2.
-        print('time to average model:', round(time.time() - start, 3), 'seconds') 
-        return # assume only one other node
+        parent_dir, uname = os.path.split(self.train_config['federated_models_dir'])
+        for model_dir in os.listdir(parent_dir):
+            if model_dir is not uname:
+                model_path = model_utils.get_latest_model_paths(
+                    os.path.join(model_dir, uname), 1)[0]
+                alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
+                cur_model_dict = self.model.state_dict()
+                # Average parameters
+                for key in alt_model_dict:
+                    cur_model_dict[key] = (alt_model_dict[key] + cur_model_dict[key]) / 2.
+                print('time to average model:', round(time.time() - start, 3), 'seconds') 
+                return # assume only one other node
 
     def train_one_epoch(self):
         train_annot_dir = self.train_config['train_annot_dir']

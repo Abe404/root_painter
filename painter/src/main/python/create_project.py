@@ -21,6 +21,7 @@ import random
 import time
 import shutil
 import json
+import getpass
 
 from pathlib import Path, PurePosixPath
 from PyQt5 import QtWidgets
@@ -216,7 +217,7 @@ class CreateProjectWidget(QtWidgets.QWidget):
         os.makedirs(self.sync_dir / project_location / 'annotations' / 'train')
         os.makedirs(self.sync_dir / project_location / 'annotations' / 'val')
         os.makedirs(self.sync_dir / project_location / 'segmentations')
-        os.makedirs(self.sync_dir / project_location / 'models' / os.getusername())
+        os.makedirs(self.sync_dir / project_location / 'models' / getpass.getuser())
         os.makedirs(self.sync_dir / project_location / 'messages')
         os.makedirs(self.sync_dir / project_location / 'logs')
 

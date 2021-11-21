@@ -30,6 +30,7 @@ import os
 from pathlib import PurePath
 import json
 from functools import partial
+import getpass
 
 from skimage.io import use_plugin
 from PyQt5 import QtWidgets
@@ -138,7 +139,7 @@ class RootPainter(QtWidgets.QMainWindow):
             self.train_annot_dir = self.proj_location / 'annotations' / 'train'
             self.val_annot_dir = self.proj_location / 'annotations' / 'val'
 
-            self.model_dir = self.proj_location / 'models' / os.getusername()
+            self.model_dir = self.proj_location / 'models' / getpass.getuser()
 
             self.message_dir = self.proj_location / 'messages'
 

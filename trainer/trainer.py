@@ -205,20 +205,16 @@ class Trainer():
     def average_model(self):
         # At the start of each epoch, the model weights are 
         # averaged with the best model from the alternative node.
-        parent_model_dir, cur_user = os.path.split(self.train_config['model_dir'])
-        
-        for user in os.listdir(parent_model_dir):
-            print('averaging model with', user)
-            start = time.time()
-            # if user != cur_user:
-            model_path = model_utils.get_latest_model_paths(self.train_config['model_dir'], 1)[0]
-            alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
-            cur_model_dict = self.model.state_dict()
-            # Average parameters
-            for key in alt_model_dict:
-                cur_model_dict[key] = (alt_model_dict[key] + cur_model_dict[key]) / 2.
-            print('time to average models:', round(time.time() - start, 3), 'seconds') 
-            return # assume only one other node
+        # for now jsut average with self, until an alternative node is available.
+        start = time.time()
+        model_path = model_utils.get_latest_model_paths(self.train_config['model_dir'], 1)[0]
+        alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
+        cur_model_dict = self.model.state_dict()
+        # Average parameters
+        for key in alt_model_dict:
+            cur_model_dict[key] = (alt_model_dict[key] + cur_model_dict[key]) / 2.
+        print('time to average model:', round(time.time() - start, 3), 'seconds') 
+        return # assume only one other node
 
     def train_one_epoch(self):
         train_annot_dir = self.train_config['train_annot_dir']

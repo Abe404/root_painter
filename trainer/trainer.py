@@ -219,6 +219,7 @@ class Trainer():
                     cur_model_dict[key] = (alt_model_dict[key] + cur_model_dict[key]) / 2.
                 print('time to average model:', round(time.time() - start, 3), 'seconds') 
                 return # assume only one other node
+            raise Exception("Could not find remote node in " + parent_dir)
 
     def train_one_epoch(self):
         train_annot_dir = self.train_config['train_annot_dir']

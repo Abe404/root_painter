@@ -210,7 +210,7 @@ class Trainer():
         for user in os.listdir(parent_model_dir):
             print('averaging model with', user)
             # if user != cur_user:
-            model_path = model_utils.get_latest_model_paths(model_dir, 1)[0]
+            model_path = model_utils.get_latest_model_paths(self.train_config['model_dir'], 1)[0]
             alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
             cur_model_dict = self.model.state_dict()
             # Average parameters

@@ -202,6 +202,22 @@ class Trainer():
         """ write a message for the user (client) """
         Path(os.path.join(self.msg_dir, message)).touch()
 
+    def average_model(self):
+        # At the start of each epoch, the model weights are 
+        # averaged with the best model from the alternative node.
+        parent_model_dir, cur_user = os.path.split(self.train_config['model_dir'])
+        
+        for user in os.listdir(parent_model_dir):
+            print('averaging model with', user)
+            # if user != cur_user:
+            model_path = model_utils.get_latest_model_paths(model_dir, 1)[0]
+            alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
+            cur_model_dict = self.model.state_dict()
+            # Average parameters
+            for key in alt_model_dict:
+                cur_model_dict[key] = (alt_model_dict[key] + cur_model_dict[key]) / 2.
+            return # assume only one other node
+
     def train_one_epoch(self):
         train_annot_dir = self.train_config['train_annot_dir']
         val_annot_dir = self.train_config['val_annot_dir']
@@ -219,7 +235,8 @@ class Trainer():
                                   # 12 workers is good for performance
                                   # on 2 RTX2080 Tis
                                   # 0 workers is good for debugging
-                                  # don't go above 12 workers and don't go above the number of cpus
+                                  # don't go above 12 workers and don't go above
+                                  # the number of cpus
                                   num_workers=min(multiprocessing.cpu_count(), 12),
                                   drop_last=False, pin_memory=True)
         epoch_start = time.time()
@@ -230,6 +247,10 @@ class Trainer():
         fns = 0
         defined_total = 0
         loss_sum = 0
+
+        # At the start of each epoch, the model weights are averaged with the best model from the alternative node.
+        self.average_model()
+
         for step, (photo_tiles,
                    foreground_tiles,
                    defined_tiles) in enumerate(train_loader):

@@ -36,7 +36,7 @@ def get_latest_model_paths(model_dir, k):
     fpaths = [os.path.join(model_dir, f) for f in fnames]
     return fpaths
 
-def load_model(model_path):
+def load_model(model_path, cuda=True):
     model = UNetGNRes()
     try:
         model.load_state_dict(torch.load(model_path))
@@ -44,7 +44,8 @@ def load_model(model_path):
     except:
         model = torch.nn.DataParallel(model)
         model.load_state_dict(torch.load(model_path))
-    model.cuda()
+    if cuda:
+        model.cuda()
     return model
 
 def create_first_model_with_random_weights(model_dir):

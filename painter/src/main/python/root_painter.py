@@ -139,9 +139,6 @@ class RootPainter(QtWidgets.QMainWindow):
             self.log_dir = self.proj_location / 'logs'
             self.train_annot_dir = self.proj_location / 'annotations' / 'train'
             self.val_annot_dir = self.proj_location / 'annotations' / 'val'
-
-            self.model_dir = self.proj_location / 'models' / getpass.getuser()
-
             self.message_dir = self.proj_location / 'messages'
 
             self.proj_file_path = proj_file_path
@@ -298,7 +295,7 @@ class RootPainter(QtWidgets.QMainWindow):
             "seg_dir": self.seg_dir,
             "file_names": image_fnames,
             "message_dir": self.message_dir,
-            "model_dir": self.model_dir
+            "model_dir": self.federated_models_dir
         }
         self.send_instruction('segment', content)
 
@@ -776,7 +773,6 @@ class RootPainter(QtWidgets.QMainWindow):
     def start_training(self):
         self.info_label.setText("Starting training...")
         content = {
-            "model_dir": self.model_dir,
             "dataset_dir": self.dataset_dir,
             "train_annot_dir": self.train_annot_dir,
             "val_annot_dir": self.val_annot_dir,

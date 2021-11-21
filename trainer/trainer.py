@@ -403,7 +403,7 @@ class Trainer():
         if "model_paths" in segment_config:
             model_paths = segment_config['model_paths']
         else:
-            model_dir = segment_config['federated_models_dir']
+            model_dir = segment_config['model_dir']
             model_paths = model_utils.get_latest_model_paths(model_dir, 1)
             # if latest is not found then create a model with random weights
             # and use that.

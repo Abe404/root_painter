@@ -86,8 +86,8 @@ def pad(image, width: int, mode='reflect', constant_values=0):
         # don't pad channels
         pad_width.append((0, 0))
     if mode == 'reflect':
-        return skim_util.pad(image, pad_width, mode)
-    return skim_util.pad(image, pad_width, mode=mode,
+        return np.pad(image, pad_width, mode)
+    return np.pad(image, pad_width, mode=mode,
                          constant_values=constant_values)
 
 

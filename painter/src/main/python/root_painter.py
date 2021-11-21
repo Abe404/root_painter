@@ -138,7 +138,7 @@ class RootPainter(QtWidgets.QMainWindow):
             self.train_annot_dir = self.proj_location / 'annotations' / 'train'
             self.val_annot_dir = self.proj_location / 'annotations' / 'val'
 
-            self.model_dir = self.proj_location / 'models'
+            self.model_dir = self.proj_location / 'models' / os.getusername()
 
             self.message_dir = self.proj_location / 'messages'
 

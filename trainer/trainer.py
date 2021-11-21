@@ -170,7 +170,7 @@ class Trainer():
             self.train_config = config
             self.epochs_without_progress = 0
             self.msg_dir = self.train_config['message_dir']
-            model_dir = self.train_config['model_dir']
+            model_dir = self.train_config['federated_models_dir']
             self.train_set = TrainDataset(self.train_config['train_annot_dir'],
                                           self.train_config['dataset_dir'],
                                           self.in_w, self.out_w)
@@ -329,7 +329,7 @@ class Trainer():
              Also stop training if the current model hasnt
              beat the previous model for {max_epochs}
         """
-        model_dir = self.train_config['model_dir']
+        model_dir = self.train_config['federated_models_dir']
         # TODO consider implementing checkpointer class to maintain
         # this state.
         get_val_metrics = partial(model_utils.get_val_metrics,
@@ -403,7 +403,7 @@ class Trainer():
         if "model_paths" in segment_config:
             model_paths = segment_config['model_paths']
         else:
-            model_dir = segment_config['model_dir']
+            model_dir = segment_config['federated_models_dir']
             model_paths = model_utils.get_latest_model_paths(model_dir, 1)
             # if latest is not found then create a model with random weights
             # and use that.

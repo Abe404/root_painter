@@ -208,10 +208,13 @@ class Trainer():
         # for now jsut average with self, until an alternative node is available.
         start = time.time()
         parent_dir, uname = os.path.split(self.train_config['federated_models_dir'])
+        print('start average model', parent_dir)
         for model_dir in os.listdir(parent_dir):
             if model_dir is not uname:
+                print('model_dir')
                 model_path = model_utils.get_latest_model_paths(
                     os.path.join(model_dir, uname), 1)[0]
+                print('model_path', model_path) 
                 alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
                 cur_model_dict = self.model.state_dict()
                 # Average parameters

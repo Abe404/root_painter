@@ -208,20 +208,25 @@ class Trainer():
         # for now jsut average with self, until an alternative node is available.
         start = time.time()
         parent_dir, uname = os.path.split(self.train_config['model_dir'])
+        cur_model_dict = self.model.state_dict()
+        model_count = 1
+
         for model_dir in os.listdir(parent_dir):
+
             if model_dir is not uname:
                 model_paths = model_utils.get_latest_model_paths(
                     os.path.join(parent_dir, uname), 1)
+
                 if len(model_paths): 
                     model_path = model_paths[0]
                     alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
-                    cur_model_dict = self.model.state_dict()
-                    # Average parameters
                     for key in alt_model_dict:
-                        cur_model_dict[key] = (alt_model_dict[key] + cur_model_dict[key]) / 2.
-                    print('time to average model:', round(time.time() - start, 3), 'seconds') 
-                    return # assume only one other node
-            raise Exception("Could not find remote node in " + parent_dir)
+                        cur_model_dict[key] += alt_model_dict[key]
+
+            for key in cur_model_dict:
+                cur_model_dict[key] = cur_model_dict[key] / float(model_count)
+
+        print('time to average', model_count, 'models:', round(time.time() - start, 3), 'seconds') 
 
     def train_one_epoch(self):
         train_annot_dir = self.train_config['train_annot_dir']

@@ -211,11 +211,18 @@ class Trainer():
         cur_model_dict = self.model.state_dict()
         model_count = 1
 
+        # Print model's state_dict
+        print("Model's state_dict 1:")
+        for i, param_tensor in enumerate(self.model.state_dict()):
+            if i == 0:
+                print(param_tensor, "\t", net.state_dict()[param_tensor].mean())
+
         for model_dir in os.listdir(parent_dir):
 
             if model_dir != uname:
                 model_paths = model_utils.get_latest_model_paths(
                     os.path.join(parent_dir, uname), 1)
+
 
                 if len(model_paths): 
                     model_path = model_paths[0]
@@ -224,10 +231,22 @@ class Trainer():
                     for key in alt_model_dict:
                         cur_model_dict[key] += alt_model_dict[key]
 
-            for key in cur_model_dict:
-                cur_model_dict[key] = cur_model_dict[key] / float(model_count)
-            self.model.load_state_dict(cur_model_dict)
-         
+        for key in cur_model_dict:
+            cur_model_dict[key] = cur_model_dict[key] / float(model_count)
+
+        # Print model's state_dict
+        print("Model's state_dict 2:")
+        for i, param_tensor in enumerate(self.model.state_dict()):
+            if i == 0:
+            print(param_tensor, "\t", net.state_dict()[param_tensor].mean())
+
+        self.model.load_state_dict(cur_model_dict)
+
+        print("Model's state_dict 3:")
+        for i, param_tensor in enumerate(self.model.state_dict()):
+            if i == 0:
+                print(param_tensor, "\t", net.state_dict()[param_tensor].mean())
+
         print('time to average', model_count, 'models:', round(time.time() - start, 3), 'seconds') 
 
     def train_one_epoch(self):

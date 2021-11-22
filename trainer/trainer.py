@@ -170,7 +170,7 @@ class Trainer():
             self.train_config = config
             self.epochs_without_progress = 0
             self.msg_dir = self.train_config['message_dir']
-            model_dir = self.train_config['federated_models_dir']
+            model_dir = self.train_config['model_dir']
             self.train_set = TrainDataset(self.train_config['train_annot_dir'],
                                           self.train_config['dataset_dir'],
                                           self.in_w, self.out_w)
@@ -207,7 +207,7 @@ class Trainer():
         # averaged with the best model from the alternative node.
         # for now jsut average with self, until an alternative node is available.
         start = time.time()
-        parent_dir, uname = os.path.split(self.train_config['federated_models_dir'])
+        parent_dir, uname = os.path.split(self.train_config['model_dir'])
         for model_dir in os.listdir(parent_dir):
             if model_dir is not uname:
                 model_paths = model_utils.get_latest_model_paths(
@@ -331,7 +331,7 @@ class Trainer():
              Also stop training if the current model hasnt
              beat the previous model for {max_epochs}
         """
-        model_dir = self.train_config['federated_models_dir']
+        model_dir = self.train_config['model_dir']
         # TODO consider implementing checkpointer class to maintain
         # this state.
         get_val_metrics = partial(model_utils.get_val_metrics,

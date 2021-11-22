@@ -220,6 +220,7 @@ class Trainer():
                 if len(model_paths): 
                     model_path = model_paths[0]
                     alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
+                    model_count += 1 
                     for key in alt_model_dict:
                         cur_model_dict[key] += alt_model_dict[key]
 

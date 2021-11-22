@@ -213,7 +213,7 @@ class Trainer():
 
         for model_dir in os.listdir(parent_dir):
 
-            if model_dir is not uname:
+            if model_dir != uname:
                 model_paths = model_utils.get_latest_model_paths(
                     os.path.join(parent_dir, uname), 1)
 

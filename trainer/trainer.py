@@ -215,7 +215,7 @@ class Trainer():
         print("Model's state_dict 1:")
         for i, param_tensor in enumerate(self.model.state_dict()):
             if i == 0:
-                print(param_tensor, "\t", net.state_dict()[param_tensor].mean())
+                print(param_tensor, "\t", self.model.state_dict()[param_tensor].mean())
 
         for model_dir in os.listdir(parent_dir):
 
@@ -238,14 +238,14 @@ class Trainer():
         print("Model's state_dict 2:")
         for i, param_tensor in enumerate(self.model.state_dict()):
             if i == 0:
-                print(param_tensor, "\t", net.state_dict()[param_tensor].mean())
+                print(param_tensor, "\t", self.model.state_dict()[param_tensor].mean())
 
         self.model.load_state_dict(cur_model_dict)
 
         print("Model's state_dict 3:")
         for i, param_tensor in enumerate(self.model.state_dict()):
             if i == 0:
-                print(param_tensor, "\t", net.state_dict()[param_tensor].mean())
+                print(param_tensor, "\t", self.model.state_dict()[param_tensor].mean())
 
         print('time to average', model_count, 'models:', round(time.time() - start, 3), 'seconds') 
 

@@ -226,7 +226,8 @@ class Trainer():
 
             for key in cur_model_dict:
                 cur_model_dict[key] = cur_model_dict[key] / float(model_count)
-
+            self.model.load_state_dict(cur_model_dict)
+         
         print('time to average', model_count, 'models:', round(time.time() - start, 3), 'seconds') 
 
     def train_one_epoch(self):

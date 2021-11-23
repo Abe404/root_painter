@@ -91,7 +91,7 @@ class Trainer():
         print('GPU Available', torch.cuda.is_available())
         for i in range(torch.cuda.device_count()):
             total_mem += torch.cuda.get_device_properties(i).total_memory
-        self.bs = total_mem // mem_per_item
+        self.bs = 4 # restricted to keep loss estimate closer. total_mem // mem_per_item
         self.shuffle_buffer_limit = 128  # uses around 10GB of shared memory
         print('Batch size', self.bs)
         self.optimizer = None
@@ -293,18 +293,26 @@ class Trainer():
                                   drop_last=False, pin_memory=True)
         
         for step, (batch_im_tiles, batch_fg_tiles,
-                   batch_bg_tiles, batch_classes) in enumerate(train_loader):
+                   batch_bg_tiles, batch_classes, batch_fnames) in enumerate(train_loader):
 
-            for im_tile, fg_tiles, bg_tiles, classes in zip(
+            for im_tile, fg_tiles, bg_tiles, classes, fname in zip(
                 batch_im_tiles, batch_fg_tiles,
-                batch_bg_tiles, batch_classes):
-
-                shuffle_buffer.append([0, (im_tile, fg_tiles,
-                                           bg_tiles, classes)])
+                batch_bg_tiles, batch_classes, batch_fnames):
+                staleness = 0
+                # gets added with average loss of the buffer
+                if len(shuffle_buffer):
+                    most_recent_loss = np.mean([s[1] for s in shuffle_buffer]
+                else:
+                    # if nothing in the buffer set most recent loss to 0
+                    # it wont make a difference anyway as it must use this (only) sample.
+                    most_recent_loss = 0
+            
+                shuffle_buffer.append([0, most_recent_loss,
+                    (im_tile, fg_tiles, bg_tiles, classes, fname)])
 
             if len(shuffle_buffer) > self.shuffle_buffer_limit:
-                # remove the oldest item
-                shuffle_buffer = sorted(shuffle_buffer, key=itemgetter(0))[:self.shuffle_buffer_limit]
+                # remove the lowest loss item
+                shuffle_buffer = sorted(shuffle_buffer, key=itemgetter(1))[:self.shuffle_buffer_limit]
 
             if (epoch_updates*self.bs) > 612:
                 break # break out but leave the updater running until we get out of this loop
@@ -332,11 +340,15 @@ class Trainer():
             # must be at least a batch before processing data.
             if len(shuffle_buffer) >= self.bs:
                 # Get least used items 
-                least_used = sorted(shuffle_buffer, key=itemgetter(0))[:self.bs]
-                batch_im_tiles = [l[1][0] for l in least_used]
-                batch_fg_tiles = [l[1][1] for l in least_used]
-                batch_bg_tiles = [l[1][2] for l in least_used]
-                batch_classes = [l[1][3] for l in least_used]
+                #least_used = sorted(shuffle_buffer, key=itemgetter(0))[:self.bs]
+                highest_loss_items = sorted(shuffle_buffer, key=itemgetter(1))[:self.bs]
+
+                batch_im_tiles = [l[2][0] for l in highest_loss_items]
+                batch_fg_tiles = [l[2][1] for l in highest_loss_items]
+                batch_bg_tiles = [l[2][2] for l in highest_loss_items]
+                batch_classes = [l[2][3] for l in highest_loss_items]
+                tile_fnames = [l[2][4] for l in highest_loss_items]
+                tile_losses = [l[1] for l in highest_loss_items]
 
                 batch_im_tiles = torch.from_numpy(np.array(batch_im_tiles)).cuda()
                 #print('time for prep', time.time() - t)
@@ -365,9 +377,18 @@ class Trainer():
                 if not self.training:
                     return
 
+                batch_log = open('batch_items.txt', 'w')
+
                 # add to age as it will now be used in training
-                for item in least_used:
-                    item[0] += 1
+                for i, item in enumerate(highest_loss_items):
+                    item[0] += 1 # increment age.
+                    # we use the batch loss for the individual item
+                    # a noisy estimate, but a little noise probably isn't
+                    # the worst
+                    # TODO: compute the actual loss for each individual item
+                    item[1] = float(loss_sum)
+                    # name, loss, age (in the buffer)
+                    print(f'{item[2][4]},{item[1]},{item[0]}', file=batch_log)
 
                 # total steps in epoch
                 epoch_updates += 1

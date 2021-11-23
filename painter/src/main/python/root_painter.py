@@ -787,7 +787,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # network_menu.addAction(segment_image_btn)
         self.add_measurements_menu(menu_bar)
         self.add_extras_menu(menu_bar, project_open=True)
-        if len(self.classes):
+        if len(self.classes) > 1:
             self.add_class_menu(menu_bar)
 
 

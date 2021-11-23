@@ -188,4 +188,6 @@ class TrainDataset(Dataset):
 
         im_tile = im_tile.astype(np.float32)
         im_tile = np.moveaxis(im_tile, -1, 0)
-        return im_tile, foregrounds, backgrounds, classes
+
+        return (im_tile, foregrounds, backgrounds,
+                classes, fname)

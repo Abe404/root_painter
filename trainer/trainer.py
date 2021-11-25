@@ -82,7 +82,7 @@ class Trainer():
         self.msg_dir = None
         self.epochs_without_progress = 0
         # approx 30 minutes
-        self.max_epochs_without_progress = 60
+        self.max_epochs_without_progress = 10 # shorter for quick experimental testing.
         # These can be trigged by data sent from client
         self.valid_instructions = [self.start_training,
                                    self.segment,

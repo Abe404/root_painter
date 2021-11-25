@@ -34,12 +34,13 @@ import im_utils
 import elastic
 
 def elastic_transform(photo, annot):
-    def_map = elastic.get_elastic_map(photo.shape,
-                                      scale=random.random(),
-                                      intensity=0.4 + (0.6 * random.random()))
-    photo = elastic.transform_image(photo, def_map)
-    annot = elastic.transform_image(annot, def_map, channels=2)
-    annot = np.round(annot).astype(np.int64)
+    if False:
+        def_map = elastic.get_elastic_map(photo.shape,
+                                          scale=random.random(),
+                                          intensity=0.4 + (0.6 * random.random()))
+        photo = elastic.transform_image(photo, def_map)
+        annot = elastic.transform_image(annot, def_map, channels=2)
+        annot = np.round(annot).astype(np.int64)
     return photo, annot
 
 def guassian_noise_transform(photo, annot):

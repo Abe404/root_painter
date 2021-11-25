@@ -226,6 +226,7 @@ class Trainer():
                 # if there is a latest model
                 if len(model_paths): 
                     model_path = model_paths[0]
+                    print('averaging with model', model_path)
                     # Then get the parameters for this model
                     alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
                     model_count += 1 

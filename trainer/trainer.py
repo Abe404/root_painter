@@ -204,26 +204,42 @@ class Trainer():
 
     def average_model(self):
         # At the start of each epoch, the model weights are 
-        # averaged with the best model from the alternative node.
-        # for now jsut average with self, until an alternative node is available.
+        # averaged with the best model from the alternative nodes
         start = time.time()
+        # The last folder in the model directory is the username.
+        # The parent folder is then the model directory
+        # The model directory may contain folders with other usernames in.
+        # Each of these folders should contain
+        #   the best model so far (based on validation set f1) for that other user.
         parent_dir, uname = os.path.split(self.train_config['model_dir'])
+        # The parameters of the current model in training.
+        # will be averaged with the best saved models of other users (alt node).
+        # with the hope that the model averaging will improve our performance. (https://arxiv.org/abs/1602.05629)
         cur_model_dict = self.model.state_dict()
         model_count = 1
         for model_dir in os.listdir(parent_dir):
+            # if the other folder is not the current users username
             if model_dir != uname:
+                # then get the latest model from that other users model folder.
                 model_paths = model_utils.get_latest_model_paths(
                     os.path.join(parent_dir, uname), 1)
+                # if there is a latest model
                 if len(model_paths): 
                     model_path = model_paths[0]
+                    # Then get the parameters for this model
                     alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
                     model_count += 1 
+                    # for each of the parameters groups, add the parameters to our copy of our current model parameters
                     for key in alt_model_dict:
                         cur_model_dict[key] += alt_model_dict[key]
-
+        # now divide by the total, to obtain the average
         for key in cur_model_dict:
             cur_model_dict[key] = cur_model_dict[key] / float(model_count)
-
+        
+        # NOTE: Does it make more sense to average based on the alt node best model saved so far
+        # (which is what we do now) or to average on the alt node model being trained, which is more up to date??
+        
+        # Now assign the averaged weights to our current model in training, so they will be used for the subsequent epoch.
         self.model.load_state_dict(cur_model_dict)
         print('time to average', model_count, 'models:', round(time.time() - start, 3), 'seconds') 
 

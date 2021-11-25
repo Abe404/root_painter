@@ -222,7 +222,7 @@ class Trainer():
             if model_dir != uname:
                 # then get the latest model from that other users model folder.
                 model_paths = model_utils.get_latest_model_paths(
-                    os.path.join(parent_dir, uname), 1)
+                    os.path.join(parent_dir, model_dir), 1)
                 # if there is a latest model
                 if len(model_paths): 
                     model_path = model_paths[0]

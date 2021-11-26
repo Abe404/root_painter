@@ -67,6 +67,7 @@ class Trainer():
         self.train_config = None
         self.model = None
         self.first_loop = True
+        self.previous_model_save_time = None
         self.in_w = 572
         self.out_w = 500
         mem_per_item = 3800000000
@@ -202,6 +203,21 @@ class Trainer():
         """ write a message for the user (client) """
         Path(os.path.join(self.msg_dir, message)).touch()
 
+    def check_to_average_model(self):
+        average_model = False
+        if self.previous_model_save_time == None:
+            average_model = True
+        elif: (time.time() - self.previous_model_save_time) > 20:
+            average_model = True
+        if average_model:
+            # save this model first, to allow others to average
+            model_dir = os.path.split(self.train_config['model_dir'])
+            model_dir = model_dir + '_train'
+            model_path = os.path.join(model_dir, str(int(round(time.time()))) + '.pkl')
+            print('saving', model_path)
+            torch.save(cur_model.state_dict(), model_path)
+            self.average_model()
+
     def average_model(self):
         # At the start of each epoch, the model weights are 
         # averaged with the best model from the alternative nodes
@@ -218,30 +234,32 @@ class Trainer():
         cur_model_dict = self.model.state_dict()
         model_count = 1
         for model_dir in os.listdir(parent_dir):
-            # if the other folder is not the current users username
-            if model_dir != uname:
-                # then get the latest model from that other users model folder.
-                model_paths = model_utils.get_latest_model_paths(
-                    os.path.join(parent_dir, model_dir), 1)
-                # if there is a latest model
-                if len(model_paths): 
-                    model_path = model_paths[0]
-                    print('averaging with model', model_path)
-                    # Then get the parameters for this model
-                    alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
-                    model_count += 1 
-                    # for each of the parameters groups, add the parameters to our copy of our current model parameters
-                    for key in alt_model_dict:
-                        cur_model_dict[key] += alt_model_dict[key]
-        # now divide by the total, to obtain the average
-        for key in cur_model_dict:
-            cur_model_dict[key] = cur_model_dict[key] / float(model_count)
-        
-        # NOTE: Does it make more sense to average based on the alt node best model saved so far
-        # (which is what we do now) or to average on the alt node model being trained, which is more up to date??
-        
-        # Now assign the averaged weights to our current model in training, so they will be used for the subsequent epoch.
-        self.model.load_state_dict(cur_model_dict)
+            # we assume the model dir has _train appended. other models are selected based on validation set
+            if '_train' in model_dir:
+                # if the other folder is not the current users username
+                if model_dir.replace('_train', '') != uname:
+                    # then get the latest model from that other users model folder.
+                    model_paths = model_utils.get_latest_model_paths(
+                        os.path.join(parent_dir, model_dir), 1)
+                    # if there is a latest model
+                    if len(model_paths): 
+                        model_path = model_paths[0]
+                        print('averaging with model', model_path)
+                        mname = os.path.split(model_path)[1].replace('.pkl', '')
+                        print('from', (time.time() - int(mname)), 'seconds ago')
+                        # Then get the parameters for this model
+                        alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
+                        model_count += 1 
+                        # for each of the parameters groups, add the parameters to our copy of our current model parameters
+                        for key in alt_model_dict:
+                            cur_model_dict[key] += alt_model_dict[key]
+        if model_count > 1:
+            # now divide by the total, to obtain the average
+            for key in cur_model_dict:
+                cur_model_dict[key] = cur_model_dict[key] / float(model_count)
+            # Now assign the averaged weights to our current model in training, so they will be used for the subsequent epoch.
+            self.model.load_state_dict(cur_model_dict)
+
         print('time to average', model_count, 'models:', round(time.time() - start, 3), 'seconds') 
 
     def train_one_epoch(self):
@@ -280,6 +298,8 @@ class Trainer():
         for step, (photo_tiles,
                    foreground_tiles,
                    defined_tiles) in enumerate(train_loader):
+
+            self.check_to_average_model()
 
             self.check_for_instructions()
             photo_tiles = photo_tiles.cuda()

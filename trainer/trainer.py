@@ -211,30 +211,32 @@ class Trainer():
             average_model = True
         if average_model:
             # save this model first, to allow others to average
-            model_dir = os.path.split(self.train_config['model_dir'])
-            model_dir = model_dir + '_train'
+            model_path = self.train_config['model_dir']
+            model_path = model_path + '_train'
             model_path = os.path.join(model_dir, str(int(round(time.time()))) + '.pkl')
             print('saving', model_path)
             torch.save(cur_model.state_dict(), model_path)
+            self.previous_model_save_time = time.time()
             self.average_model()
 
     def average_model(self):
-        # At the start of each epoch, the model weights are 
-        # averaged with the best model from the alternative nodes
+        # model weights are 
+        # averaged with the models from the alternative nodes
         start = time.time()
         # The last folder in the model directory is the username.
         # The parent folder is then the model directory
         # The model directory may contain folders with other usernames in.
-        # Each of these folders should contain
-        #   the best model so far (based on validation set f1) for that other user.
+        # Each of these folders should contain the model for that other user.
         parent_dir, uname = os.path.split(self.train_config['model_dir'])
         # The parameters of the current model in training.
-        # will be averaged with the best saved models of other users (alt node).
+        # will be averaged with the saved models of other users (alt node).
         # with the hope that the model averaging will improve our performance. (https://arxiv.org/abs/1602.05629)
         cur_model_dict = self.model.state_dict()
         model_count = 1
         for model_dir in os.listdir(parent_dir):
-            # we assume the model dir has _train appended. other models are selected based on validation set
+            # we assume the model dir has _train appended
+            # without _train appened is the best model saved on the validation set.
+            # _train appended is the model saved more frequently for the purpose of averaging
             if '_train' in model_dir:
                 # if the other folder is not the current users username
                 if model_dir.replace('_train', '') != uname:

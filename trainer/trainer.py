@@ -215,7 +215,7 @@ class Trainer():
             model_path = model_path + '_train'
             model_path = os.path.join(model_path, str(int(round(time.time()))) + '.pkl')
             print('saving', model_path)
-            torch.save(cur_model.state_dict(), model_path)
+            torch.save(self.model.state_dict(), model_path)
             self.previous_model_save_time = time.time()
             self.average_model()
 

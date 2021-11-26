@@ -213,7 +213,8 @@ class Trainer():
             # save this model first, to allow others to average
             model_path = self.train_config['model_dir']
             model_path = model_path + '_train'
-            model_path = os.path.join(model_path, str(int(round(time.time()))) + '.pkl')
+            #model_path = os.path.join(model_path, str(int(round(time.time()))) + '.pkl')
+            model_path = os.path.join(model_path, 'model.pkl')
             print('saving', model_path)
             torch.save(self.model.state_dict(), model_path)
             self.previous_model_save_time = time.time()
@@ -246,9 +247,9 @@ class Trainer():
                     # if there is a latest model
                     if len(model_paths): 
                         model_path = model_paths[0]
-                        print('averaging with model', model_path)
-                        mname = os.path.split(model_path)[1].replace('.pkl', '')
-                        print('from', (time.time() - int(mname)), 'seconds ago')
+                        st = os.stat(model_path)
+                        mtime = st.st_mtime 
+                        print('averaging with model', model_path, 'from', round(time.time() - mtime, 3), 'seconds ago')
                         # Then get the parameters for this model
                         alt_model_dict = model_utils.load_model(model_path, cuda=False).state_dict()
                         model_count += 1 

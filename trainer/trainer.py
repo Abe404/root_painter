@@ -213,7 +213,7 @@ class Trainer():
             # save this model first, to allow others to average
             model_path = self.train_config['model_dir']
             model_path = model_path + '_train'
-            model_path = os.path.join(model_dir, str(int(round(time.time()))) + '.pkl')
+            model_path = os.path.join(model_path, str(int(round(time.time()))) + '.pkl')
             print('saving', model_path)
             torch.save(cur_model.state_dict(), model_path)
             self.previous_model_save_time = time.time()

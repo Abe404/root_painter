@@ -207,7 +207,7 @@ class Trainer():
         average_model = False
         if self.previous_model_save_time == None:
             average_model = True
-        elif: (time.time() - self.previous_model_save_time) > 20:
+        elif (time.time() - self.previous_model_save_time) > 20:
             average_model = True
         if average_model:
             # save this model first, to allow others to average

@@ -45,12 +45,14 @@ On windows:
 env\Scripts\activate.bat
 ```
 
-3. Install dependencies in the virtual environment. (takes over 3 minutes)
+3. Install pytorch by following the instructions at the [pytorch website](https://pytorch.org/get-started/locally/)
+
+4. Install dependencies in the virtual environment. (takes over 3 minutes)
 ```
 pip install -r requirements.txt
 ```
 
-4. Run root painter. This will first create the sync directory.
+5. Run root painter. This will first create the sync directory.
 ```
 python main.py
 ```

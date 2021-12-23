@@ -1,6 +1,4 @@
 scikit-image==0.16.2
-torchvision==0.7.0
-torch==1.6.0
 numpy==1.18.0
 scipy==1.4.1
 Pillow==8.2.0

@@ -45,9 +45,9 @@ On windows:
 env\Scripts\activate.bat
 ```
 
-3. Install pytorch by following the instructions at the [pytorch website](https://pytorch.org/get-started/locally/)
+3. Install PyTorch using pip by following the instructions at the [pytorch website](https://pytorch.org/get-started/locally/)
 
-4. Install dependencies in the virtual environment. (takes over 3 minutes)
+4. Install the other dependencies in the virtual environment
 ```
 pip install -r requirements.txt
 ```

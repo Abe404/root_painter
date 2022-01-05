@@ -58,6 +58,8 @@ def fix_app():
     elif is_linux:
         site_packages_dir = os.path.join(env_dir, 'lib/python3.6/site-packages')
         build_dir = './target/RootPainter'
+    else:
+        raise Exception('Unsupported Operated System')
 
 
     # Copy missing orb files

@@ -1,9 +1,11 @@
-import os
+import shutil
 
 
 def clean():
-    # TODO: Replace with own implementation...
-    os.system('fbs clean')
+    """
+    Deletes the build target directory.
+    """
+    shutil.rmtree('./target')
 
 
 if __name__ == "__main__":

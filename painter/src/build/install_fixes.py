@@ -16,6 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import os
 import shutil
+import platform
 from os.path import join
 
 def fix_app():
@@ -29,14 +30,9 @@ def fix_app():
     We will need to copy accross some dependencies to get it working again.
     """
     
-    # If you are using Mac, then you will have the following folder after
-    # running the fbs freeze command
-    # ./target/RootPainter.app
-    is_mac = os.path.isdir('./target/RootPainter.app')
-    is_linux = os.path.exists('./target/RootPainter/RootPainter')
-    
-    # or the following folder on windows
-    is_windows = os.path.exists('target\RootPainter\RootPainter.exe')
+    is_mac = platform.system() == 'Darwin'
+    is_linux = platform.system() == 'Linux'
+    is_windows = platform.system() == 'Windows'
    
     print('is_windows', is_windows)
     print('is_mac', is_mac)

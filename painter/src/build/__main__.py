@@ -1,14 +1,13 @@
+from settings import Settings
 from clean import clean
 from freeze import freeze
-from install_fixes import fix_app
 from installer import create_installer
 
 
-def main():
+def main(settings=Settings()):
     clean()
-    freeze()
-    fix_app()
-    create_installer()
+    freeze(settings)
+    create_installer(settings)
 
 
 if __name__ == "__main__":

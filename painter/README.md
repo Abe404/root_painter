@@ -25,10 +25,6 @@ fbs only supports Python 3.6 so Python 3.6 must be used for the freeze and build
 
     > python src/build/freeze
 
-See install_fixes.py which will likely need to be ran to fix issues with scikit-image in the built progam prepared by the freeze command.
-
-    > python src/build/install_fixes
-
 And then create the installer. Installers must be created on the target platform i.e windows installer must be created on windows and osx on osx etc.
 
     > python src/build/installer

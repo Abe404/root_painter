@@ -5,7 +5,10 @@ def clean():
     """
     Deletes the build target directory.
     """
-    shutil.rmtree('./target')
+    try:
+        shutil.rmtree("./target")
+    except FileNotFoundError:
+        pass
 
 
 if __name__ == "__main__":

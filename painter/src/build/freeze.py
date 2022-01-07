@@ -2,8 +2,31 @@ import glob
 import os
 import shutil
 import subprocess
-import re
 from settings import Settings
+
+
+def run_pyinstaller(settings=Settings(), extra_args=[]):
+    app_name = settings.get("app_name")
+    target_dir = os.path.abspath("target")
+
+    cmd = []
+    cmd.extend(["pyinstaller"])
+    cmd.extend(["--debug", "all"])
+    cmd.extend(["--log-level", "DEBUG"])
+    cmd.extend(["--noupx"])
+    cmd.extend(extra_args)
+    for hidden_import in settings.get_with_default("hidden_imports", []):
+        cmd.extend(["--hidden-import", hidden_import])
+    cmd.extend(["--distpath", target_dir])
+    cmd.extend(["--specpath", os.path.join(target_dir, "PyInstaller")])
+    cmd.extend(["--workpath", os.path.join(target_dir, "PyInstaller")])
+    cmd.extend(["--noconfirm"])
+    cmd.extend(["--name", app_name])
+    cmd.extend([settings.get("main_module")])
+
+    print(" ".join(cmd))
+
+    subprocess.check_call(cmd)
 
 
 def freeze(settings=Settings()):
@@ -19,117 +42,67 @@ def freeze(settings=Settings()):
 
 
 def freeze_linux(settings=Settings()):
-    pyinstaller(settings, [])
+    run_pyinstaller(settings, [])
 
     env_dir = "./env"
     site_packages_dir = os.path.join(env_dir, "lib/python3.6/site-packages")
     build_dir = "./target/RootPainter"
-    fix_freeze(build_dir=build_dir, site_packages_dir=site_packages_dir)
+    fix_broken_packages(build_dir=build_dir, site_packages_dir=site_packages_dir)
 
 
 ### Windows ###
 
 
 def freeze_windows(settings=Settings()):
-    pyinstaller(settings, [])
+    run_pyinstaller(settings, [])
 
     env_dir = "./env"
     site_packages_dir = os.path.join(env_dir, "Lib", "site-packages")
     build_dir = "./target/RootPainter"
-    fix_freeze(build_dir=build_dir, site_packages_dir=site_packages_dir)
+    fix_broken_packages(build_dir=build_dir, site_packages_dir=site_packages_dir)
 
 
 ### Mac ###
 
 
-# TODO: needs rewriting!!!
-def get_icons(settings=Settings()):
-    """
-    Return a list [(size, scale, path)] of available app icons for the current
-    platform.
-    """
-    result = []
-    for profile in settings.get_profiles():
-        icons_dir = os.path.join("src", "main", "icons", profile)
-        for icon_path in glob.glob(f"{icons_dir}/*.png"):
-            name = os.path.basename(icon_path)
-            match = re.match("(\\d+)(?:@(\\d+)x)?", name)
-            if not match:
-                print(name)
-                raise Exception("Invalid icon name: " + icon_path)
-            size, scale = int(match.group(1)), int(match.group(2) or "1")
-            result.append((size, scale, icon_path))
-    return result
-
-
-def create_icon_filename(size, scale=1):
-    filename = f"icon_{size}x{size}"
-    if scale != 1:
-        filename += f"@{scale}x"
-    filename += ".png"
-    return filename
-
-
 def freeze_mac(settings=Settings()):
     target_dir = os.path.abspath("target")
-    freeze_dir = os.path.join(
-        target_dir,
-    )
 
-    if not os.path.exists(os.path.join(target_dir, "Icon.icns")):
-        iconset_path = os.path.join(target_dir, "Icon.iconset")
-        os.makedirs(iconset_path, exist_ok=True)
-
-        for size, scale, icon_path in get_icons(settings):
-            dest_name = create_icon_filename(size, scale)
-            shutil.copy(icon_path, os.path.join(target_dir, "Icon.iconset", dest_name))
-
-        subprocess.check_call(
-            ["iconutil", "-c", "icns", os.path.join(target_dir, "Icon.iconset")]
-        )
+    create_iconset(settings)
 
     extra_args = []
     extra_args.extend(["--icon", os.path.join(target_dir, "Icon.icns")])
     extra_args.extend(["-w"])
 
-    pyinstaller(settings, extra_args)
+    run_pyinstaller(settings, extra_args)
 
-    # Remove pyinstaller
-    for unwanted in ("lib", "include", "2to3"):
-        remove_if_exists(os.path.join(freeze_dir, "Contents", "MacOS", unwanted))
-        remove_if_exists(os.path.join(freeze_dir, "Contents", "Resources", unwanted))
+    remove_pyinstaller(settings)
 
     env_dir = "./env"
     site_packages_dir = os.path.join(env_dir, "lib/python3.6/site-packages")
     build_dir = "./target/RootPainter.app/Contents/MacOS/"
-    fix_freeze(build_dir=build_dir, site_packages_dir=site_packages_dir)
+    fix_broken_packages(build_dir=build_dir, site_packages_dir=site_packages_dir)
 
 
-def pyinstaller(settings=Settings(), extra_args=[]):
-    app_name = "RootPainter"
+def remove_pyinstaller(settings=Settings()):
+    """
+    Removes packages required by pyinstaller
+    """
     target_dir = os.path.abspath("target")
+    app_name = settings.get("app_name")
+    freeze_dir = os.path.join(target_dir, f"{app_name}.app")
 
-    cmd = []
-    cmd.extend(["pyinstaller"])
-    cmd.extend(["--name", app_name])
-    cmd.extend(["--noupx"])
-    cmd.extend(["--log-level", "DEBUG"])
-    cmd.extend(["--noconfirm"])
-    cmd.extend(extra_args)
-    for hidden_import in settings.get_with_default("hidden_imports", []):
-        cmd.extend(["--hidden-import", hidden_import])
-    cmd.extend(["--distpath", target_dir])
-    cmd.extend(["--specpath", os.path.join(target_dir, "PyInstaller")])
-    cmd.extend(["--workpath", os.path.join(target_dir, "PyInstaller")])
-    cmd.extend(["--debug", "all"])
-    cmd.extend([settings.get("main_module")])
+    remove_if_exists(os.path.join(freeze_dir, "Contents", "MacOS", "lib"))
+    remove_if_exists(os.path.join(freeze_dir, "Contents", "Resources", "lib"))
 
-    print(" ".join(cmd))
+    remove_if_exists(os.path.join(freeze_dir, "Contents", "MacOS", "include"))
+    remove_if_exists(os.path.join(freeze_dir, "Contents", "Resources", "include"))
 
-    subprocess.check_call(cmd)
+    remove_if_exists(os.path.join(freeze_dir, "Contents", "MacOS", "2to3"))
+    remove_if_exists(os.path.join(freeze_dir, "Contents", "Resources", "2to3"))
 
 
-def fix_freeze(build_dir, site_packages_dir):
+def fix_broken_packages(build_dir, site_packages_dir):
     """
     If you try to run RootPainter on the command line like so:
     ./target/RootPainter.app/Contents/MacOS/RootPainter
@@ -164,8 +137,48 @@ def fix_freeze(build_dir, site_packages_dir):
     shutil.copyfile(tif_src, tif_target)
 
 
-def remove_if_exists(_):
-    pass
+def create_iconset(settings=Settings()):
+    target_dir = os.path.abspath("target")
+    if not os.path.exists(os.path.join(target_dir, "Icon.icns")):
+        iconset_path = os.path.join(target_dir, "Icon.iconset")
+        os.makedirs(iconset_path, exist_ok=True)
+
+        for size, icon_path in get_icons(settings):
+            dest_name = create_icon_filename(size)
+            shutil.copy(icon_path, os.path.join(target_dir, "Icon.iconset", dest_name))
+
+        subprocess.check_call(
+            ["iconutil", "-c", "icns", os.path.join(target_dir, "Icon.iconset")]
+        )
+
+
+def get_icons(settings=Settings()):
+    result = []
+    for profile in settings.get_profiles():
+        icons_dir = os.path.join("src", "main", "icons", profile)
+        for icon_path in glob.glob(f"{icons_dir}/*.png"):
+            name = os.path.basename(icon_path)
+            size = extract_size(name)
+            result.append((size, icon_path))
+    return result
+
+
+def extract_size(icon_filename):
+    size = icon_filename.replace(".png", "")
+    return int(size)
+
+
+def create_icon_filename(size):
+    return f"icon_{size}x{size}.png"
+
+
+def remove_if_exists(filename):
+    if not os.path.exists(filename):
+        return
+    if os.path.isfile(filename) or os.path.islink(filename):
+        return os.unlink(filename)
+    if os.path.isdir(filename):
+        return shutil.rmtree(filename)
 
 
 if __name__ == "__main__":

@@ -10,6 +10,10 @@ I typically suggest using a virtual environment for this.
 
     > pip install -r requirements.txt
 
+For generating the installer on MacOSX, the `create-dmg` command is required. It is recommended to install using homebrew to install:
+
+    > brew install create-dmg
+
 ## to run
     > python src/main/python/main
 

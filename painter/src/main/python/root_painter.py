@@ -27,7 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import sys
 import os
-from pathlib import PurePath
+from pathlib import PurePath, Path
 import json
 from functools import partial
 
@@ -66,11 +66,7 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def __init__(self, sync_dir):
         super().__init__()
-        self.sync_dir = sync_dir
-        self.instruction_dir = sync_dir / 'instructions'
-        self.send_instruction = partial(send_instruction,
-                                        instruction_dir=self.instruction_dir,
-                                        sync_dir=sync_dir)
+        self.assign_sync_directory(sync_dir)
         self.tracking = False
         self.image_pixmap_holder = None
         self.seg_pixmap_holder = None
@@ -84,6 +80,13 @@ class RootPainter(QtWidgets.QMainWindow):
         self.im_height = None
 
         self.initUI()
+
+    def assign_sync_directory(self, sync_dir):
+        self.sync_dir = sync_dir
+        self.instruction_dir = sync_dir / 'instructions'
+        self.send_instruction = partial(send_instruction,
+                                        instruction_dir=self.instruction_dir,
+                                        sync_dir=sync_dir)
         
     def mouse_scroll(self, event):
         scroll_up = event.angleDelta().y() > 0
@@ -394,6 +397,23 @@ class RootPainter(QtWidgets.QMainWindow):
         self.setWindowTitle("RootPainter")
         self.resize(layout.sizeHint())
 
+    def specify_sync_directory(self):
+        """ User may choose to update the sync directory.
+            This may happen if they initially specified the wrong
+            sync directory.
+
+        """
+        settings_path = os.path.join(Path.home(), 'root_painter_settings.json')
+        dir_path = QtWidgets.QFileDialog.getExistingDirectory()
+        if dir_path:
+            with open(settings_path, 'w') as json_file:
+                content = {
+                    "sync_dir": os.path.abspath(dir_path)
+                }
+                json.dump(content, json_file, indent=4)
+            self.sync_dir = Path(json.load(open(settings_path, 'r'))['sync_dir'])
+            self.assign_sync_directory(self.sync_dir)
+
     def add_extras_menu(self, menu_bar, project_open=False):
         extras_menu = menu_bar.addMenu('Extras')
         comp_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extract composites', self)
@@ -405,6 +425,12 @@ class RootPainter(QtWidgets.QMainWindow):
                                              self)
         conv_to_rve_btn.triggered.connect(self.show_conv_to_rve)
         extras_menu.addAction(conv_to_rve_btn)
+
+        specify_sync_dir_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                 'Specify sync directory',
+                                                 self)
+        specify_sync_dir_btn.triggered.connect(self.specify_sync_directory)
+        extras_menu.addAction(specify_sync_dir_btn)
 
         if project_open:
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
@@ -419,6 +445,7 @@ class RootPainter(QtWidgets.QMainWindow):
                     self.nav.update_nav_label()
             extend_dataset_btn.triggered.connect(update_dataset_after_check)
             extras_menu.addAction(extend_dataset_btn)
+    
 
 
 

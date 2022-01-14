@@ -23,7 +23,13 @@ def create_installer_linux(_):
 
 
 def create_installer_windows(_):
-    pass
+    # TODO: assertion makensis
+
+    target_dir = os.path.abspath("target")
+    installer_path = os.path.join(target_dir, "installer")
+    subprocess.check_call(
+        ["makensis", "Installer.nsi"], cwd=installer_path, stdout=subprocess.DEVNULL
+    )
 
 
 ### Mac ###

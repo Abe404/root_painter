@@ -54,12 +54,64 @@ def freeze_linux(settings=Settings()):
 
 
 def freeze_windows(settings=Settings()):
+    target_dir = os.path.abspath("target")
+    app_name = settings.get("app_name")
+    freeze_dir = os.path.join(target_dir, app_name)
+    icon_file = os.path.join("src", "main", "icons", "Icon.ico")
+
+    extra_args = []
+    extra_args.extend(["--icon", icon_file])
+    extra_args.extend(
+        ["--version-file", os.path.join(target_dir, "PyInstaller", "version_info.py")]
+    )
+
     run_pyinstaller(settings, [])
 
-    env_dir = "./env"
+    env_dir = os.path.abspath("env")
     site_packages_dir = os.path.join(env_dir, "Lib", "site-packages")
-    build_dir = "./target/RootPainter"
+    build_dir = os.path.join(target_dir, app_name)
     fix_broken_packages(build_dir=build_dir, site_packages_dir=site_packages_dir)
+
+    shutil.copyfile(icon_file, freeze_dir)
+
+    cpp_dlls = (
+        "msvcr100.dll",
+        "msvcr110.dll",
+        "msvcp110.dll",
+        "vcruntime140.dll",
+        "msvcp140.dll",
+        "concrt140.dll",
+        "vccorlib140.dll",
+    )
+    for dll_name in cpp_dlls:
+        err_msg = (
+            f"Could not find {dll_name}. Please install C++ Redistributable for Visual Studio 2012 from: https://www.microsoft.com/en-us/download/details.aspx?id=30679",
+        )
+        copy_dll(dll_name, freeze_dir, err_msg)
+
+    ucrt_dll = "api-ms-win-crt-multibyte-l1-1-0.dll"
+    err_msg = (
+        f"Could not find {ucrt_dll}. You may need to install Windows 10 SDK from https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk. Otherwise, try installing KB2999226 from https://support.microsoft.com/en-us/kb/2999226. ",
+    )
+    copy_dll(ucrt_dll, freeze_dir, err_msg)
+
+
+def copy_dll(dll_name, freeze_dir, err_message):
+    try:
+        expected_dll_location = os.path.join(freeze_dir, dll_name)
+        if not os.path.exists(expected_dll_location):
+            shutil.copyfile(find_in_path(dll_name), freeze_dir)
+
+    except LookupError:
+        raise FileNotFoundError(err_message)
+
+
+def find_in_path(dll_name):
+    for path in os.environ["PATH"].split(os.pathsep):
+        dll_file = os.path.join(path, dll_name)
+        if os.path.isfile(dll_file):
+            return dll_file
+    raise LookupError(f"Could not find {dll_name}")
 
 
 ### Mac ###

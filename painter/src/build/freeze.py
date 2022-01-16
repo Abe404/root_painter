@@ -5,9 +5,11 @@ import subprocess
 from settings import Settings
 
 
-def run_pyinstaller(settings=Settings(), extra_args=[]):
+def run_pyinstaller(settings, extra_args=[]):
     app_name = settings.get("app_name")
     target_dir = os.path.abspath("target")
+    # Use abspath to convert from unix path for windows.
+    main_module = os.path.abspath(settings.get("main_module"))
 
     cmd = []
     cmd.extend(["pyinstaller"])
@@ -22,7 +24,7 @@ def run_pyinstaller(settings=Settings(), extra_args=[]):
     cmd.extend(["--workpath", os.path.join(target_dir, "PyInstaller")])
     cmd.extend(["--noconfirm"])
     cmd.extend(["--name", app_name])
-    cmd.extend([settings.get("main_module")])
+    cmd.extend([main_module])
 
     print(" ".join(cmd))
 
@@ -41,7 +43,7 @@ def freeze(settings=Settings()):
 ### Linux ###
 
 
-def freeze_linux(settings=Settings()):
+def freeze_linux(settings):
     run_pyinstaller(settings, [])
 
     env_dir = "./env"
@@ -53,19 +55,20 @@ def freeze_linux(settings=Settings()):
 ### Windows ###
 
 
-def freeze_windows(settings=Settings()):
+def freeze_windows(settings):
     target_dir = os.path.abspath("target")
     app_name = settings.get("app_name")
     freeze_dir = os.path.join(target_dir, app_name)
-    icon_file = os.path.join("src", "main", "icons", "Icon.ico")
+
+    icon_file = os.path.join(os.path.abspath("src"), "main", "icons", "Icon.ico")
 
     extra_args = []
     extra_args.extend(["--icon", icon_file])
-    extra_args.extend(
-        ["--version-file", os.path.join(target_dir, "PyInstaller", "version_info.py")]
-    )
+    # extra_args.extend(
+    #     ["--version-file", os.path.join(target_dir, "PyInstaller", "version_info.py")]
+    # )
 
-    run_pyinstaller(settings, [])
+    run_pyinstaller(settings, extra_args)
 
     env_dir = os.path.abspath("env")
     site_packages_dir = os.path.join(env_dir, "Lib", "site-packages")
@@ -117,7 +120,7 @@ def find_in_path(dll_name):
 ### Mac ###
 
 
-def freeze_mac(settings=Settings()):
+def freeze_mac(settings):
     target_dir = os.path.abspath("target")
 
     create_iconset(settings)
@@ -136,7 +139,7 @@ def freeze_mac(settings=Settings()):
     fix_broken_packages(build_dir=build_dir, site_packages_dir=site_packages_dir)
 
 
-def remove_pyinstaller(settings=Settings()):
+def remove_pyinstaller(settings):
     """
     Removes packages required by pyinstaller
     """
@@ -189,7 +192,7 @@ def fix_broken_packages(build_dir, site_packages_dir):
     shutil.copyfile(tif_src, tif_target)
 
 
-def create_iconset(settings=Settings()):
+def create_iconset(settings):
     target_dir = os.path.abspath("target")
     if not os.path.exists(os.path.join(target_dir, "Icon.icns")):
         iconset_path = os.path.join(target_dir, "Icon.iconset")
@@ -204,7 +207,7 @@ def create_iconset(settings=Settings()):
         )
 
 
-def get_icons(settings=Settings()):
+def get_icons(settings):
     result = []
     for profile in settings.get_profiles():
         icons_dir = os.path.join("src", "main", "icons", profile)

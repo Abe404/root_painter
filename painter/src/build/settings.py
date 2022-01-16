@@ -3,10 +3,12 @@ import platform
 
 
 class Settings:
+    LOADED_CONFIG = {}
+
     def __init__(self):
         self.__config = {}
         for profile in self.get_profiles():
-            self.__extend(self.__safe_load_json(f"src/build/settings/{profile}.json"))
+            self.__extend(self.__load_profile(profile))
 
     def get(self, propname):
         return self.__config.get(propname)
@@ -43,6 +45,15 @@ class Settings:
     def __extend(self, dict):
         for (key, value) in dict.items():
             self.__config[key] = value
+
+    def __load_profile(self, profile):
+        # Profile cached on static property to prevent being loaded multiple times.
+        if Settings.LOADED_CONFIG.get(profile) == None:
+            # If no file found, empty object assigned.
+            Settings.LOADED_CONFIG[profile] = self.__safe_load_json(
+                f"src/build/settings/{profile}.json"
+            )
+        return Settings.LOADED_CONFIG.get(profile)
 
     def __safe_load_json(self, filename):
         try:

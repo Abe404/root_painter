@@ -35,7 +35,7 @@ def create_installer_windows(_):
 ### Mac ###
 
 
-def create_installer_mac(settings=Settings()):
+def create_installer_mac(settings):
 
     # TODO: assertion create-dmg
     # TODO: assertion target_dir

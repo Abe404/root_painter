@@ -14,7 +14,6 @@ def run_pyinstaller(settings, extra_args=[]):
 
     cmd = []
     cmd.extend(["pyinstaller"])
-    cmd.extend(["--debug", "all"])
     cmd.extend(["--log-level", "DEBUG"])
     cmd.extend(["--noupx"])
     cmd.extend(extra_args)

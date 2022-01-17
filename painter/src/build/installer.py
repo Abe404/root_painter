@@ -1,9 +1,10 @@
 import os
 import subprocess
+import shutil
 from settings import Settings
 
 
-def create_installer(settings=Settings()):
+def create_installer(settings):
     if settings.is_mac():
         return create_installer_mac(settings)
     if settings.is_linux():
@@ -26,7 +27,13 @@ def create_installer_windows(_):
     # TODO: assertion makensis
 
     target_dir = os.path.abspath("target")
-    installer_path = os.path.join(target_dir, "installer")
+    installer_path = os.path.join(target_dir, "PyInstaller")
+
+    shutil.copyfile(
+        os.path.join("src", "build", "assets", "Installer.nsi"),
+        os.path.join(installer_path, "Installer.nsi"),
+    )
+
     subprocess.check_call(
         ["makensis", "Installer.nsi"], cwd=installer_path, stdout=subprocess.DEVNULL
     )
@@ -72,4 +79,4 @@ def create_installer_mac(settings):
 
 
 if __name__ == "__main__":
-    create_installer()
+    create_installer(settings=Settings())

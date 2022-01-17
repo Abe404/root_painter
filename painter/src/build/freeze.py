@@ -1,5 +1,6 @@
 import glob
 import os
+import site
 import shutil
 import subprocess
 from settings import Settings
@@ -31,7 +32,7 @@ def run_pyinstaller(settings, extra_args=[]):
     subprocess.check_call(cmd)
 
 
-def freeze(settings=Settings()):
+def freeze(settings):
     if settings.is_mac():
         return freeze_mac(settings)
     if settings.is_linux():
@@ -46,16 +47,30 @@ def freeze(settings=Settings()):
 def freeze_linux(settings):
     run_pyinstaller(settings, [])
 
-    env_dir = "./env"
-    site_packages_dir = os.path.join(env_dir, "lib/python3.6/site-packages")
     build_dir = "./target/RootPainter"
-    fix_broken_packages(build_dir=build_dir, site_packages_dir=site_packages_dir)
+    fix_broken_packages(build_dir=build_dir)
 
 
 ### Windows ###
 
 
+CPP_DLL_LIST = [
+    # "msvcr100.dll",
+    "msvcr110.dll",
+    "msvcp110.dll",
+    "vcruntime140.dll",
+    "msvcp140.dll",
+    "concrt140.dll",
+    "vccorlib140.dll",
+]
+UCRT_DLL_LIST = ["api-ms-win-crt-multibyte-l1-1-0.dll"]
+
+
 def freeze_windows(settings):
+    # Check existence of required DLLs before running other commands
+    check_has_cpp_dlls()
+    check_has_ucrt_dlls()
+
     target_dir = os.path.abspath("target")
     app_name = settings.get("app_name")
     freeze_dir = os.path.join(target_dir, app_name)
@@ -64,49 +79,45 @@ def freeze_windows(settings):
 
     extra_args = []
     extra_args.extend(["--icon", icon_file])
-    # extra_args.extend(
-    #     ["--version-file", os.path.join(target_dir, "PyInstaller", "version_info.py")]
-    # )
 
     run_pyinstaller(settings, extra_args)
 
-    env_dir = os.path.abspath("env")
-    site_packages_dir = os.path.join(env_dir, "Lib", "site-packages")
     build_dir = os.path.join(target_dir, app_name)
-    fix_broken_packages(build_dir=build_dir, site_packages_dir=site_packages_dir)
+    fix_broken_packages(build_dir=build_dir)
 
-    shutil.copyfile(icon_file, freeze_dir)
+    shutil.copyfile(icon_file, os.path.join(freeze_dir, "Icon.ico"))
 
-    cpp_dlls = (
-        "msvcr100.dll",
-        "msvcr110.dll",
-        "msvcp110.dll",
-        "vcruntime140.dll",
-        "msvcp140.dll",
-        "concrt140.dll",
-        "vccorlib140.dll",
-    )
-    for dll_name in cpp_dlls:
-        err_msg = (
-            f"Could not find {dll_name}. Please install C++ Redistributable for Visual Studio 2012 from: https://www.microsoft.com/en-us/download/details.aspx?id=30679",
-        )
-        copy_dll(dll_name, freeze_dir, err_msg)
+    for dll_name in CPP_DLL_LIST:
+        copy_dll(dll_name, freeze_dir)
 
-    ucrt_dll = "api-ms-win-crt-multibyte-l1-1-0.dll"
-    err_msg = (
-        f"Could not find {ucrt_dll}. You may need to install Windows 10 SDK from https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk. Otherwise, try installing KB2999226 from https://support.microsoft.com/en-us/kb/2999226. ",
-    )
-    copy_dll(ucrt_dll, freeze_dir, err_msg)
+    for dll_name in UCRT_DLL_LIST:
+        copy_dll(dll_name, freeze_dir)
 
 
-def copy_dll(dll_name, freeze_dir, err_message):
-    try:
-        expected_dll_location = os.path.join(freeze_dir, dll_name)
-        if not os.path.exists(expected_dll_location):
-            shutil.copyfile(find_in_path(dll_name), freeze_dir)
+def copy_dll(dll_name, freeze_dir):
+    expected_dll_location = os.path.join(freeze_dir, dll_name)
+    if not os.path.exists(expected_dll_location):
+        shutil.copyfile(find_in_path(dll_name), expected_dll_location)
 
-    except LookupError:
-        raise FileNotFoundError(err_message)
+
+def check_has_cpp_dlls():
+    for dll_name in CPP_DLL_LIST:
+        try:
+            find_in_path(dll_name)
+        except LookupError:
+            raise FileNotFoundError(
+                f"Could not find {dll_name}. Please install C++ Redistributable for Visual Studio 2012 from: https://www.microsoft.com/en-us/download/details.aspx?id=30679",
+            )
+
+
+def check_has_ucrt_dlls():
+    for dll_name in UCRT_DLL_LIST:
+        try:
+            find_in_path(dll_name)
+        except LookupError:
+            raise FileNotFoundError(
+                f"Could not find {dll_name}. You may need to install Windows 10 SDK from https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk. Otherwise, try installing KB2999226 from https://support.microsoft.com/en-us/kb/2999226. ",
+            )
 
 
 def find_in_path(dll_name):
@@ -131,15 +142,13 @@ def freeze_mac(settings):
 
     run_pyinstaller(settings, extra_args)
 
-    remove_pyinstaller(settings)
+    remove_pyinstaller_packages(settings)
 
-    env_dir = "./env"
-    site_packages_dir = os.path.join(env_dir, "lib/python3.6/site-packages")
     build_dir = "./target/RootPainter.app/Contents/MacOS/"
-    fix_broken_packages(build_dir=build_dir, site_packages_dir=site_packages_dir)
+    fix_broken_packages(build_dir=build_dir)
 
 
-def remove_pyinstaller(settings):
+def remove_pyinstaller_packages(settings):
     """
     Removes packages required by pyinstaller
     """
@@ -157,7 +166,7 @@ def remove_pyinstaller(settings):
     remove_if_exists(os.path.join(freeze_dir, "Contents", "Resources", "2to3"))
 
 
-def fix_broken_packages(build_dir, site_packages_dir):
+def fix_broken_packages(build_dir):
     """
     If you try to run RootPainter on the command line like so:
     ./target/RootPainter.app/Contents/MacOS/RootPainter
@@ -171,25 +180,33 @@ def fix_broken_packages(build_dir, site_packages_dir):
     """
 
     # Copy missing orb files
-    skimage_dir = os.path.join(site_packages_dir, "skimage")
-
-    orbpy_src = os.path.join(skimage_dir, "feature/_orb_descriptor_positions.py")
-    orbpy_target = os.path.join(
-        build_dir, "skimage/feature/_orb_descriptor_positions.py"
+    copy_lib_file(
+        os.path.join("skimage", "feature", "_orb_descriptor_positions.py"), build_dir
     )
-    shutil.copyfile(orbpy_src, orbpy_target)
-
     # copy missing orb plugin file
-    orbtxt_src = os.path.join(skimage_dir, "feature/orb_descriptor_positions.txt")
-    orbtxt_target = os.path.join(
-        build_dir, "skimage/io/_plugins/orb_descriptor_positions.txt"
+    copy_lib_file(
+        os.path.join("skimage", "feature", "orb_descriptor_positions.txt"), build_dir
     )
-    shutil.copyfile(orbtxt_src, orbtxt_target)
-
     # Copy missing tiffile plugin
-    tif_src = os.path.join(skimage_dir, "io/_plugins/tifffile_plugin.py")
-    tif_target = os.path.join(build_dir, "skimage/io/_plugins/tifffile_plugin.py")
-    shutil.copyfile(tif_src, tif_target)
+    copy_lib_file(
+        os.path.join("skimage", "io", "_plugins", "tifffile_plugin.py"), build_dir
+    )
+
+
+def copy_lib_file(libname, build_dir):
+    src = find_lib_file(libname)
+    dest = os.path.join(build_dir, libname)
+    shutil.copyfile(src, dest)
+
+
+def find_lib_file(libname):
+    for site_packages_dir in site.getsitepackages():
+        possible = os.path.join(site_packages_dir, libname)
+
+        if os.path.exists(possible):
+            return possible
+
+    raise FileNotFoundError(f"Could not find {libname}")
 
 
 def create_iconset(settings):
@@ -237,4 +254,4 @@ def remove_if_exists(filename):
 
 
 if __name__ == "__main__":
-    freeze()
+    freeze(settings=Settings())

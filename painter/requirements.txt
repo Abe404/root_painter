@@ -7,4 +7,4 @@ PyWavelets==1.1.1
 Pillow==8.2.0
 scipy==1.4.1
 imagecodecs==2020.5.30
-pyinstaller=4.8
+pyinstaller==4.8

@@ -10,11 +10,22 @@ I typically suggest using a virtual environment for this.
 
     > pip install -r requirements.txt
 
+### Mac
+
 For generating the installer on MacOSX, the `create-dmg` command is required. It is recommended to install using homebrew to install:
 
     > brew install create-dmg
 
+### Windows
+
+For generating executable on Windows, ensure that the NSIS tools are installed and available in path: https://nsis.sourceforge.io/Main_Page
+
+Also ensure that C++ Redistributable for Visual Studio 2012 is installed: https://www.microsoft.com/en-us/download/details.aspx?id=30679"
+
+And the Windows 10 SDK from https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk.
+
 ## to run
+
     > python src/main/python/main
 
 Or alternatively 

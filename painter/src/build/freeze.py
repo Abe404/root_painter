@@ -1,3 +1,4 @@
+import PyInstaller.__main__
 import glob
 import os
 import site
@@ -12,23 +13,22 @@ def run_pyinstaller(settings, extra_args=[]):
     # Use abspath to convert from unix path for windows.
     main_module = os.path.abspath(settings.get("main_module"))
 
-    cmd = []
-    cmd.extend(["pyinstaller"])
-    cmd.extend(["--log-level", "DEBUG"])
-    cmd.extend(["--noupx"])
-    cmd.extend(extra_args)
+    args = []
+    args.extend(["--log-level", "DEBUG"])
+    args.extend(["--noupx"])
+    args.extend(extra_args)
     for hidden_import in settings.get_with_default("hidden_imports", []):
-        cmd.extend(["--hidden-import", hidden_import])
-    cmd.extend(["--distpath", target_dir])
-    cmd.extend(["--specpath", os.path.join(target_dir, "PyInstaller")])
-    cmd.extend(["--workpath", os.path.join(target_dir, "PyInstaller")])
-    cmd.extend(["--noconfirm"])
-    cmd.extend(["--name", app_name])
-    cmd.extend([main_module])
+        args.extend(["--hidden-import", hidden_import])
+    args.extend(["--distpath", target_dir])
+    args.extend(["--specpath", os.path.join(target_dir, "PyInstaller")])
+    args.extend(["--workpath", os.path.join(target_dir, "PyInstaller")])
+    args.extend(["--noconfirm"])
+    args.extend(["--name", app_name])
+    args.extend([main_module])
 
-    print(" ".join(cmd))
+    print(" ".join(args))
 
-    subprocess.check_call(cmd)
+    PyInstaller.__main__.run(args)
 
 
 def freeze(settings):
@@ -62,11 +62,13 @@ CPP_DLL_LIST = [
     "concrt140.dll",
     "vccorlib140.dll",
 ]
-UCRT_DLL_LIST = ["api-ms-win-crt-multibyte-l1-1-0.dll"]
+UCRT_DLL_LIST = [
+    "api-ms-win-crt-multibyte-l1-1-0.dll",
+]
 
 
 def freeze_windows(settings):
-    # Check existence of required DLLs before running other commands
+    # Check has required DLLs before running other commands
     check_has_cpp_dlls()
     check_has_ucrt_dlls()
 
@@ -86,10 +88,7 @@ def freeze_windows(settings):
 
     shutil.copyfile(icon_file, os.path.join(freeze_dir, "Icon.ico"))
 
-    for dll_name in CPP_DLL_LIST:
-        copy_dll(dll_name, freeze_dir)
-
-    for dll_name in UCRT_DLL_LIST:
+    for dll_name in CPP_DLL_LIST + UCRT_DLL_LIST:
         copy_dll(dll_name, freeze_dir)
 
 
@@ -99,24 +98,32 @@ def copy_dll(dll_name, freeze_dir):
         shutil.copyfile(find_in_path(dll_name), expected_dll_location)
 
 
-def check_has_cpp_dlls():
-    for dll_name in CPP_DLL_LIST:
+def create_cpp_dll_error_msg(dll_name):
+    return (
+        f"Could not find {dll_name}. Please install C++ Redistributable for Visual Studio 2012 from: https://www.microsoft.com/en-us/download/details.aspx?id=30679",
+    )
+
+
+def create_ucrt_dll_error_msg(dll_name):
+    return (
+        f"Could not find {dll_name}. You may need to install Windows 10 SDK from https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk. Otherwise, try installing KB2999226 from https://support.microsoft.com/en-us/kb/2999226. ",
+    )
+
+
+def check_has_dlls(dlls, create_error_msg):
+    for dll_name in dlls:
         try:
             find_in_path(dll_name)
         except LookupError:
-            raise FileNotFoundError(
-                f"Could not find {dll_name}. Please install C++ Redistributable for Visual Studio 2012 from: https://www.microsoft.com/en-us/download/details.aspx?id=30679",
-            )
+            raise FileNotFoundError(create_error_msg(dll_name))
+
+
+def check_has_cpp_dlls():
+    check_has_dlls(CPP_DLL_LIST, create_cpp_dll_error_msg)
 
 
 def check_has_ucrt_dlls():
-    for dll_name in UCRT_DLL_LIST:
-        try:
-            find_in_path(dll_name)
-        except LookupError:
-            raise FileNotFoundError(
-                f"Could not find {dll_name}. You may need to install Windows 10 SDK from https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk. Otherwise, try installing KB2999226 from https://support.microsoft.com/en-us/kb/2999226. ",
-            )
+    check_has_dlls(UCRT_DLL_LIST, create_ucrt_dll_error_msg)
 
 
 def find_in_path(dll_name):
@@ -179,28 +186,39 @@ def fix_broken_packages(build_dir):
     """
 
     # Copy missing orb files
-    copy_lib_file(
-        os.path.join("skimage", "feature", "_orb_descriptor_positions.py"), build_dir
-    )
+    copy_lib_file("skimage/feature/_orb_descriptor_positions.py", build_dir)
     # copy missing orb plugin file
-    copy_lib_file(
-        os.path.join("skimage", "feature", "orb_descriptor_positions.txt"), build_dir
-    )
+    copy_lib_file("skimage/feature/orb_descriptor_positions.txt", build_dir)
     # Copy missing tiffile plugin
-    copy_lib_file(
-        os.path.join("skimage", "io", "_plugins", "tifffile_plugin.py"), build_dir
-    )
+    copy_lib_file("skimage/io/_plugins/tifffile_plugin.py", build_dir)
 
 
-def copy_lib_file(libname, build_dir):
-    src = find_lib_file(libname)
-    dest = os.path.join(build_dir, libname)
+def os_file_path(filepath):
+    """
+    Convert Unix style paths to OS specific. This only really effects windows.
+    """
+    return filepath.replace("/", os.path.sep)
+
+
+def copy_lib_file(libfile, dest_dir):
+    """
+    Copy a library file from site-packages to destination
+
+    Library file is relative to site-packages dir, e.g. 'skimage/io/_plugins/tifffile_plugin.py'
+    """
+    src = find_lib_file(libfile)
+    dest = os.path.join(dest_dir, libfile)
     shutil.copyfile(src, dest)
 
 
 def find_lib_file(libname):
+    """
+    Finds a library file from site-packages directories.
+
+    Library file is relative to site-packages dir, e.g. 'skimage/io/_plugins/tifffile_plugin.py'
+    """
     for site_packages_dir in site.getsitepackages():
-        possible = os.path.join(site_packages_dir, libname)
+        possible = os.path.join(site_packages_dir, os_file_path(libname))
 
         if os.path.exists(possible):
             return possible
@@ -209,6 +227,9 @@ def find_lib_file(libname):
 
 
 def create_iconset(settings):
+    """
+    Create MacOS icon set
+    """
     target_dir = os.path.abspath("target")
     if not os.path.exists(os.path.join(target_dir, "Icon.icns")):
         iconset_path = os.path.join(target_dir, "Icon.iconset")
@@ -235,6 +256,11 @@ def get_icons(settings):
 
 
 def extract_size(icon_filename):
+    """
+    Get the size of the icon based on the filenameself.
+
+    The filename is simply the size in our usecase, e.g. 128.png
+    """
     size = icon_filename.replace(".png", "")
     return int(size)
 
@@ -244,10 +270,15 @@ def create_icon_filename(size):
 
 
 def remove_if_exists(filename):
+    """
+    Removes a file or directory.
+    """
     if not os.path.exists(filename):
         return
+
     if os.path.isfile(filename) or os.path.islink(filename):
         return os.unlink(filename)
+
     if os.path.isdir(filename):
         return shutil.rmtree(filename)
 

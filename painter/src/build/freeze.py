@@ -14,17 +14,17 @@ def run_pyinstaller(settings, extra_args=[]):
     main_module = os.path.abspath(settings.get("main_module"))
 
     args = []
-    args.extend(["--log-level", "DEBUG"])
-    args.extend(["--noupx"])
-    args.extend(extra_args)
+    args += ["--log-level", "DEBUG"]
+    args += ["--noupx"]
+    args += extra_args
     for hidden_import in settings.get_with_default("hidden_imports", []):
-        args.extend(["--hidden-import", hidden_import])
-    args.extend(["--distpath", target_dir])
-    args.extend(["--specpath", os.path.join(target_dir, "PyInstaller")])
-    args.extend(["--workpath", os.path.join(target_dir, "PyInstaller")])
-    args.extend(["--noconfirm"])
-    args.extend(["--name", app_name])
-    args.extend([main_module])
+        args += ["--hidden-import", hidden_import]
+    args += ["--distpath", target_dir]
+    args += ["--specpath", os.path.join(target_dir, "PyInstaller")]
+    args += ["--workpath", os.path.join(target_dir, "PyInstaller")]
+    args += ["--noconfirm"]
+    args += ["--name", app_name]
+    args += [main_module]
 
     print(" ".join(args))
 
@@ -79,7 +79,7 @@ def freeze_windows(settings):
     icon_file = os.path.join(os.path.abspath("src"), "main", "icons", "Icon.ico")
 
     extra_args = []
-    extra_args.extend(["--icon", icon_file])
+    extra_args += ["--icon", icon_file]
 
     run_pyinstaller(settings, extra_args)
 
@@ -143,8 +143,8 @@ def freeze_mac(settings):
     create_iconset(settings)
 
     extra_args = []
-    extra_args.extend(["--icon", os.path.join(target_dir, "Icon.icns")])
-    extra_args.extend(["-w"])
+    extra_args += ["--icon", os.path.join(target_dir, "Icon.icns")]
+    extra_args += ["-w"]
 
     run_pyinstaller(settings, extra_args)
 

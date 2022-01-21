@@ -16,8 +16,27 @@ def create_installer(settings):
 ### Linux ###
 
 
-def create_installer_linux(_):
-    pass
+def create_installer_linux(settings):
+    check_cmd_exists("fpm", "Could not find executable fpm. Run `apt-get install fpm`")
+
+    dest = os.path.abspath("target/${installer}")
+    installer_path = os.path.abspath("target/installer")
+
+    # Linux application names are lowercase by convention.
+    name = settings.get("app_name").lower()
+
+    cmd = []
+    cmd += ["fpm"]
+    cmd += ["-s", "dir"]
+    # cmd += ["--log", "error"]
+    cmd += ["-C", installer_path]
+    cmd += ["-n", name]
+    cmd += ["-v", settings.get("version")]
+    cmd += ["--vendor", settings.get("author")]
+    cmd += ["-t", "deb"]
+    cmd += ["-p", dest]
+
+    subprocess.check_call(cmd)
 
 
 ### Windows ###
@@ -71,22 +90,15 @@ def create_installer_mac(settings):
         freeze_dir, "Application directory missing. Have you run freeze command?"
     )
 
-    cmd = [
-        "create-dmg",
-        "--no-internet-enable",
-        "--hdiutil-verbose",
-        "--volname",
-        app_name,
-        "--app-drop-link",
-        "170",
-        "10",
-        "--icon",
-        icon_filename,
-        "0",
-        "10",
-        dest,
-        freeze_dir,
-    ]
+    cmd = []
+    cmd += ["create-dmg"]
+    cmd += ["--no-internet-enable"]
+    cmd += ["--hdiutil-verbose"]
+    cmd += ["--volname", app_name]
+    cmd += ["--app-drop-link", "170", "10"]
+    cmd += ["--icon", icon_filename, "0", "10"]
+    cmd += [dest]
+    cmd += [freeze_dir]
 
     subprocess.check_call(cmd)
 

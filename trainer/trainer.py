@@ -75,6 +75,7 @@ class Trainer():
         for i in range(torch.cuda.device_count()):
             total_mem += torch.cuda.get_device_properties(i).total_memory
         self.bs = total_mem // mem_per_item
+        self.bs = min(12, self.bs)
         print('Batch size', self.bs)
         self.optimizer = None
         # used to check for updates

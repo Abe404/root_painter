@@ -22,7 +22,7 @@ from PIL import Image
 from base_extract import BaseExtractWidget
 
 
-def save_count_to_csv(seg_dir, fname, writer):
+def save_count_to_csv(seg_dir, fname, writer, _):
     fpath = os.path.join(seg_dir, fname)
     seg_im = Image.open(fpath)
     seg_im = np.array(seg_im)[:, :, 2].astype(bool)

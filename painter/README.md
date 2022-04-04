@@ -35,9 +35,6 @@ Or alternatively
 ## to build the application and installer
 
     > python src/build/clean
-
-fbs only supports Python 3.6 so Python 3.6 must be used for the freeze and build steps.
-
     > python src/build/freeze
 
 And then create the installer. Installers must be created on the target platform i.e windows installer must be created on windows and osx on osx etc.

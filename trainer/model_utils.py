@@ -75,7 +75,6 @@ def get_val_metrics(cnn, val_annot_dir, dataset_dir, in_w, out_w, bs):
     start = time.time()
     fnames = ls(val_annot_dir)
     fnames = [a for a in fnames if im_utils.is_photo(a)]
-    cnn.half()
     # TODO: In order to speed things up, be a bit smarter here
     # by only segmenting the parts of the image where we have
     # some annotation defined.
@@ -150,7 +149,6 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w,
     # then add predictions from the previous models to form an ensemble
     for model_path in model_paths:
         cnn = load_model(model_path)
-        cnn.half()
         preds = unet_segment(cnn, image,
                              bs, in_w, out_w, threshold=None)
         if pred_sum is not None:
@@ -193,7 +191,7 @@ def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
                 tiles_to_process.append(tile)
         tiles_for_gpu = torch.from_numpy(np.array(tiles_to_process))
         tiles_for_gpu.cuda()
-        tiles_for_gpu = tiles_for_gpu.half()
+        tiles_for_gpu = tiles_for_gpu.float()
         batches.append(tiles_for_gpu)
 
     output_tiles = []

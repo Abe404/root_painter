@@ -80,4 +80,4 @@ class ExtractRegionsWidget(BaseExtractWidget):
         if checked:
             self.headers = region_props_headers
         else:
-            self.headers = [h for h in region_props_headers if h is not 'eccentricity']
+            self.headers = [h for h in region_props_headers if h != 'eccentricity']

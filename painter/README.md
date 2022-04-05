@@ -10,8 +10,23 @@ I typically suggest using a virtual environment for this.
 
     > pip install -r requirements.txt
 
+### Mac
+
+For generating the installer on MacOSX, the `create-dmg` command is required. It is recommended to install using homebrew to install:
+
+    > brew install create-dmg
+
+### Windows
+
+For generating executable on Windows, ensure that the NSIS tools are installed and available in path: https://nsis.sourceforge.io/Main_Page
+
+Also ensure that C++ Redistributable for Visual Studio 2012 is installed: https://www.microsoft.com/en-us/download/details.aspx?id=30679"
+
+And the Windows 10 SDK from https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk.
+
 ## to run
-    > fbs run
+
+    > python src/main/python/main
 
 Or alternatively 
 
@@ -19,15 +34,9 @@ Or alternatively
 
 ## to build the application and installer
 
-    > fbs clean
+    > python src/build/clean.py
+    > python src/build/freeze.py
 
-fbs only supports Python 3.6 so Python 3.6 must be used for the freeze and build steps.
-
-    > fbs freeze
-
-See install_fixes.py which will likely need to be ran to fix issues with scikit-image in the built progam prepared by the freeze command.
-
-    > python install_fixes.py
 And then create the installer. Installers must be created on the target platform i.e windows installer must be created on windows and osx on osx etc.
-    
-    > fbs installer
+
+    > python src/build/installer

@@ -4,7 +4,7 @@
 !define MUI_UNICON "..\RootPainter\Icon.ico"
 
 !getdllversion "..\RootPainter\RootPainter.exe" ver
-!define VERSION "0.2.12.0"
+!define VERSION "0.2.13.0"
 
 VIProductVersion "${VERSION}"
 VIAddVersionKey "ProductName" "RootPainter"

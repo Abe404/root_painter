@@ -33,9 +33,16 @@ def is_image(fname):
 
 def load_image(photo_path):
     photo = imread(photo_path)
+
     # sometimes photo is a list where first element is the photo
     if len(photo.shape) == 1:
         photo = photo[0]
+
+    # JFIF files have an extra dimension at the start containing two elements
+    # The first element is the image.
+    if len(photo.shape) == 4 and photo.shape[0] == 2:
+        photo = photo[0]
+
     # if 4 channels then convert to rgb
     # (presuming 4th channel is alpha channel)
     if len(photo.shape) > 2 and photo.shape[2] == 4:

@@ -94,8 +94,8 @@ def get_val_metrics(cnn, val_annot_dir, dataset_dir, in_w, out_w, bs):
         try:
             annot = imread(annot_path)
         except Exception as ex:
-            print('Exception reading annotation inside validation method.'
-                  'Will retry in 0.1 seconsds')
+            print(f'Exception reading annotation {annot_path} inside validation method.'
+                  'Will retry in 0.1 seconds')
             print(fname, ex)
             time.sleep(0.1)
             annot = imread(annot_path)

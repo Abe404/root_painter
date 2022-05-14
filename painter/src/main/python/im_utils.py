@@ -66,7 +66,7 @@ def gen_composite(annot_dir, photo_dir, comp_dir, fname, ext='.jpg'):
         glob_str = os.path.join(photo_dir, name_no_ext) + '.*'
         bg_fpath = list(glob.iglob(glob_str))[0]
         background = load_image(bg_fpath)
-        annot = load_image(os.path.join(annot_dir, os.path.splitext(fname)[0] + '.png'))
+        annot = imread(os.path.join(annot_dir, os.path.splitext(fname)[0] + '.png'))
         if sys.platform == 'darwin':
             # resize uses np.linalg.inv and causes a segmentation fault
             # for very large images on osx
@@ -81,6 +81,15 @@ def gen_composite(annot_dir, photo_dir, comp_dir, fname, ext='.jpg'):
                                 (background.shape[0]//2,
                                  background.shape[1]//2, 3))
             annot = resize(annot, (annot.shape[0]//2, annot.shape[1]//2, 3))
+        # if the annotation has 4 channels (that means alpha included)
+        if len(annot.shape) and annot.shape[2] == 4:
+            # then save alpha channel
+            alpha_channel = annot[:, :, 3]
+            # convert the annot to just the rgb
+            annot = annot[:, :, :3]
+            # and set to 0 if the alpha was 0
+            annot[alpha_channel == 0] = [0, 0, 0]
+
         annot = rgb2gray(annot)
         annot = img_as_ubyte(annot)
         background = img_as_ubyte(background)

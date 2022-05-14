@@ -66,7 +66,7 @@ def gen_composite(annot_dir, photo_dir, comp_dir, fname, ext='.jpg'):
         glob_str = os.path.join(photo_dir, name_no_ext) + '.*'
         bg_fpath = list(glob.iglob(glob_str))[0]
         background = load_image(bg_fpath)
-        annot = imread(os.path.join(annot_dir, os.path.splitext(fname)[0] + '.png'))
+        annot = load_image(os.path.join(annot_dir, os.path.splitext(fname)[0] + '.png'))
         if sys.platform == 'darwin':
             # resize uses np.linalg.inv and causes a segmentation fault
             # for very large images on osx

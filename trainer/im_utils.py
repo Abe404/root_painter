@@ -89,7 +89,7 @@ def load_train_image_and_annot(dataset_dir, train_annot_dir):
 
     if attempts == max_attempts:
         if latest_annot_path is None: # if annot path still None we know it failed on the photo
-            raise Exception(f'Could not load photo {latest_im_path}, {e}')
+            raise Exception(f'Could not load photo {latest_im_path}, {latest_error}')
         else:
             # otherwise it must have failed on the annotation
             raise Exception(f'Could not load annotation {latest_annot_path}, {e}')

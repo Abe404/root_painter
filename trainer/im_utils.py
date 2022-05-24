@@ -46,6 +46,10 @@ def normalize_tile(tile):
 def load_train_image_and_annot(dataset_dir, train_annot_dir):
     max_attempts = 60
     attempts = 0
+    # used for logging which file caused the problem.
+    latest_annot_path = None
+    latest_im_path = None
+    latest_error = None
     while attempts < max_attempts:
         attempts += 1
         # file systems are unpredictable.
@@ -53,6 +57,10 @@ def load_train_image_and_annot(dataset_dir, train_annot_dir):
         # try-catch to avoid this.
         # (just try again)
         try:
+            # set to None each time.
+            latest_annot_path = None
+            latest_im_path = None
+
             # This might take ages, profile and optimize
             fnames = ls(train_annot_dir)
             fnames = [a for a in fnames if is_photo(a)]
@@ -63,20 +71,28 @@ def load_train_image_and_annot(dataset_dir, train_annot_dir):
             # it's possible the image has a different extenstion
             # so use glob to get it
             image_path = glob.glob(image_path_part + '.*')[0]
+            latest_im_path = image_path
             image = load_image(image_path)
+            latest_annot_path = annot_path
             annot = imread(annot_path).astype(bool)
             assert np.sum(annot) > 0
             assert image.shape[2] == 3 # should be RGB
             # also return fname for debugging purposes.
             return image, annot, fname
         except Exception as e:
+            latest_error = e
             # This could be due to an empty annotation saved by the user.
             # Which happens rarely due to deleting all labels in an 
             # existing annotation and is not a problem.
             # give it some time and try again.
             time.sleep(0.1)
+
     if attempts == max_attempts:
-        raise Exception('Could not load annotation and photo')
+        if latest_annot_path is None: # if annot path still None we know it failed on the photo
+            raise Exception(f'Could not load photo {latest_im_path}, {e}')
+        else:
+            # otherwise it must have failed on the annotation
+            raise Exception(f'Could not load annotation {latest_annot_path}, {e}')
 
 
 def pad(image, width: int, mode='reflect', constant_values=0):

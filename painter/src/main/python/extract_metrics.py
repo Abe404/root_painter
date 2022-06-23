@@ -134,9 +134,8 @@ class MetricsProgressWidget(BaseProgressWidget):
         self.annot_dir = annot_dir
         self.csv_path = csv_path
         self.thread = Thread(seg_dir, annot_dir, csv_path)
-        seg_fnames = os.listdir(str(self.seg_dir))
-        seg_fnames = [f for f in seg_fnames if os.path.splitext(f)[1] == '.png']
-        self.progress_bar.setMaximum(len(seg_fnames))
+        fnames = os.listdir(str(self.annot_dir))
+        self.progress_bar.setMaximum(len(fnames))
         self.thread.progress_change.connect(self.onCountChanged)
         self.thread.done.connect(self.done)
         self.thread.start()

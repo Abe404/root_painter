@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import os
 import csv
 import math
+import json
 import numpy as np
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
@@ -34,7 +35,9 @@ def compute_metrics_from_masks(y_pred, y_true):
     fp = np.sum(np.logical_and(y_pred == 1, y_true == 0))
     fn = np.sum(np.logical_and(y_pred == 0, y_true == 1))
     total = (tp + tn + fp + fn)
+    print('tp', tp, 'tn', tn, 'total', total)
     accuracy = (tp + tn) / total
+    print('accuracy', accuracy)
     if tp > 0:
         precision = tp / (tp + fp)
         recall = tp / (tp + fn)
@@ -53,8 +56,22 @@ def compute_metrics_from_masks(y_pred, y_true):
     }
 
 def compute_seg_metrics(seg_dir, annot_dir, fname):
-    seg = imread(os.path.join(seg_dir, fname))
-    annot = imread(os.path.join(annot_dir, fname))
+    # annot and seg are both PNG
+    fname = os.path.splitext(fname)[0] + '.png'
+    seg_path = os.path.join(seg_dir, fname)
+    if not os.path.isfile(seg_path):
+        return None # no segmentation means no metrics.
+
+    seg = imread(seg_path)
+    annot_path = os.path.join(annot_dir, 'train', fname)
+    if not os.path.isfile(annot_path):
+        annot_path = os.path.join(annot_dir, 'val', fname)
+
+    if os.path.isfile(annot_path):
+        annot = imread(annot_path)
+    else:
+        annot = np.zeros(seg.shape) # no file implies empty annotation (no corrections)
+
     seg = np.array(seg[:, :, 3] > 0) # alpha channel to detect where seg exists.
     corrected = np.array(seg)
     # mask defines which pixels are defined in the annotation.
@@ -62,17 +79,24 @@ def compute_seg_metrics(seg_dir, annot_dir, fname):
     background = annot[:, :, 1].astype(bool).astype(int)
     corrected[foreground > 0] = 1
     corrected[background > 0] = 0
-    
     corrected_segmentation_metrics = compute_metrics_from_masks(seg, corrected)
 
+    # Computation of the correction metrics
+    # Only makes sense if annotation is defined i.e some foreground or background.
     mask = foreground + background
-    mask = mask.astype(bool).astype(int)
-    seg = seg * mask
-    seg = seg.astype(bool).astype(int)
-    y_defined = mask.reshape(-1)
-    y_pred = seg.reshape(-1)[y_defined > 0]
-    y_true = foreground.reshape(-1)[y_defined > 0]
-    correction_segmentation_metrics = compute_metrics_from_masks(y_pred, y_true)
+    if np.any(mask > 0):
+        mask = mask.astype(bool).astype(int)
+        seg = seg * mask
+        seg = seg.astype(bool).astype(int)
+        y_defined = mask.reshape(-1)
+        y_pred = seg.reshape(-1)[y_defined > 0]
+        y_true = foreground.reshape(-1)[y_defined > 0]
+        correction_segmentation_metrics = compute_metrics_from_masks(y_pred, y_true)
+    else:
+        # otherwise correction metrics is None.
+        # doesn't make sense.
+        correction_segmentation_metrics = None
+
     return corrected_segmentation_metrics, correction_segmentation_metrics
 
 
@@ -80,47 +104,44 @@ class Thread(QtCore.QThread):
     progress_change = QtCore.pyqtSignal(int, int)
     done = QtCore.pyqtSignal()
 
-    def __init__(self, seg_dir, annot_dir, csv_path):
+    def __init__(self, proj_dir, csv_path, fnames):
         super().__init__()
-        self.seg_dir = seg_dir
-        self.annot_dir = annot_dir
+        self.proj_dir = proj_dir
+        self.seg_dir = os.path.join(proj_dir, 'segmentations')
+        self.annot_dir = os.path.join(proj_dir, 'annotations')
         self.csv_path = csv_path
+        self.fnames = fnames
 
     def run(self):
-        annot_fnames = os.listdir(str(self.annot_dir))
+        headers_written = False
+        with open(self.csv_path, 'w+')  as csvfile:
+            writer = csv.writer(csvfile, delimiter=',',
+                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            for i, fname in enumerate(self.fnames):
+                self.progress_change.emit(i+1, len(self.fnames))
+                metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
+                if metrics: 
+                    corrected_metrics, correction_metrics = metrics
+                    # Write the column headers
+                    if not headers_written:
+                        metric_keys = list(corrected_metrics.keys())
+                        headers = ['file_name', 'label_type'] + metric_keys
+                        writer.writerow(headers)
+                        headers_written = True
 
-        all_corrected_metrics = []
-        all_correction_metrics = []
-
-        for i, fname in enumerate(annot_fnames):
-            self.progress_change.emit(i+1, len(annot_fnames))
-            metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
-            corrected_metrics, correction_metrics = metrics
-            all_corrected_metrics.append(corrected_metrics)
-            all_correction_metrics.append(correction_metrics)
-        # if any metrics were computed. 
-        if len(all_corrected_metrics): 
-            with open(self.csv_path, 'w+')  as csvfile:
-                writer = csv.writer(csvfile, delimiter=',',
-                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
-                # Write the column headers
-                metric_keys = list(all_corrected_metrics[0].keys())
-                headers = ['label_type'] + metric_keys + ['num_images']
-                writer.writerow(headers)
-                # label_type corrected means full image is gt (with corrections assigned).
-                row = ['corrected']
-                num_images = len(all_corrected_metrics)
-                for k in metric_keys:
-                    avg = np.mean([m[k] for m in all_corrected_metrics if not math.isnan(m[k])])
-                    row.append(avg)
-                row.append(num_images)
-                writer.writerow(row)
-                row = ['correction']
-                for k in metric_keys:
-                    avg = np.mean([m[k] for m in all_correction_metrics if not math.isnan(m[k])])
-                    row.append(avg)
-                row.append(num_images)
-                writer.writerow(row)
+                    # label_type corrected means full image is gt (with corrections assigned).
+                    row = [fname, 'corrected']
+                    for k in metric_keys:
+                        row.append(corrected_metrics[k]) 
+                    writer.writerow(row)
+                    
+                    # correction metrics is None if annotation is not defined.
+                    # Then it becomes meaningless. Dont store information.
+                    if correction_metrics is not None:
+                        row = [fname, 'correction']
+                        for k in metric_keys:
+                            row.append(correction_metrics[k])
+                        writer.writerow(row)
             self.done.emit()
 
 
@@ -129,12 +150,12 @@ class MetricsProgressWidget(BaseProgressWidget):
     def __init__(self):
         super().__init__('Computing metrics')
 
-    def run(self, seg_dir, annot_dir, csv_path):
-        self.seg_dir = seg_dir
-        self.annot_dir = annot_dir
+    def run(self, proj_file_path, csv_path):
+        self.proj_file_path = proj_file_path
         self.csv_path = csv_path
-        self.thread = Thread(seg_dir, annot_dir, csv_path)
-        fnames = os.listdir(str(self.annot_dir))
+        fnames = json.load(open(self.proj_file_path))['file_names']
+        proj_dir = os.path.dirname(self.proj_file_path)
+        self.thread = Thread(proj_dir, csv_path, fnames)
         self.progress_bar.setMaximum(len(fnames))
         self.thread.progress_change.connect(self.onCountChanged)
         self.thread.done.connect(self.done)
@@ -142,8 +163,8 @@ class MetricsProgressWidget(BaseProgressWidget):
 
     def done(self, errors=[]):
         QtWidgets.QMessageBox.about(self, 'Metrics Computed',
-                                    f'Computing metrics from {self.seg_dir} '
-                                    f'and {self.annot_dir} to {self.csv_path} '
+                                    f'Computing metrics for {self.proj_file_path} '
+                                    f'to {self.csv_path} '
                                     'is complete.')
         self.close()
 
@@ -153,9 +174,7 @@ class ExtractMetricsWidget(QtWidgets.QWidget):
 
     def __init__(self):
         super().__init__()
-        self.seg_dir = None
-        self.annot_dir = None
-        self.comp_dir = None
+        self.proj_file_path = None
         self.csv_path = None
         self.initUI()
 
@@ -164,24 +183,15 @@ class ExtractMetricsWidget(QtWidgets.QWidget):
         self.setLayout(layout)
         self.setWindowTitle("Extract Metrics")
 
-        # Add specify seg directory button
-        seg_dir_label = QtWidgets.QLabel()
-        seg_dir_label.setText("Segmentation directory: Not yet specified")
-        layout.addWidget(seg_dir_label)
-        self.seg_dir_label = seg_dir_label
+        proj_file_path_label = QtWidgets.QLabel()
+        proj_file_path_label.setText("RootPainter project file (.seg_proj): Not yet specified")
+        layout.addWidget(proj_file_path_label)
+        self.proj_file_path_label = proj_file_path_label
 
-        specify_seg_btn = QtWidgets.QPushButton('Specify segmentation directory')
-        specify_seg_btn.clicked.connect(self.select_seg_dir)
-        layout.addWidget(specify_seg_btn)
+        specify_proj_btn = QtWidgets.QPushButton('Specify project (.seg_proj) file')
+        specify_proj_btn.clicked.connect(self.select_proj_file)
+        layout.addWidget(specify_proj_btn)
 
-        # Add specify photo directory button
-        self.annot_dir_label = QtWidgets.QLabel()
-        self.annot_dir_label.setText("Annotation directory: Not yet specified")
-        layout.addWidget(self.annot_dir_label)
-
-        specify_annot_dir_btn = QtWidgets.QPushButton('Specify anotation directory')
-        specify_annot_dir_btn.clicked.connect(self.select_annot_dir)
-        layout.addWidget(specify_annot_dir_btn)
 
         # Add output csv directory button
         out_csv_label = QtWidgets.QLabel()
@@ -194,9 +204,8 @@ class ExtractMetricsWidget(QtWidgets.QWidget):
         layout.addWidget(specify_output_csv_btn)
 
         info_label = QtWidgets.QLabel()
-        info_label.setText("Segmentation directory, annotation "
-                           "directory and output csv path"
-                           "must be specified.")
+        info_label.setText("Project file and output csv path"
+                           " must be specified.")
         layout.addWidget(info_label)
         self.info_label = info_label
 
@@ -208,19 +217,13 @@ class ExtractMetricsWidget(QtWidgets.QWidget):
 
     def extract_metrics(self):
         self.progress_widget = MetricsProgressWidget()
-        self.progress_widget.run(self.seg_dir, self.annot_dir, self.csv_path)
+        self.progress_widget.run(self.proj_file_path, self.csv_path)
         self.progress_widget.show()
         self.close()
 
     def validate(self):
-        if not self.seg_dir:
-            self.info_label.setText("Segmentation directory must be "
-                                    "specified to compute metrics.")
-            self.submit_btn.setEnabled(False)
-            return
-
-        if not self.annot_dir:
-            self.info_label.setText("Annotation directory must be "
+        if not self.proj_file_path:
+            self.info_label.setText("RootPainter project file (.seg_proj) must be "
                                     "specified to compute metrics.")
             self.submit_btn.setEnabled(False)
             return
@@ -234,26 +237,15 @@ class ExtractMetricsWidget(QtWidgets.QWidget):
         self.info_label.setText("")
         self.submit_btn.setEnabled(True)
 
-    def select_seg_dir(self):
-        self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
-        def input_selected():
-            self.seg_dir = self.input_dialog.selectedFiles()[0]
-            self.seg_dir_label.setText('Segmentation directory: ' + self.seg_dir)
-            self.validate()
-        self.input_dialog.fileSelected.connect(input_selected)
-        self.input_dialog.open()
 
-    def select_annot_dir(self):
-        self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
-
-        def input_selected():
-            self.annot_dir = self.input_dialog.selectedFiles()[0]
-            self.annot_dir_label.setText('Annotation directory: ' + self.annot_dir)
+    def select_proj_file(self):
+        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, 'RootPainter project file (.seg_proj)',
+            None, "RootPainter project file (*.seg_proj)")
+        if file_name:
+            self.proj_file_path = file_name
+            self.proj_file_path_label.setText('RootPainter project file: ' + self.proj_file_path)
             self.validate()
-        self.input_dialog.fileSelected.connect(input_selected)
-        self.input_dialog.open()
 
     def select_output_csv(self):
         file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Output CSV')

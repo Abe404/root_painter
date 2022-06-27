@@ -81,23 +81,7 @@ def compute_seg_metrics(seg_dir, annot_dir, fname):
     corrected[background > 0] = 0
     corrected_segmentation_metrics = compute_metrics_from_masks(seg, corrected)
 
-    # Computation of the correction metrics
-    # Only makes sense if annotation is defined i.e some foreground or background.
-    mask = foreground + background
-    if np.any(mask > 0):
-        mask = mask.astype(bool).astype(int)
-        seg = seg * mask
-        seg = seg.astype(bool).astype(int)
-        y_defined = mask.reshape(-1)
-        y_pred = seg.reshape(-1)[y_defined > 0]
-        y_true = foreground.reshape(-1)[y_defined > 0]
-        correction_segmentation_metrics = compute_metrics_from_masks(y_pred, y_true)
-    else:
-        # otherwise correction metrics is None.
-        # doesn't make sense.
-        correction_segmentation_metrics = None
-
-    return corrected_segmentation_metrics, correction_segmentation_metrics
+    return corrected_segmentation_metrics
 
 
 class Thread(QtCore.QThread):
@@ -121,27 +105,19 @@ class Thread(QtCore.QThread):
                 self.progress_change.emit(i+1, len(self.fnames))
                 metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
                 if metrics: 
-                    corrected_metrics, correction_metrics = metrics
+                    corrected_metrics = metrics
                     # Write the column headers
                     if not headers_written:
                         metric_keys = list(corrected_metrics.keys())
-                        headers = ['file_name', 'label_type'] + metric_keys
+                        headers = ['file_name'] + metric_keys
                         writer.writerow(headers)
                         headers_written = True
 
                     # label_type corrected means full image is gt (with corrections assigned).
-                    row = [fname, 'corrected']
+                    row = [fname]
                     for k in metric_keys:
                         row.append(corrected_metrics[k]) 
                     writer.writerow(row)
-                    
-                    # correction metrics is None if annotation is not defined.
-                    # Then it becomes meaningless. Dont store information.
-                    if correction_metrics is not None:
-                        row = [fname, 'correction']
-                        for k in metric_keys:
-                            row.append(correction_metrics[k])
-                        writer.writerow(row)
             self.done.emit()
 
 

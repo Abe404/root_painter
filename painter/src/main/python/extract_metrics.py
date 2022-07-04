@@ -19,6 +19,7 @@ import os
 import csv
 import math
 import json
+import time
 import numpy as np
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
@@ -88,12 +89,13 @@ class Thread(QtCore.QThread):
     progress_change = QtCore.pyqtSignal(int, int)
     done = QtCore.pyqtSignal()
 
-    def __init__(self, proj_dir, csv_path, fnames):
+    def __init__(self, proj_dir, csv_path, plot_path, fnames, rolling_average_size):
         super().__init__()
         self.proj_dir = proj_dir
         self.seg_dir = os.path.join(proj_dir, 'segmentations')
         self.annot_dir = os.path.join(proj_dir, 'annotations')
         self.csv_path = csv_path
+        self.plot_path = plot_path
         self.fnames = fnames
 
     def run(self):
@@ -126,12 +128,12 @@ class MetricsProgressWidget(BaseProgressWidget):
     def __init__(self):
         super().__init__('Computing metrics')
 
-    def run(self, proj_file_path, csv_path):
+    def run(self, proj_file_path, csv_path, plot_path, rolling_average_size):
         self.proj_file_path = proj_file_path
         self.csv_path = csv_path
         fnames = json.load(open(self.proj_file_path))['file_names']
         proj_dir = os.path.dirname(self.proj_file_path)
-        self.thread = Thread(proj_dir, csv_path, fnames)
+        self.thread = Thread(proj_dir, csv_path, plot_path, fnames, rolling_average_size)
         self.progress_bar.setMaximum(len(fnames))
         self.thread.progress_change.connect(self.onCountChanged)
         self.thread.done.connect(self.done)
@@ -148,10 +150,9 @@ class MetricsProgressWidget(BaseProgressWidget):
 class ExtractMetricsWidget(QtWidgets.QWidget):
     submit = QtCore.pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, proj_file_path):
         super().__init__()
-        self.proj_file_path = None
-        self.csv_path = None
+        self.proj_file_path = proj_file_path
         self.initUI()
 
     def initUI(self):
@@ -159,74 +160,41 @@ class ExtractMetricsWidget(QtWidgets.QWidget):
         self.setLayout(layout)
         self.setWindowTitle("Extract Metrics")
 
-        proj_file_path_label = QtWidgets.QLabel()
-        proj_file_path_label.setText("RootPainter project file (.seg_proj): Not yet specified")
-        layout.addWidget(proj_file_path_label)
-        self.proj_file_path_label = proj_file_path_label
-
-        specify_proj_btn = QtWidgets.QPushButton('Specify project (.seg_proj) file')
-        specify_proj_btn.clicked.connect(self.select_proj_file)
-        layout.addWidget(specify_proj_btn)
-
-
-        # Add output csv directory button
-        out_csv_label = QtWidgets.QLabel()
-        out_csv_label.setText("Output CSV: Not yet specified")
-        layout.addWidget(out_csv_label)
-        self.out_csv_label = out_csv_label
-
-        specify_output_csv_btn = QtWidgets.QPushButton('Specify output CSV')
-        specify_output_csv_btn.clicked.connect(self.select_output_csv)
-        layout.addWidget(specify_output_csv_btn)
-
         info_label = QtWidgets.QLabel()
-        info_label.setText("Project file and output csv path"
-                           " must be specified.")
+        info_label.setText("")
         layout.addWidget(info_label)
         self.info_label = info_label
+
+        edit_rolling_average_label = QtWidgets.QLabel()
+        edit_rolling_average_label = QtWidgets.QLabel()
+        edit_rolling_average_label.setText("Plot rolling average size")
+        layout.addWidget(edit_rolling_average_label)
+        rolling_average_edit_widget = QtWidgets.QSpinBox()
+        rolling_average_edit_widget.setMaximum(10000)
+        rolling_average_edit_widget.setMinimum(1)
+        rolling_average_edit_widget.setValue(30)
+        rolling_average_edit_widget.valueChanged.connect(self.validate)
+        self.rolling_average_edit_widget = rolling_average_edit_widget
+        layout.addWidget(rolling_average_edit_widget)
 
         submit_btn = QtWidgets.QPushButton('Extract Metrics')
         submit_btn.clicked.connect(self.extract_metrics)
         layout.addWidget(submit_btn)
-        submit_btn.setEnabled(False)
         self.submit_btn = submit_btn
 
     def extract_metrics(self):
         self.progress_widget = MetricsProgressWidget()
-        self.progress_widget.run(self.proj_file_path, self.csv_path)
+        metrics_dir = os.path.join(os.path.dirname(self.proj_file_path), 'metrics')
+        rolling_average_n = self.rolling_average_edit_widget.value()
+        if not os.path.isdir(metrics_dir):
+            os.makedirs(metrics_dir)
+        prefix = str(round(time.time())) + '_'
+        csv_path = os.path.join(metrics_dir, f'{prefix}metrics.csv')
+        plot_path = os.path.join(metrics_dir, f'{prefix}dice.png')
+        self.progress_widget.run(self.proj_file_path, csv_path, plot_path, rolling_average_n)
         self.progress_widget.show()
         self.close()
 
     def validate(self):
-        if not self.proj_file_path:
-            self.info_label.setText("RootPainter project file (.seg_proj) must be "
-                                    "specified to compute metrics.")
-            self.submit_btn.setEnabled(False)
-            return
-
-        if not self.csv_path:
-            self.info_label.setText("Ouput csv path must be "
-                                    "specified to compute metrics.")
-            self.submit_btn.setEnabled(False)
-            return
-
         self.info_label.setText("")
         self.submit_btn.setEnabled(True)
-
-
-    def select_proj_file(self):
-        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, 'RootPainter project file (.seg_proj)',
-            None, "RootPainter project file (*.seg_proj)")
-        if file_name:
-            self.proj_file_path = file_name
-            self.proj_file_path_label.setText('RootPainter project file: ' + self.proj_file_path)
-            self.validate()
-
-    def select_output_csv(self):
-        file_name, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Output CSV')
-        if file_name:
-            file_name = os.path.splitext(file_name)[0] + '.csv'
-            self.csv_path = file_name
-            self.out_csv_label.setText('Output CSV: ' + self.csv_path)
-            self.validate()

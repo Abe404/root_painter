@@ -435,17 +435,19 @@ class RootPainter(QtWidgets.QMainWindow):
         extras_menu.addAction(specify_sync_dir_btn)
 
 
-        def show_extract_metrics():
-            self.extract_metrics_widget = ExtractMetricsWidget()
-            self.extract_metrics_widget.show()
-
-        metrics_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
-                                                    'Compute segmentation metrics',
-                                                    self)
-        metrics_btn.triggered.connect(show_extract_metrics)
-        extras_menu.addAction(metrics_btn)
-
         if project_open:
+
+            def show_extract_metrics():
+                self.extract_metrics_widget = ExtractMetricsWidget(self.proj_file_path)
+                self.extract_metrics_widget.show()
+
+            metrics_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                        'Compute segmentation metrics',
+                                                        self)
+            metrics_btn.triggered.connect(show_extract_metrics)
+            extras_menu.addAction(metrics_btn)
+
+
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
             def update_dataset_after_check():
                 was_extended, file_names = check_extend_dataset(self,
@@ -542,7 +544,7 @@ class RootPainter(QtWidgets.QMainWindow):
         info_container_layout = QtWidgets.QHBoxLayout()
         info_container_layout.setAlignment(Qt.AlignCenter)
         info_label = QtWidgets.QLabel()
-        info_label.setText("")
+        info_label.setText("Note: The dice plot excludes the first 6 annotations, as it is assumed these were not annotated correctively.")
         info_container_layout.addWidget(info_label)
         # left, top, right, bottom
         info_container_layout.setContentsMargins(0, 0, 0, 0)

@@ -23,6 +23,7 @@ import time
 import numpy as np
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
+from plot_seg_metrics import plot_dice_metric
 from skimage.io import imread
 from progress_widget import BaseProgressWidget
 
@@ -96,6 +97,7 @@ class Thread(QtCore.QThread):
         self.annot_dir = os.path.join(proj_dir, 'annotations')
         self.csv_path = csv_path
         self.plot_path = plot_path
+        self.rolling_average_size = rollling_average_size
         self.fnames = fnames
 
     def run(self):
@@ -115,12 +117,12 @@ class Thread(QtCore.QThread):
                         writer.writerow(headers)
                         headers_written = True
 
-                    # label_type corrected means full image is gt (with corrections assigned).
                     row = [fname]
                     for k in metric_keys:
                         row.append(corrected_metrics[k]) 
                     writer.writerow(row)
-            self.done.emit()
+        plot_dice_metric(self.csv_path, self.plot_path, self.rolling_average_size)
+        self.done.emit()
 
 
 class MetricsProgressWidget(BaseProgressWidget):

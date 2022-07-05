@@ -35,55 +35,29 @@ def moving_average(original, w):
             averages.append(float('NaN'))
     return averages
 
-def get_dice(fname, lines):
-    for l in lines:
-        (f, accuracy, tn,
-         fp, fn, tp, precision, recall, f1) = l.split(',')
-        if f == fname:
-            return float(f1)
-    return 1
 
-def plot_seg_accuracy_over_time(
-    input_csv, rolling_n, show_legend,
-    get_metric):
-
-    lines = open(input_csv).readlines()
-    headers = lines[0].split(',')
-    fnames = []    
-    corrected_vals = []
-    for l in lines:
-        # file_name,accuracy,tn,fp,fn,tp,precision,recall,f1
-        (fname, accuracy, tn,
-         fp, fn, tp, precision, recall, f1) = l.split(',')
-        if fname not in fnames: # dont add twice, makes a mess.
-            fnames.append(fname)
+def plot_seg_accuracy_over_time(metrics_list, rolling_n):
     annots_found = 0
-    corrected_fnames = []
-    for i, f in enumerate(fnames):
+    corrected_dice = [] # dice scores between predicted and corrected for corrected images.
+    for i, m in enumerate(metrics_list):
+        if (m['annot_fg'] + m['annot_bg']) > 0:
+            annots_found += 1
         # once 6 annotations found then start recording disagreement
         if annots_found > 6:
-            corrected_fnames.append(f) 
-            corrected_vals.append(get_metric(f, lines))
+            corrected_dice.append(m['f1'])
 
-    fnames = corrected_fnames
-
-    plt.scatter(list(range(len(fnames))), corrected_vals,
+    plt.scatter(list(range(len(corrected_dice))), corrected_dice,
                 c='b', s=4, marker='x', label='image')
 
-    avg_corrected = moving_average(corrected_vals, rolling_n)
+    avg_corrected = moving_average(corrected_dice, rolling_n)
     plt.plot(avg_corrected, c='r', label=f'average (n={rolling_n})')
-
-    if show_legend:
-        plt.legend()
+    plt.legend()
     plt.grid()
 
-
-def plot_dice_metric(input_metrics_csv_path, output_plot_path, rolling_n):
-    figsize=(10, 6)
-    plt.figure(figsize=figsize)
-    plt.yticks(list(np.arange(0.5, 1.1, 0.05)))
+def plot_dice_metric(metrics_list, output_plot_path, rolling_n):
+    plt.figure(figsize=(10,6))
+    plt.yticks(list(np.arange(0.0, 1.1, 0.05)))
     plt.ylim([0.0, 1])
-    plot_seg_accuracy_over_time(input_metrics_csv_path, rolling_n,
-                                show_legend=True, get_metric=get_dice)
+    plot_seg_accuracy_over_time(metrics_list, rolling_n)
     plt.tight_layout()
     plt.savefig(output_plot_path)

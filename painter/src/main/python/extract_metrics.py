@@ -28,7 +28,7 @@ from skimage.io import imread
 from progress_widget import BaseProgressWidget
 
 
-def compute_metrics_from_masks(y_pred, y_true):
+def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
     """
     Compute TP, FP, TN, FN, dice and for y_pred vs y_true
     """
@@ -37,9 +37,7 @@ def compute_metrics_from_masks(y_pred, y_true):
     fp = np.sum(np.logical_and(y_pred == 1, y_true == 0))
     fn = np.sum(np.logical_and(y_pred == 0, y_true == 1))
     total = (tp + tn + fp + fn)
-    print('tp', tp, 'tn', tn, 'total', total)
     accuracy = (tp + tn) / total
-    print('accuracy', accuracy)
     if tp > 0:
         precision = tp / (tp + fp)
         recall = tp / (tp + fn)
@@ -54,7 +52,10 @@ def compute_metrics_from_masks(y_pred, y_true):
         "tp": tp,
         "precision": precision,
         "recall": recall,
-        "f1": f1
+        "f1": f1,
+        # how many actually manually annotated.
+        "annot_fg": fg_labels,
+        "annot_bg": bg_labels
     }
 
 def compute_seg_metrics(seg_dir, annot_dir, fname):
@@ -81,8 +82,8 @@ def compute_seg_metrics(seg_dir, annot_dir, fname):
     background = annot[:, :, 1].astype(bool).astype(int)
     corrected[foreground > 0] = 1
     corrected[background > 0] = 0
-    corrected_segmentation_metrics = compute_metrics_from_masks(seg, corrected)
-
+    corrected_segmentation_metrics = compute_metrics_from_masks(
+        seg, corrected, np.sum(foreground > 0), np.sum(background > 0))
     return corrected_segmentation_metrics
 
 
@@ -90,25 +91,29 @@ class Thread(QtCore.QThread):
     progress_change = QtCore.pyqtSignal(int, int)
     done = QtCore.pyqtSignal()
 
-    def __init__(self, proj_dir, csv_path, plot_path, fnames, rolling_average_size):
+    def __init__(self, proj_dir, csv_path, plot_path, fnames, rolling_n):
         super().__init__()
         self.proj_dir = proj_dir
         self.seg_dir = os.path.join(proj_dir, 'segmentations')
         self.annot_dir = os.path.join(proj_dir, 'annotations')
         self.csv_path = csv_path
         self.plot_path = plot_path
-        self.rolling_average_size = rollling_average_size
+        self.rolling_average_size = rolling_n
         self.fnames = fnames
 
     def run(self):
         headers_written = False
-        with open(self.csv_path, 'w+')  as csvfile:
+        all_metrics = []
+        all_fnames = []
+        with open(self.csv_path, 'w+', newline='')  as csvfile:
             writer = csv.writer(csvfile, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
             for i, fname in enumerate(self.fnames):
                 self.progress_change.emit(i+1, len(self.fnames))
                 metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
                 if metrics: 
+                    all_metrics.append(metrics)
+                    all_fnames.append(fname)
                     corrected_metrics = metrics
                     # Write the column headers
                     if not headers_written:
@@ -116,12 +121,11 @@ class Thread(QtCore.QThread):
                         headers = ['file_name'] + metric_keys
                         writer.writerow(headers)
                         headers_written = True
-
                     row = [fname]
                     for k in metric_keys:
                         row.append(corrected_metrics[k]) 
                     writer.writerow(row)
-        plot_dice_metric(self.csv_path, self.plot_path, self.rolling_average_size)
+        plot_dice_metric(all_metrics, self.plot_path, self.rolling_average_size)
         self.done.emit()
 
 
@@ -133,6 +137,7 @@ class MetricsProgressWidget(BaseProgressWidget):
     def run(self, proj_file_path, csv_path, plot_path, rolling_average_size):
         self.proj_file_path = proj_file_path
         self.csv_path = csv_path
+        self.plot_path = plot_path
         fnames = json.load(open(self.proj_file_path))['file_names']
         proj_dir = os.path.dirname(self.proj_file_path)
         self.thread = Thread(proj_dir, csv_path, plot_path, fnames, rolling_average_size)
@@ -143,9 +148,9 @@ class MetricsProgressWidget(BaseProgressWidget):
 
     def done(self, errors=[]):
         QtWidgets.QMessageBox.about(self, 'Metrics Computed',
-                                    f'Computing metrics for {self.proj_file_path} '
-                                    f'to {self.csv_path} '
-                                    'is complete.')
+                                    f'Metrics computed for {os.path.dirname(self.proj_file_path)}. '
+                                    f'The CSV file has been saved to {self.csv_path} and '
+                                    f' the dice score plot has been saved to {self.plot_path}.')
         self.close()
 
 
@@ -162,20 +167,33 @@ class ExtractMetricsWidget(QtWidgets.QWidget):
         self.setLayout(layout)
         self.setWindowTitle("Extract Metrics")
 
-        info_label = QtWidgets.QLabel()
-        info_label.setText("")
-        layout.addWidget(info_label)
-        self.info_label = info_label
+        text_label = QtWidgets.QLabel()
+        text_label.setText("")
+        layout.addWidget(text_label)
+        text_label.setText("""
+Metrics for each of the project segmentations and annotations will be output to a CSV file and a     
+plot will be generated. The metrics measure agreement between the initial segmentation predicted     
+by the model and the corrected segmentation, which includes the initial segmentation with the     
+corrections assigned.
+
+The metrics saved to the CSV file include accuracy, tn (true negatives), fp (false positives),     
+tp (true positives), precision, recall, f1 (also known as dice score), annot_fg (number of pixels      
+annotated as foreground) and annot_bg (number of pixels annotated as background).
+
+A dice score plot will also be generated. The dice plot excludes the 
+initial images until there are at least 6 annotations, as it is assumed these initial images were 
+annotated to include clear examples and were were not annotated correctively.
+
+        """)
 
         edit_rolling_average_label = QtWidgets.QLabel()
         edit_rolling_average_label = QtWidgets.QLabel()
-        edit_rolling_average_label.setText("Plot rolling average size")
+        edit_rolling_average_label.setText("Plot rolling average size:")
         layout.addWidget(edit_rolling_average_label)
         rolling_average_edit_widget = QtWidgets.QSpinBox()
         rolling_average_edit_widget.setMaximum(10000)
         rolling_average_edit_widget.setMinimum(1)
         rolling_average_edit_widget.setValue(30)
-        rolling_average_edit_widget.valueChanged.connect(self.validate)
         self.rolling_average_edit_widget = rolling_average_edit_widget
         layout.addWidget(rolling_average_edit_widget)
 
@@ -196,7 +214,3 @@ class ExtractMetricsWidget(QtWidgets.QWidget):
         self.progress_widget.run(self.proj_file_path, csv_path, plot_path, rolling_average_n)
         self.progress_widget.show()
         self.close()
-
-    def validate(self):
-        self.info_label.setText("")
-        self.submit_btn.setEnabled(True)

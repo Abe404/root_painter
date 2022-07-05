@@ -23,7 +23,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # pylint: disable=W0703
 
 # too many public methods
-# pylint: disable=R0904
 
 import sys
 import os
@@ -544,7 +543,7 @@ class RootPainter(QtWidgets.QMainWindow):
         info_container_layout = QtWidgets.QHBoxLayout()
         info_container_layout.setAlignment(Qt.AlignCenter)
         info_label = QtWidgets.QLabel()
-        info_label.setText("Note: The dice plot excludes the first 6 annotations, as it is assumed these were not annotated correctively.")
+        info_label.setText("")
         info_container_layout.addWidget(info_label)
         # left, top, right, bottom
         info_container_layout.setContentsMargins(0, 0, 0, 0)

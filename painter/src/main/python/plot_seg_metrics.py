@@ -36,7 +36,7 @@ def moving_average(original, w):
     return averages
 
 
-def plot_seg_accuracy_over_time(metrics_list, rolling_n):
+def plot_seg_accuracy_over_time(ax, metrics_list, rolling_n):
     annots_found = 0
     corrected_dice = [] # dice scores between predicted and corrected for corrected images.
     for i, m in enumerate(metrics_list):
@@ -46,18 +46,20 @@ def plot_seg_accuracy_over_time(metrics_list, rolling_n):
         if annots_found > 6:
             corrected_dice.append(m['f1'])
 
-    plt.scatter(list(range(len(corrected_dice))), corrected_dice,
+    ax.scatter(list(range(len(corrected_dice))), corrected_dice,
                 c='b', s=4, marker='x', label='image')
 
     avg_corrected = moving_average(corrected_dice, rolling_n)
-    plt.plot(avg_corrected, c='r', label=f'average (n={rolling_n})')
-    plt.legend()
-    plt.grid()
+    ax.plot(avg_corrected, c='r', label=f'average (n={rolling_n})')
+    ax.legend()
+    ax.grid()
 
 def plot_dice_metric(metrics_list, output_plot_path, rolling_n):
-    plt.figure(figsize=(10,6))
-    plt.yticks(list(np.arange(0.0, 1.1, 0.05)))
-    plt.ylim([0.0, 1])
-    plot_seg_accuracy_over_time(metrics_list, rolling_n)
+    fig, ax = plt.subplots() # fig : figure object, ax : Axes object
+    ax.set_xlabel('image')
+    ax.set_ylabel('dice')
+    ax.set_yticks(list(np.arange(0.0, 1.1, 0.05)))
+    ax.set_ylim([0.0, 1])
+    plot_seg_accuracy_over_time(ax, metrics_list, rolling_n)
     plt.tight_layout()
     plt.savefig(output_plot_path)

@@ -21,21 +21,21 @@ import math
 import json
 import time
 import numpy as np
+import json
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from plot_seg_metrics import plot_dice_metric
 from skimage.io import imread
 from progress_widget import BaseProgressWidget
 
-
 def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
     """
     Compute TP, FP, TN, FN, dice and for y_pred vs y_true
     """
-    tp = np.sum(np.logical_and(y_pred == 1, y_true == 1))
-    tn = np.sum(np.logical_and(y_pred == 0, y_true == 0))
-    fp = np.sum(np.logical_and(y_pred == 1, y_true == 0))
-    fn = np.sum(np.logical_and(y_pred == 0, y_true == 1))
+    tp = int(np.sum(np.logical_and(y_pred == 1, y_true == 1)))
+    tn = int(np.sum(np.logical_and(y_pred == 0, y_true == 0)))
+    fp = int(np.sum(np.logical_and(y_pred == 1, y_true == 0)))
+    fn = int(np.sum(np.logical_and(y_pred == 0, y_true == 1)))
     total = (tp + tn + fp + fn)
     accuracy = (tp + tn) / total
     if tp > 0:
@@ -54,8 +54,8 @@ def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
         "recall": recall,
         "f1": f1,
         # how many actually manually annotated.
-        "annot_fg": fg_labels,
-        "annot_bg": bg_labels
+        "annot_fg": int(fg_labels),
+        "annot_bg": int(bg_labels)
     }
 
 def compute_seg_metrics(seg_dir, annot_dir, fname):
@@ -89,16 +89,15 @@ def compute_seg_metrics(seg_dir, annot_dir, fname):
 
 class Thread(QtCore.QThread):
     progress_change = QtCore.pyqtSignal(int, int)
-    done = QtCore.pyqtSignal()
+    done = QtCore.pyqtSignal(str)
 
-    def __init__(self, proj_dir, csv_path, plot_path, fnames, rolling_n):
+    def __init__(self, proj_dir, csv_path, plot_path, fnames):
         super().__init__()
         self.proj_dir = proj_dir
         self.seg_dir = os.path.join(proj_dir, 'segmentations')
         self.annot_dir = os.path.join(proj_dir, 'annotations')
         self.csv_path = csv_path
         self.plot_path = plot_path
-        self.rolling_average_size = rolling_n
         self.fnames = fnames
 
     def run(self):
@@ -125,8 +124,7 @@ class Thread(QtCore.QThread):
                     for k in metric_keys:
                         row.append(corrected_metrics[k]) 
                     writer.writerow(row)
-        plot_dice_metric(all_metrics, self.plot_path, self.rolling_average_size)
-        self.done.emit()
+        self.done.emit(json.dumps(all_metrics))
 
 
 class MetricsProgressWidget(BaseProgressWidget):
@@ -140,13 +138,16 @@ class MetricsProgressWidget(BaseProgressWidget):
         self.plot_path = plot_path
         fnames = json.load(open(self.proj_file_path))['file_names']
         proj_dir = os.path.dirname(self.proj_file_path)
-        self.thread = Thread(proj_dir, csv_path, plot_path, fnames, rolling_average_size)
+        self.rolling_average_size = rolling_average_size
+        self.thread = Thread(proj_dir, csv_path, plot_path, fnames)
         self.progress_bar.setMaximum(len(fnames))
         self.thread.progress_change.connect(self.onCountChanged)
         self.thread.done.connect(self.done)
         self.thread.start()
 
-    def done(self, errors=[]):
+    def done(self, all_metrics_str):
+        all_metrics = json.loads(all_metrics_str)
+        plot_dice_metric(all_metrics, self.plot_path, self.rolling_average_size)
         QtWidgets.QMessageBox.about(self, 'Metrics Computed',
                                     f'Metrics computed for {os.path.dirname(self.proj_file_path)}. '
                                     f'The CSV file has been saved to {self.csv_path} and '

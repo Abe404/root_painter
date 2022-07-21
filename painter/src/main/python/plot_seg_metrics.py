@@ -18,7 +18,7 @@ import os
 import math
 import matplotlib.pyplot as plt
 import numpy as np
-
+import pyqtgraph as pg
 
 def moving_average(original, w):
     averages = []
@@ -54,6 +54,7 @@ def plot_seg_accuracy_over_time(ax, metrics_list, rolling_n):
     ax.legend()
     ax.grid()
 
+
 def plot_dice_metric(metrics_list, output_plot_path, rolling_n):
     fig, ax = plt.subplots() # fig : figure object, ax : Axes object
     ax.set_xlabel('image')
@@ -63,3 +64,33 @@ def plot_dice_metric(metrics_list, output_plot_path, rolling_n):
     plot_seg_accuracy_over_time(ax, metrics_list, rolling_n)
     plt.tight_layout()
     plt.savefig(output_plot_path)
+
+
+
+
+def plot_dice_metric_qtgraph(metrics_list, output_plot_path, rolling_n):
+    annots_found = 0
+    corrected_dice = [] # dice scores between predicted and corrected for corrected images.
+    for i, m in enumerate(metrics_list):
+        if (m['annot_fg'] + m['annot_bg']) > 0:
+            annots_found += 1
+        # once 6 annotations found then start recording disagreement
+        if annots_found > 6:
+            corrected_dice.append(m['f1'])
+
+    avg_corrected = moving_average(corrected_dice, rolling_n)
+    x = list(range(len(corrected_dice)))
+    y = corrected_dice
+    ## Switch to using white background and black foreground
+    pg.setConfigOption('background', 'w')
+    pg.setConfigOption('foreground', 'k')
+    # setting pen=None disables line drawing
+    window = pg.plot()  
+    window.showGrid(x = True, y = True, alpha = 0.4)
+    window.addLegend(offset=(-90, -90))
+    window.plot(x, y, pen=None, symbol='x', name='image')  
+    window.plot(avg_corrected, pen = pg.mkPen('r', width=3), symbol=None, name=f'average (n={rolling_n})')
+
+    window.setLabel('left', "dice")
+    window.setLabel('bottom', "image")
+    window.show()

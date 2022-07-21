@@ -9,3 +9,4 @@ scipy==1.7.3
 imagecodecs==2021.11.20
 pyinstaller==4.8
 matplotlib==3.5.2
+pyqtgraph==0.12.4

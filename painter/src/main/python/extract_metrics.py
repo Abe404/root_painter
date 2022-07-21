@@ -24,7 +24,7 @@ import numpy as np
 import json
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
-from plot_seg_metrics import plot_dice_metric
+from plot_seg_metrics import plot_dice_metric, plot_dice_metric_qtgraph
 from skimage.io import imread
 from progress_widget import BaseProgressWidget
 
@@ -147,11 +147,11 @@ class MetricsProgressWidget(BaseProgressWidget):
 
     def done(self, all_metrics_str):
         all_metrics = json.loads(all_metrics_str)
+        plot_dice_metric_qtgraph(all_metrics, self.plot_path, self.rolling_average_size)
         plot_dice_metric(all_metrics, self.plot_path, self.rolling_average_size)
         QtWidgets.QMessageBox.about(self, 'Metrics Computed',
                                     f'Metrics computed for {os.path.dirname(self.proj_file_path)}. '
-                                    f'The CSV file has been saved to {self.csv_path} and '
-                                    f' the dice score plot has been saved to {self.plot_path}.')
+                                    f'The CSV file has been saved to {self.csv_path}')
         self.close()
 
 

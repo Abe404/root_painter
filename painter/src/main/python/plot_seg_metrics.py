@@ -19,6 +19,8 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pyqtgraph as pg
+from pyqtgraph.Qt import mkQApp
+from pyqtgraph import PlotWidget
 
 def moving_average(original, w):
     averages = []
@@ -65,8 +67,7 @@ def plot_dice_metric(metrics_list, output_plot_path, rolling_n):
     plt.tight_layout()
     plt.savefig(output_plot_path)
 
-
-
+plots = []
 
 def plot_dice_metric_qtgraph(metrics_list, output_plot_path, rolling_n):
     annots_found = 0
@@ -81,16 +82,33 @@ def plot_dice_metric_qtgraph(metrics_list, output_plot_path, rolling_n):
     avg_corrected = moving_average(corrected_dice, rolling_n)
     x = list(range(len(corrected_dice)))
     y = corrected_dice
+    args = [x, y]
+    mkQApp()
+
     ## Switch to using white background and black foreground
     pg.setConfigOption('background', 'w')
-    pg.setConfigOption('foreground', 'k')
-    # setting pen=None disables line drawing
-    window = pg.plot()  
-    window.showGrid(x = True, y = True, alpha = 0.4)
-    window.addLegend(offset=(-90, -90))
-    window.plot(x, y, pen=None, symbol='x', name='image')  
-    window.plot(avg_corrected, pen = pg.mkPen('r', width=3), symbol=None, name=f'average (n={rolling_n})')
+    pg.setConfigOption('foreground', 'w')
 
-    window.setLabel('left', "dice")
-    window.setLabel('bottom', "image")
-    window.show()
+    view = pg.GraphicsView()
+
+    l = pg.GraphicsLayout(border=None)
+    l.setContentsMargins(10, 10, 10, 10)
+    view.setCentralItem(l)
+    view.setWindowTitle('RootPainter: Segmentation Metrics')
+    view.resize(800,600)
+    #l.nextRow()
+    l2 = l.addLayout()
+    l2.setContentsMargins(0, 0, 0, 0)
+    #l2.nextRow()
+    pg.setConfigOption('foreground', 'k')
+    p21 = l2.addPlot()
+
+    p21.showGrid(x = True, y = True, alpha = 0.4)
+    p21.addLegend(offset=(-90, -90))
+    p21.plot(x, y, pen=None, symbol='x', name='image')  
+    p21.plot(avg_corrected, pen = pg.mkPen('r', width=3), symbol=None, name=f'average (n={rolling_n})')
+
+    p21.setLabel('left', 'Dice')
+    p21.setLabel('bottom', 'Image')
+    plots.append(view)
+    view.show()

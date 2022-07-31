@@ -437,9 +437,9 @@ class RootPainter(QtWidgets.QMainWindow):
             metrics_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
                                                         'Compute segmentation metrics',
                                                         self)
-            self.metrics_plot = MetricsPlot
+            self.metrics_plot = MetricsPlot()
             metrics_btn.triggered.connect(partial(self.metrics_plot.show_extract_metrics,
-                                                  self.metrics_plot, self.proj_file_path))
+                                                  self.proj_file_path))
             extras_menu.addAction(metrics_btn)
 
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
@@ -967,3 +967,8 @@ class RootPainter(QtWidgets.QMainWindow):
                                                     self.png_fname,
                                                     self.train_annot_dir,
                                                     self.val_annot_dir)
+
+            self.metrics_plot.add_file_metrics(os.path.basename(self.image_path))
+
+
+

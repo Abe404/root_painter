@@ -260,7 +260,7 @@ class MetricsPlot:
             self.graph_plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n=30)
             self.graph_plot.show()
 
-        self.extract_metrics_widget.done.connect(extract_done) # i dont know why partial is needed here.
+        self.extract_metrics_widget.done.connect(extract_done)
         self.extract_metrics_widget.show()
 
 
@@ -384,6 +384,7 @@ def hide_weird_options(graph_plot):
 
 
 if __name__ == '__main__':
+    # a quick test to demo the plot. Useful for testing a debugging.
     app = QtWidgets.QApplication([])
     corrected_dice = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
     fnames = ['1', '2', '3', '4', '5', '6']

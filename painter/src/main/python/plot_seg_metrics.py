@@ -251,8 +251,20 @@ class MetricsPlot:
 
     def __init__(self):
         self.graph_plot = None
+        self.proj_file_path = None
+        self.proj_dir = None
+
+    def add_file_metrics(self, fname):
+        if self.graph_plot is not None:
+            seg_dir = os.path.join(self.proj_dir, 'segmentations')
+            annot_dir = os.path.join(self.proj_dir, 'annotations')
+            f_metrics = compute_seg_metrics(seg_dir, annot_dir, fname)
+            if f_metrics: 
+                self.graph_plot.add_point(fname, f_metrics)
 
     def show_extract_metrics(self, proj_file_path): 
+        self.proj_file_path = proj_file_path
+        self.proj_dir = os.path.dirname(self.proj_file_path)
         self.extract_metrics_widget = ExtractMetricsWidget(proj_file_path)
 
         def extract_done(metric_str):
@@ -305,8 +317,12 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
 
     def add_point(self, fname, metrics):
-        self.fnames.append(fname)
-        self.metrics_list.append(metrics) 
+        if fname in self.fnames:
+            idx = self.fnames.index(fname)
+            self.metrics_list[idx] = metrics
+        else:
+            self.fnames.append(fname)
+            self.metrics_list.append(metrics) 
         self.render_data()
 
     def render_data(self):

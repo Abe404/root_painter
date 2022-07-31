@@ -1,3 +1,4 @@
+#pylint: disable=I1101,C0111,W0201,R0903,E0611, R0902, R0914, C0303, C0103
 """
 Copyright (C) 2022 Abraham George Smith
 
@@ -15,116 +16,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+import csv
 import math
+import json
+import time
+from functools import partial
 import matplotlib.pyplot as plt
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.Qt import mkQApp
 from PyQt5 import QtWidgets
-
-# def plot_seg_accuracy_over_time(ax, metrics_list, rolling_n):
-#     annots_found = 0
-#     corrected_dice = [] # dice scores between predicted and corrected for corrected images.
-#     for i, m in enumerate(metrics_list):
-#         if (m['annot_fg'] + m['annot_bg']) > 0:
-#             annots_found += 1
-#         # once 6 annotations found then start recording disagreement
-#         if annots_found > 6:
-#             corrected_dice.append(m['f1'])
-# 
-#     ax.scatter(list(range(len(corrected_dice))), corrected_dice,
-#                 c='b', s=4, marker='x', label='image')
-# 
-#     avg_corrected = moving_average(corrected_dice, rolling_n)
-#     ax.plot(avg_corrected, c='r', label=f'average (n={rolling_n})')
-#     ax.legend()
-#     ax.grid()
-#
-# def plot_dice_metric(metrics_list, output_plot_path, rolling_n):
-#     fig, ax = plt.subplots() # fig : figure object, ax : Axes object
-#     ax.set_xlabel('image')
-#     ax.set_ylabel('dice')
-#     ax.set_yticks(list(np.arange(0.0, 1.1, 0.05)))
-#     ax.set_ylim([0.0, 1])
-#     plot_seg_accuracy_over_time(ax, metrics_list, rolling_n)
-#     plt.tight_layout()
-#     plt.savefig(output_plot_path)
-
-
-# def test_plot():
-#     from PyQt5 import QtWidgets
-#     ## Always start by initializing Qt (only once per application)
-#     app = QtWidgets.QApplication([])
-# 
-#     corrected_dice = [1,2,3,4]
-#     x = list(range(len(corrected_dice)))
-#     y = corrected_dice
-#     args = [x, y]
-#     mkQApp()
-# 
-#     ## Switch to using white background and black foreground
-#     pg.setConfigOption('background', 'w')
-#     pg.setConfigOption('foreground', 'w')
-# 
-#     view = pg.GraphicsView()
-# 
-#     l = pg.GraphicsLayout(border=None)
-#     l.setContentsMargins(10, 10, 10, 10)
-#     view.setCentralItem(l)
-#     view.setWindowTitle('RootPainter: Segmentation Metrics')
-#     view.resize(800,600)
-#     #l.nextRow()
-#     l2 = l.addLayout()
-#     l2.setContentsMargins(0, 0, 0, 0)
-#     #l2.nextRow()
-#     pg.setConfigOption('foreground', 'k')
-#     p21 = l2.addPlot()
-# 
-#     p21.showGrid(x = True, y = True, alpha = 0.4)
-#     p21.addLegend(offset=(-90, -90))
-#     p21.plot(x, y, pen=None, symbol='x', name='image')  
-# 
-#     p21.setLabel('left', 'Dice')
-#     p21.setLabel('bottom', 'Image')
-#     plots.append(p21)
-# 
-#     proxy = pg.SignalProxy(plots[0].scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)
-#     view.show()
-#     ## Start the Qt event loop
-#     app.exec_()
-# 
-# 
-# from PyQt5.QtCore import QTimer
-# timer = QTimer()
-# 
-# 
-# def add_point(seg_dir, annot_dir, fname):
-#     
-#     # TODO: Call this function from the code that saves the annotation.
-#     #       Maybe have it pass the file name so the file name or
-#     #       path to the annotation and segmentation so the metrics can be
-#     #       computed for the image and then added to the plot.
-#     #       if the file name is already in the plot then we would need to
-#     #       update the metric value (corrected_dice) for the existing
-#     #       file metrics entry.
-# 
-# 
-#     metrics = compute_seg_metrics(seg_dir, annot_dir, fname)
-# 
-#     corrected_dice.append(y)
-#     #x = list(range(len(corrected_dice)))
-#     #y = corrected_dice
-#     #print('set data ', y)
-#     #plots[0].setData(len(corrected_dice), len(corrected_dice))        
-#     x = list(range(len(corrected_dice)))
-#     y = corrected_dice
-#     plots[0].plot(x, y, pen=None, symbol='x', clear=True)
-#def mouseMoved(evt):
-#    pos = evt[0]  ## using signal proxy turns original arguments into a tuple
-#    #print('pos', pos, dir(pos))
-#    add_point(pos.y())
-
-
+from PyQt5 import QtCore
+from skimage.io import imread
+from progress_widget import BaseProgressWidget
 
 def moving_average(original, w):
     averages = []
@@ -149,6 +53,217 @@ def moving_average(original, w):
     return x_pos, averages
 
 
+def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
+    """
+    Compute TP, FP, TN, FN, dice and for y_pred vs y_true
+    """
+    tp = int(np.sum(np.logical_and(y_pred == 1, y_true == 1)))
+    tn = int(np.sum(np.logical_and(y_pred == 0, y_true == 0)))
+    fp = int(np.sum(np.logical_and(y_pred == 1, y_true == 0)))
+    fn = int(np.sum(np.logical_and(y_pred == 0, y_true == 1)))
+    total = (tp + tn + fp + fn)
+    accuracy = (tp + tn) / total
+    if tp > 0:
+        precision = tp / (tp + fp)
+        recall = tp / (tp + fn)
+        f1 = 2 * ((precision * recall) / (precision + recall))
+    else:
+        precision = recall = f1 = float('NaN')
+    return {
+        "accuracy": accuracy,
+        "tn": tn,
+        "fp": fp,
+        "fn": fn,
+        "tp": tp,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        # how many actually manually annotated.
+        "annot_fg": int(fg_labels),
+        "annot_bg": int(bg_labels)
+    }
+
+def compute_seg_metrics(seg_dir, annot_dir, fname):
+    # annot and seg are both PNG
+    fname = os.path.splitext(fname)[0] + '.png'
+    seg_path = os.path.join(seg_dir, fname)
+    if not os.path.isfile(seg_path):
+        return None # no segmentation means no metrics.
+
+    seg = imread(seg_path)
+    annot_path = os.path.join(annot_dir, 'train', fname)
+    if not os.path.isfile(annot_path):
+        annot_path = os.path.join(annot_dir, 'val', fname)
+
+    if os.path.isfile(annot_path):
+        annot = imread(annot_path)
+    else:
+        annot = np.zeros(seg.shape) # no file implies empty annotation (no corrections)
+
+    seg = np.array(seg[:, :, 3] > 0) # alpha channel to detect where seg exists.
+    corrected = np.array(seg)
+    # mask defines which pixels are defined in the annotation.
+    foreground = annot[:, :, 0].astype(bool).astype(int)
+    background = annot[:, :, 1].astype(bool).astype(int)
+    corrected[foreground > 0] = 1
+    corrected[background > 0] = 0
+    corrected_segmentation_metrics = compute_metrics_from_masks(
+        seg, corrected, np.sum(foreground > 0), np.sum(background > 0))
+    return corrected_segmentation_metrics
+
+
+class Thread(QtCore.QThread):
+    progress_change = QtCore.pyqtSignal(int, int)
+    done = QtCore.pyqtSignal(str)
+
+    def __init__(self, proj_dir, csv_path, plot_path, fnames):
+        super().__init__()
+        self.proj_dir = proj_dir
+        self.seg_dir = os.path.join(proj_dir, 'segmentations')
+        self.annot_dir = os.path.join(proj_dir, 'annotations')
+        self.csv_path = csv_path
+        self.plot_path = plot_path
+        self.fnames = fnames
+
+    def run(self):
+        headers_written = False
+        all_metrics = []
+        all_fnames = []
+        with open(self.csv_path, 'w+', newline='')  as csvfile:
+            writer = csv.writer(csvfile, delimiter=',',
+                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            for i, fname in enumerate(self.fnames):
+                self.progress_change.emit(i+1, len(self.fnames))
+                metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
+                if metrics: 
+                    all_metrics.append(metrics)
+                    all_fnames.append(fname)
+                    corrected_metrics = metrics
+                    # Write the column headers
+                    if not headers_written:
+                        metric_keys = list(corrected_metrics.keys())
+                        headers = ['file_name'] + metric_keys
+                        writer.writerow(headers)
+                        headers_written = True
+                    row = [fname]
+                    for k in metric_keys:
+                        row.append(corrected_metrics[k]) 
+                    writer.writerow(row)
+        self.done.emit(json.dumps([all_fnames, all_metrics]))
+
+
+class MetricsProgressWidget(BaseProgressWidget):
+
+    done = QtCore.pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__('Computing metrics')
+
+    def run(self, proj_file_path, csv_path, plot_path, rolling_average_size):
+        self.proj_file_path = proj_file_path
+        self.csv_path = csv_path
+        self.plot_path = plot_path
+        fnames = json.load(open(self.proj_file_path))['file_names']
+        proj_dir = os.path.dirname(self.proj_file_path)
+        self.rolling_average_size = rolling_average_size
+        self.thread = Thread(proj_dir, csv_path, plot_path, fnames)
+        self.progress_bar.setMaximum(len(fnames))
+        self.thread.progress_change.connect(self.onCountChanged)
+        self.thread.done.connect(self.metrics_computed)
+        self.thread.start()
+
+    def metrics_computed(self, all_metrics_str):
+        QtWidgets.QMessageBox.about(self, 'Metrics Computed',
+                                    f'Metrics computed for {os.path.dirname(self.proj_file_path)}. '
+
+                                    f'The CSV file has been saved to {self.csv_path}')
+        self.done.emit(all_metrics_str)
+        self.close()
+
+
+class ExtractMetricsWidget(QtWidgets.QWidget):
+    submit = QtCore.pyqtSignal()
+    done = QtCore.pyqtSignal(str)
+
+    def __init__(self, proj_file_path):
+        super().__init__()
+        self.proj_file_path = proj_file_path
+        self.initUI()
+
+    def initUI(self):
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+        self.setWindowTitle("Extract Metrics")
+
+        text_label = QtWidgets.QLabel()
+        text_label.setText("")
+        layout.addWidget(text_label)
+        text_label.setText("""
+Metrics for each of the project segmentations and annotations will be output to a CSV file and a     
+plot will be generated. The metrics measure agreement between the initial segmentation predicted     
+by the model and the corrected segmentation, which includes the initial segmentation with the     
+corrections assigned.
+
+The metrics saved to the CSV file include accuracy, tn (true negatives), fp (false positives),     
+tp (true positives), precision, recall, f1 (also known as dice score), annot_fg (number of pixels      
+annotated as foreground) and annot_bg (number of pixels annotated as background).
+
+A dice score plot will also be generated. The dice plot excludes the 
+initial images until there are at least 6 annotations, as it is assumed these initial images were 
+annotated to include clear examples and were were not annotated correctively.
+
+        """)
+
+        edit_rolling_average_label = QtWidgets.QLabel()
+        edit_rolling_average_label = QtWidgets.QLabel()
+        edit_rolling_average_label.setText("Plot rolling average size:")
+        layout.addWidget(edit_rolling_average_label)
+        rolling_average_edit_widget = QtWidgets.QSpinBox()
+        rolling_average_edit_widget.setMaximum(10000)
+        rolling_average_edit_widget.setMinimum(1)
+        rolling_average_edit_widget.setValue(30)
+        self.rolling_average_edit_widget = rolling_average_edit_widget
+        layout.addWidget(rolling_average_edit_widget)
+
+        submit_btn = QtWidgets.QPushButton('Extract Metrics')
+        submit_btn.clicked.connect(self.extract_metrics)
+        layout.addWidget(submit_btn)
+        self.submit_btn = submit_btn
+
+    def extract_metrics(self):
+        self.progress_widget = MetricsProgressWidget()
+        metrics_dir = os.path.join(os.path.dirname(self.proj_file_path), 'metrics')
+        rolling_average_n = self.rolling_average_edit_widget.value()
+        if not os.path.isdir(metrics_dir):
+            os.makedirs(metrics_dir)
+        prefix = str(round(time.time())) + '_'
+        csv_path = os.path.join(metrics_dir, f'{prefix}metrics.csv')
+        plot_path = os.path.join(metrics_dir, f'{prefix}dice.png')
+        def metrics_computed(metric_str):
+            self.done.emit(metric_str) 
+        self.progress_widget.done.connect(metrics_computed) 
+        self.progress_widget.run(self.proj_file_path, csv_path, plot_path, rolling_average_n)
+        self.progress_widget.show()
+        self.close()
+
+
+class MetricsPlot:
+
+    def __init__(self):
+        self.graph_plot = None
+
+    def show_extract_metrics(self, proj_file_path): 
+        self.extract_metrics_widget = ExtractMetricsWidget(proj_file_path)
+
+        def extract_done(metric_str):
+            fnames, metrics_list = json.loads(metric_str)
+            self.graph_plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n=30)
+            self.graph_plot.show()
+
+        self.extract_metrics_widget.done.connect(extract_done) # i dont know why partial is needed here.
+        self.extract_metrics_widget.show()
+
+
 class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
     def __init__(self, fnames, metrics_list, rolling_n):
@@ -166,9 +281,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.rolling_n = rolling_n
         self.graph_plot = None
         self.create_plot()
-        
         self.render_data()
-
         self.add_average_control()
 
 
@@ -245,36 +358,28 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         hide_weird_options(self.graph_plot)
         self.view = view # avoid errors with view being deleted
         self.layout.addWidget(self.view)
-        
+
 
 def hide_weird_options(graph_plot):
     # there are some plot options that I will remove to make things simpler.
-
     # hide option to invert axis (its useless)
     graph_plot.vb.menu.ctrl[0].invertCheck.hide()
     graph_plot.vb.menu.ctrl[1].invertCheck.hide()
-
     # hide option to show visible data only. Who knows what this does.
     graph_plot.vb.menu.ctrl[0].visibleOnlyCheck.hide()
     graph_plot.vb.menu.ctrl[1].visibleOnlyCheck.hide()
-
     # hide option to autoPan
     graph_plot.vb.menu.ctrl[0].autoPanCheck.hide()
     graph_plot.vb.menu.ctrl[1].autoPanCheck.hide()
-
     # hide link combo
     graph_plot.vb.menu.ctrl[0].linkCombo.hide()
     graph_plot.vb.menu.ctrl[1].linkCombo.hide()
     # hide link combo
     graph_plot.vb.menu.ctrl[0].label.hide()
     graph_plot.vb.menu.ctrl[1].label.hide()
-
     # hide option to disable mouse. why would you want this?
     graph_plot.vb.menu.ctrl[0].mouseCheck.hide()
     graph_plot.vb.menu.ctrl[1].mouseCheck.hide()
-
-
-
     graph_plot.ctrlMenu = None
 
 
@@ -290,7 +395,6 @@ if __name__ == '__main__':
     rolling_n = 3
     plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n)
     plot.show()
-
     import random
     def mouseMoved(evt):
         pos = evt[0]  ## using signal proxy turns original arguments into a tuple
@@ -300,5 +404,3 @@ if __name__ == '__main__':
                        'annot_bg': 100})
     proxy = pg.SignalProxy(plot.view.scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)
     app.exec_()
-
-

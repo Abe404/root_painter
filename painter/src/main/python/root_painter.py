@@ -45,7 +45,6 @@ from extract_count import ExtractCountWidget
 from extract_regions import ExtractRegionsWidget
 from extract_length import ExtractLengthWidget
 from extract_comp import ExtractCompWidget
-from extract_metrics import ExtractMetricsWidget
 from convert_seg import ConvertSegForRVEWidget
 from graphics_scene import GraphicsScene
 from graphics_view import CustomGraphicsView
@@ -55,6 +54,7 @@ from file_utils import last_fname_with_annotations
 from file_utils import get_annot_path
 from file_utils import maybe_save_annotation
 from instructions import send_instruction
+from plot_seg_metrics import MetricsPlot
 
 use_plugin("pil")
 
@@ -433,19 +433,14 @@ class RootPainter(QtWidgets.QMainWindow):
         specify_sync_dir_btn.triggered.connect(self.specify_sync_directory)
         extras_menu.addAction(specify_sync_dir_btn)
 
-
         if project_open:
-
-            def show_extract_metrics():
-                self.extract_metrics_widget = ExtractMetricsWidget(self.proj_file_path)
-                self.extract_metrics_widget.show()
-
             metrics_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
                                                         'Compute segmentation metrics',
                                                         self)
-            metrics_btn.triggered.connect(show_extract_metrics)
+            self.metrics_plot = MetricsPlot
+            metrics_btn.triggered.connect(partial(self.metrics_plot.show_extract_metrics,
+                                                  self.metrics_plot, self.proj_file_path))
             extras_menu.addAction(metrics_btn)
-
 
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
             def update_dataset_after_check():

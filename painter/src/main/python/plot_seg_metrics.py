@@ -250,17 +250,17 @@ annotated to include clear examples and were were not annotated correctively.
 class MetricsPlot:
 
     def __init__(self):
-        self.graph_plot = None
+        self.plot_window = None
         self.proj_file_path = None
         self.proj_dir = None
 
     def add_file_metrics(self, fname):
-        if self.graph_plot is not None:
+        if self.plot_window is not None:
             seg_dir = os.path.join(self.proj_dir, 'segmentations')
             annot_dir = os.path.join(self.proj_dir, 'annotations')
             f_metrics = compute_seg_metrics(seg_dir, annot_dir, fname)
             if f_metrics: 
-                self.graph_plot.add_point(fname, f_metrics)
+                self.plot_window.add_point(fname, f_metrics)
 
     def show_extract_metrics(self, proj_file_path): 
         self.proj_file_path = proj_file_path
@@ -269,8 +269,8 @@ class MetricsPlot:
 
         def extract_done(metric_str):
             fnames, metrics_list = json.loads(metric_str)
-            self.graph_plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n=30)
-            self.graph_plot.show()
+            self.plot_window = QtGraphMetricsPlot(fnames, metrics_list, rolling_n=30)
+            self.plot_window.show()
 
         self.extract_metrics_widget.done.connect(extract_done)
         self.extract_metrics_widget.show()
@@ -291,11 +291,18 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.fnames = fnames
         self.metrics_list = metrics_list
         self.rolling_n = rolling_n
+        self.highlight_point_pos = None
+        self.highlight_point = None
         self.graph_plot = None
         self.create_plot()
         self.render_data()
         self.add_average_control()
 
+
+    def add_events(self):
+        def clicked(obj, event):
+            self.set_highlight_point_pos(event.currentItem.ptsClicked[0].pos())
+        self.graph_plot.items[0].sigClicked.connect(clicked)
 
     def avg_changed(self, sb):
         self.rolling_n = sb.value()
@@ -325,17 +332,39 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             self.metrics_list.append(metrics) 
         self.render_data()
 
+
+    def set_highlight_point_pos(self, highlight_point_pos):
+        self.highlight_point_pos = highlight_point_pos
+        self.render_highlight_point()
+
+    def render_highlight_point(self):
+        x = [self.highlight_point_pos.x()]
+        y = [self.highlight_point_pos.y()]
+        if self.highlight_point is not None:
+            self.highlight_point.setData(x, y) # update position of existing point clearing causes trouble.
+        else:
+            self.highlight_point = self.graph_plot.plot(x, y, symbol='o',
+                symbolPen=pg.mkPen('k', width=1.5),
+                symbolBrush=None, symbolSize=16)
+   
+
     def render_data(self):
         assert self.graph_plot is not None, 'plot should be created before rendering data'
         corrected_dice = self.get_corrected_dice()
         x = list(range(1, len(corrected_dice) + 1)) # start from 1 because first image is 1/N
         y = corrected_dice
-        self.graph_plot.plot(x, y, pen=None, symbol='x', clear=True)
+        self.graph_plot.plot(x, y, pen=None, symbol='x', clear=True, clickable=True)
+        self.highlight_point = None # cleared now.
 
         x, y = moving_average(corrected_dice, self.rolling_n)
         self.graph_plot.plot(x, y, pen = pg.mkPen('r', width=3),
                              symbol=None, name=f'average (n={self.rolling_n})')
+        
+        # highlight point pos is a currently clicked point.
+        if self.highlight_point_pos is not None:
+            self.render_highlight_point()
 
+        self.add_events()
 
     def get_corrected_dice(self):
         # should not consider first annotated images as these are likely
@@ -414,12 +443,17 @@ if __name__ == '__main__':
     rolling_n = 3
     plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n)
     plot.show()
+   
+
     import random
+
     def mouseMoved(evt):
         pos = evt[0]  ## using signal proxy turns original arguments into a tuple
-        plot.add_point(str(len(plot.metrics_list)),
-                       {'f1': random.random(),
-                       'annot_fg': 100,
-                       'annot_bg': 100})
+        if plot.rolling_n > 30:
+            plot.add_point(str(len(plot.metrics_list)),
+                           {'f1': random.random(),
+                           'annot_fg': 100,
+                           'annot_bg': 100})
+
     proxy = pg.SignalProxy(plot.view.scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)
     app.exec_()

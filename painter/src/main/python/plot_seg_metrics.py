@@ -328,7 +328,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
     def render_data(self):
         assert self.graph_plot is not None, 'plot should be created before rendering data'
         corrected_dice = self.get_corrected_dice()
-        x = list(range(len(corrected_dice)))
+        x = list(range(1, len(corrected_dice) + 1)) # start from 1 because first image is 1/N
         y = corrected_dice
         self.graph_plot.plot(x, y, pen=None, symbol='x', clear=True)
 
@@ -348,6 +348,8 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             # once 6 annotations found then start recording disagreement
             if annots_found > 6:
                 corrected_dice.append(m['f1'])
+            else:
+                corrected_dice.append(float('NaN'))
         return corrected_dice
 
 

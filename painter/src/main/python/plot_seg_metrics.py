@@ -341,9 +341,9 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         selected_point_widget_layout.addWidget(self.navigate_btn)
         selected_point_widget_layout.setContentsMargins(0, 0, 0, 0) # left, top, right, bottom
         self.navigate_btn.hide()
-        def nav_to_image():
-            self.on_navigate_to_file.emit(self.highlight_point_fname)
-        self.navigate_btn.clicked.connect(nav_to_image)
+        #def nav_to_image():
+        #    self.on_navigate_to_file.emit(self.highlight_point_fname)
+        #self.navigate_btn.clicked.connect(nav_to_image)
 
         selected_point_widget.setContentsMargins(0, 0, 10, 0) # left, top, right, bottom
         self.control_bar_layout.addWidget(selected_point_widget)
@@ -376,8 +376,13 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
     def set_highlight_point(self, highlight_point_fname, x, y):
         self.highlight_point_fname = highlight_point_fname
         self.selected_point_label.setText(f"Name: {highlight_point_fname}  Dice: {round(y, 4)}")
-        self.navigate_btn.show()
+        # self.navigate_btn.show()
         self.render_highlight_point()
+
+        def nav_to_im():
+            self.on_navigate_to_file.emit(self.highlight_point_fname)
+        # call using timer to let the click event finish first to avoid a bug.
+        QtCore.QTimer.singleShot(10, nav_to_im)
 
     def render_highlight_point(self):
         idx = self.fnames.index(self.highlight_point_fname)
@@ -389,6 +394,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             self.highlight_point = self.graph_plot.plot(x, y, symbol='o',
                 symbolPen=pg.mkPen('blue', width=1.5),
                 symbolBrush=None, symbolSize=16)
+
    
     def render_data(self):
         assert self.graph_plot is not None, 'plot should be created before rendering data'

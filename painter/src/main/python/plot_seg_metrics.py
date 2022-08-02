@@ -262,14 +262,16 @@ class MetricsPlot:
             if f_metrics: 
                 self.plot_window.add_point(fname, f_metrics)
 
-    def show_extract_metrics(self, proj_file_path, navigate_to_file): 
+    def show_extract_metrics(self, proj_file_path, navigate_to_file, image_path): 
         self.proj_file_path = proj_file_path
         self.proj_dir = os.path.dirname(self.proj_file_path)
         self.extract_metrics_widget = ExtractMetricsWidget(proj_file_path)
 
         def extract_done(metric_str):
             fnames, metrics_list = json.loads(metric_str)
-            self.plot_window = QtGraphMetricsPlot(fnames, metrics_list, rolling_n=30)
+            self.plot_window = QtGraphMetricsPlot(
+                fnames, metrics_list, rolling_n=30,
+                selected_fname=os.path.basename(image_path))
             self.plot_window.on_navigate_to_file.connect(navigate_to_file)
             self.plot_window.show()
 
@@ -281,7 +283,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
     on_navigate_to_file = QtCore.pyqtSignal(str) # fname:str
 
-    def __init__(self, fnames, metrics_list, rolling_n):
+    def __init__(self, fnames, metrics_list, rolling_n, selected_fname):
         super().__init__()
 
         self.setWindowTitle('RootPainter: Metrics Plot')
@@ -294,7 +296,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.fnames = fnames
         self.metrics_list = metrics_list
         self.rolling_n = rolling_n
-        self.highlight_point_fname = None
+        self.highlight_point_fname = selected_fname
         self.highlight_point = None
         self.graph_plot = None
         self.create_plot()
@@ -316,7 +318,14 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         def clicked(obj, event):
             pos = event.currentItem.ptsClicked[0].pos()
             fname_idx = int(pos.x()) - 1
-            self.set_highlight_point(self.fnames[fname_idx], pos.x(), pos.y())
+            clicked_fname = self.fnames[fname_idx]
+
+            def nav_to_im():
+                # will trigger updating file in the viewer and 
+                # then setting the highlight point.
+                self.on_navigate_to_file.emit(clicked_fname)
+            # call using timer to let the click event finish first to avoid a bug.
+            QtCore.QTimer.singleShot(10, nav_to_im)
 
         self.graph_plot.items[0].sigClicked.connect(clicked)
 
@@ -341,10 +350,6 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         selected_point_widget_layout.addWidget(self.navigate_btn)
         selected_point_widget_layout.setContentsMargins(0, 0, 0, 0) # left, top, right, bottom
         self.navigate_btn.hide()
-        #def nav_to_image():
-        #    self.on_navigate_to_file.emit(self.highlight_point_fname)
-        #self.navigate_btn.clicked.connect(nav_to_image)
-
         selected_point_widget.setContentsMargins(0, 0, 10, 0) # left, top, right, bottom
         self.control_bar_layout.addWidget(selected_point_widget)
 
@@ -373,27 +378,31 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             self.metrics_list.append(metrics) 
         self.render_data()
 
-    def set_highlight_point(self, highlight_point_fname, x, y):
+    def set_highlight_point(self, highlight_point_fname):
+        # called from update_file in root_painter.py
         self.highlight_point_fname = highlight_point_fname
-        self.selected_point_label.setText(f"Name: {highlight_point_fname}  Dice: {round(y, 4)}")
-        # self.navigate_btn.show()
-        self.render_highlight_point()
-
-        def nav_to_im():
-            self.on_navigate_to_file.emit(self.highlight_point_fname)
-        # call using timer to let the click event finish first to avoid a bug.
-        QtCore.QTimer.singleShot(10, nav_to_im)
+        if self.highlight_point_fname in self.fnames:
+            idx = self.fnames.index(self.highlight_point_fname)
+            y = self.metrics_list[idx]['f1']
+            self.selected_point_label.setText(f"{highlight_point_fname}  Dice: {round(y, 4)}")
+            self.render_highlight_point()
 
     def render_highlight_point(self):
-        idx = self.fnames.index(self.highlight_point_fname)
-        x = [idx + 1]
-        y = [self.metrics_list[idx]['f1']]
-        if self.highlight_point is not None:
-            self.highlight_point.setData(x, y) # update position of existing point clearing causes trouble.
+        if self.highlight_point_fname in self.fnames:
+            idx = self.fnames.index(self.highlight_point_fname)
+            x = [idx + 1]
+            y = [self.metrics_list[idx]['f1']]
+            if self.highlight_point is not None:
+                self.highlight_point.setData(x, y) # update position of existing point clearing causes trouble.
+            else:
+                self.highlight_point = self.graph_plot.plot(x, y, symbol='o',
+                    symbolPen=pg.mkPen('blue', width=1.5),
+                    symbolBrush=None, symbolSize=16)
         else:
-            self.highlight_point = self.graph_plot.plot(x, y, symbol='o',
-                symbolPen=pg.mkPen('blue', width=1.5),
-                symbolBrush=None, symbolSize=16)
+            pass
+            # current file not in list. it likely doesn't have metrics yet.
+            # perhaps the user is viewing it but the segmentation
+            # does not exist yet.
 
    
     def render_data(self):
@@ -489,7 +498,8 @@ if __name__ == '__main__':
     corrected_dice += [0.7]
     metrics_list = [{'f1': a, 'annot_fg': 100, 'annot_bg': 100} for a in corrected_dice]
     rolling_n = 3
-    plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n)
+    selected_image = '7'
+    plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n, selected_image)
     plot.show()
    
     import random

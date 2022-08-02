@@ -78,6 +78,7 @@ class RootPainter(QtWidgets.QMainWindow):
         self.pre_segment_count = 0
         self.im_width = None
         self.im_height = None
+        self.metrics_plot = None
 
         self.initUI()
 
@@ -174,11 +175,18 @@ class RootPainter(QtWidgets.QMainWindow):
 
 
     def update_file(self, fpath):
+        
+        fname = os.path.basename(fpath)
+
+        # update selected point in the plot.
+        # do first to give fast user feedback. 
+        if self.metrics_plot and self.metrics_plot.plot_window:
+            self.metrics_plot.plot_window.set_highlight_point(fname)
+
+
         # Save current annotation (if it exists) before moving on
         self.save_annotation()
 
-        # save current annotation first
-        fname = os.path.basename(fpath)
         # set first image from project to be current image
         self.image_path = os.path.join(self.dataset_dir, fname)
         self.png_fname = os.path.splitext(fname)[0] + '.png'
@@ -445,8 +453,15 @@ class RootPainter(QtWidgets.QMainWindow):
                 self.nav.update_nav_label()
                 self.update_file(fpath)
 
-            metrics_btn.triggered.connect(partial(self.metrics_plot.show_extract_metrics,
-                                                  self.proj_file_path, navigate_to_file))
+
+            def open_metric_plot():
+                self.metrics_plot.show_extract_metrics(
+                    self.proj_file_path,
+                    navigate_to_file,
+                    self.image_path)
+ 
+            metrics_btn.triggered.connect(open_metric_plot)
+
             extras_menu.addAction(metrics_btn)
 
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)

@@ -291,22 +291,59 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.fnames = fnames
         self.metrics_list = metrics_list
         self.rolling_n = rolling_n
-        self.highlight_point_pos = None
+        self.highlight_point_fname = None
         self.highlight_point = None
         self.graph_plot = None
         self.create_plot()
         self.render_data()
+
+        self.control_bar = QtWidgets.QWidget()
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.control_bar_layout = QtWidgets.QHBoxLayout()
+        self.control_bar_layout.setContentsMargins(0, 0, 0, 10) # left, top, right, bottom
+        self.control_bar.setMaximumHeight(50)
+        self.control_bar.setMinimumHeight(50)
+        self.control_bar.setLayout(self.control_bar_layout)
+        self.layout.addWidget(self.control_bar)
         self.add_average_control()
+        self.add_selected_point_label()
 
 
     def add_events(self):
         def clicked(obj, event):
-            self.set_highlight_point_pos(event.currentItem.ptsClicked[0].pos())
+            pos = event.currentItem.ptsClicked[0].pos()
+            fname_idx = int(pos.x()) - 1
+            self.set_highlight_point(self.fnames[fname_idx], pos.x(), pos.y())
+
         self.graph_plot.items[0].sigClicked.connect(clicked)
+
 
     def avg_changed(self, sb):
         self.rolling_n = sb.value()
         self.render_data()
+
+
+    def add_selected_point_label(self):
+        selected_point_widget = QtWidgets.QWidget()
+
+        selected_point_widget_layout = QtWidgets.QHBoxLayout()
+        selected_point_widget.setLayout(selected_point_widget_layout)
+        self.selected_point_label = QtWidgets.QLabel()
+        selected_point_widget_layout.addWidget(self.selected_point_label)
+        selected_point_widget_layout.setAlignment(QtCore.Qt.AlignRight)
+
+        self.navigate_btn = QtWidgets.QPushButton()
+        self.navigate_btn.setText("Navigate to Image")
+
+        selected_point_widget_layout.addWidget(self.navigate_btn)
+        selected_point_widget_layout.setContentsMargins(0, 0, 0, 0) # left, top, right, bottom
+        self.navigate_btn.hide()
+        def nav_to_image():
+            print('nav to image', self.highlight_point_fname)
+        self.navigate_btn.clicked.connect(nav_to_image)
+
+        selected_point_widget.setContentsMargins(0, 0, 10, 0) # left, top, right, bottom
+        self.control_bar_layout.addWidget(selected_point_widget)
 
     def add_average_control(self):
         spin_widget = QtWidgets.QWidget()
@@ -319,7 +356,8 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
         spin_widget_layout.addWidget(self.avg_spin)
         self.avg_spin.sigValueChanged.connect(self.avg_changed)
-        self.layout.addWidget(spin_widget)
+        self.control_bar_layout.addWidget(spin_widget)
+        spin_widget.setContentsMargins(0, 0, 0, 0)
         spin_widget.setMaximumWidth(200)
 
 
@@ -332,22 +370,23 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             self.metrics_list.append(metrics) 
         self.render_data()
 
-
-    def set_highlight_point_pos(self, highlight_point_pos):
-        self.highlight_point_pos = highlight_point_pos
+    def set_highlight_point(self, highlight_point_fname, x, y):
+        self.highlight_point_fname = highlight_point_fname
+        self.selected_point_label.setText(f"Image {int(x)} Name: {highlight_point_fname} Dice: {y}")
+        self.navigate_btn.show()
         self.render_highlight_point()
 
     def render_highlight_point(self):
-        x = [self.highlight_point_pos.x()]
-        y = [self.highlight_point_pos.y()]
+        idx = self.fnames.index(self.highlight_point_fname)
+        x = [idx + 1]
+        y = [self.metrics_list[idx]['f1']]
         if self.highlight_point is not None:
             self.highlight_point.setData(x, y) # update position of existing point clearing causes trouble.
         else:
             self.highlight_point = self.graph_plot.plot(x, y, symbol='o',
-                symbolPen=pg.mkPen('k', width=1.5),
+                symbolPen=pg.mkPen('blue', width=1.5),
                 symbolBrush=None, symbolSize=16)
    
-
     def render_data(self):
         assert self.graph_plot is not None, 'plot should be created before rendering data'
         corrected_dice = self.get_corrected_dice()
@@ -361,10 +400,10 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
                              symbol=None, name=f'average (n={self.rolling_n})')
         
         # highlight point pos is a currently clicked point.
-        if self.highlight_point_pos is not None:
+        if self.highlight_point_fname is not None:
             self.render_highlight_point()
-
         self.add_events()
+
 
     def get_corrected_dice(self):
         # should not consider first annotated images as these are likely
@@ -436,7 +475,7 @@ if __name__ == '__main__':
     corrected_dice = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
     fnames = ['1', '2', '3', '4', '5', '6']
     corrected_dice += corrected_dice 
-    fnames += fnames 
+    fnames += [f + 'b' for f in fnames]
     fnames += ['7']
     corrected_dice += [0.7]
     metrics_list = [{'f1': a, 'annot_fg': 100, 'annot_bg': 100} for a in corrected_dice]
@@ -444,9 +483,7 @@ if __name__ == '__main__':
     plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n)
     plot.show()
    
-
     import random
-
     def mouseMoved(evt):
         pos = evt[0]  ## using signal proxy turns original arguments into a tuple
         if plot.rolling_n > 30:

@@ -262,7 +262,7 @@ class MetricsPlot:
             if f_metrics: 
                 self.plot_window.add_point(fname, f_metrics)
 
-    def show_extract_metrics(self, proj_file_path): 
+    def show_extract_metrics(self, proj_file_path, navigate_to_file): 
         self.proj_file_path = proj_file_path
         self.proj_dir = os.path.dirname(self.proj_file_path)
         self.extract_metrics_widget = ExtractMetricsWidget(proj_file_path)
@@ -270,6 +270,7 @@ class MetricsPlot:
         def extract_done(metric_str):
             fnames, metrics_list = json.loads(metric_str)
             self.plot_window = QtGraphMetricsPlot(fnames, metrics_list, rolling_n=30)
+            self.plot_window.on_navigate_to_file.connect(navigate_to_file)
             self.plot_window.show()
 
         self.extract_metrics_widget.done.connect(extract_done)
@@ -277,6 +278,8 @@ class MetricsPlot:
 
 
 class QtGraphMetricsPlot(QtWidgets.QMainWindow):
+
+    on_navigate_to_file = QtCore.pyqtSignal(str) # fname:str
 
     def __init__(self, fnames, metrics_list, rolling_n):
         super().__init__()
@@ -339,7 +342,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         selected_point_widget_layout.setContentsMargins(0, 0, 0, 0) # left, top, right, bottom
         self.navigate_btn.hide()
         def nav_to_image():
-            print('nav to image', self.highlight_point_fname)
+            self.on_navigate_to_file.emit(self.highlight_point_fname)
         self.navigate_btn.clicked.connect(nav_to_image)
 
         selected_point_widget.setContentsMargins(0, 0, 10, 0) # left, top, right, bottom
@@ -372,7 +375,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
     def set_highlight_point(self, highlight_point_fname, x, y):
         self.highlight_point_fname = highlight_point_fname
-        self.selected_point_label.setText(f"Image {int(x)} Name: {highlight_point_fname} Dice: {y}")
+        self.selected_point_label.setText(f"Name: {highlight_point_fname}  Dice: {round(y, 4)}")
         self.navigate_btn.show()
         self.render_highlight_point()
 

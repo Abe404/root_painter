@@ -438,8 +438,15 @@ class RootPainter(QtWidgets.QMainWindow):
                                                         'Compute segmentation metrics',
                                                         self)
             self.metrics_plot = MetricsPlot()
+
+            def navigate_to_file(fname):
+                fpath = os.path.join(self.dataset_dir, fname)
+                self.nav.image_path = fpath
+                self.nav.update_nav_label()
+                self.update_file(fpath)
+
             metrics_btn.triggered.connect(partial(self.metrics_plot.show_extract_metrics,
-                                                  self.proj_file_path))
+                                                  self.proj_file_path, navigate_to_file))
             extras_menu.addAction(metrics_btn)
 
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)

@@ -130,9 +130,8 @@ class Thread(QtCore.QThread):
         all_fnames = []
 
         if self.csv_path is not None:
-
             csv_file = open(self.csv_path, 'w+', newline='')
-            writer = csv.writer(csvfile, delimiter=',',
+            writer = csv.writer(csv_file, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
         for i, fname in enumerate(self.fnames):
@@ -213,6 +212,8 @@ The metrics saved to the CSV file include accuracy, tn (true negatives), fp (fal
 tp (true positives), precision, recall, f1 (also known as dice score), annot_fg (number of pixels      
 annotated as foreground) and annot_bg (number of pixels annotated as background).
 
+The metrics CSV will be saved in the project folder, with the CSV file path displayed on export 
+completion.
         """)
         submit_btn = QtWidgets.QPushButton('Extract Metrics')
         submit_btn.clicked.connect(self.extract_metrics)
@@ -258,20 +259,6 @@ class MetricsPlot:
             f_metrics = compute_seg_metrics(seg_dir, annot_dir, fname)
             if f_metrics: 
                 self.plot_window.add_point(fname, f_metrics)
-
-
-    def create_metrics_csv(self, proj_file_path): 
-        """ involves a progress bar as it takes time to compute the metrics """
-        self.proj_file_path = proj_file_path
-        self.proj_dir = os.path.dirname(self.proj_file_path)
-        self.extract_metrics_widget = ExtractMetricsWidget(proj_file_path)
-        def extract_done(metric_str):
-            QtWidgets.QMessageBox.about(self, 'Metrics Computed',
-                                        f'Metrics computed for {os.path.dirname(self.proj_file_path)}. '
-                                        f'The CSV file has been saved to {csv_path}')
-            self.close()
-        self.extract_metrics_widget.done.connect(extract_done)
-        self.extract_metrics_widget.show()
 
 
     def create_metrics_plot(self, proj_file_path, navigate_to_file, selected_fpath): 

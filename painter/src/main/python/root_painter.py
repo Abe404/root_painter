@@ -54,7 +54,7 @@ from file_utils import last_fname_with_annotations
 from file_utils import get_annot_path
 from file_utils import maybe_save_annotation
 from instructions import send_instruction
-from plot_seg_metrics import MetricsPlot
+from plot_seg_metrics import MetricsPlot, ExtractMetricsWidget
 
 use_plugin("pil")
 
@@ -442,27 +442,32 @@ class RootPainter(QtWidgets.QMainWindow):
         extras_menu.addAction(specify_sync_dir_btn)
 
         if project_open:
-            metrics_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
-                                                        'Show metrics plot',
-                                                        self)
+            metrics_plot_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                             'Show metrics plot',
+                                                              self)
             self.metrics_plot = MetricsPlot()
-
             def navigate_to_file(fname):
                 fpath = os.path.join(self.dataset_dir, fname)
                 self.nav.image_path = fpath
                 self.nav.update_nav_label()
                 self.update_file(fpath)
-
             def open_metric_plot():
                 self.metrics_plot.create_metrics_plot(
                     self.proj_file_path,
                     navigate_to_file,
                     self.image_path)
- 
-            metrics_btn.triggered.connect(open_metric_plot)
+            metrics_plot_btn.triggered.connect(open_metric_plot)
+            extras_menu.addAction(metrics_plot_btn)
 
-            extras_menu.addAction(metrics_btn)
-
+            metrics_csv_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                            'Export metrics CSV',
+                                                             self)
+            self.metrics_plot = MetricsPlot()
+            def open_metric_export():
+                self.extract_metrics_widget = ExtractMetricsWidget(self.proj_file_path)
+                self.extract_metrics_widget.show()
+            metrics_csv_btn.triggered.connect(open_metric_export)
+            extras_menu.addAction(metrics_csv_btn)
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
             def update_dataset_after_check():
                 was_extended, file_names = check_extend_dataset(self,

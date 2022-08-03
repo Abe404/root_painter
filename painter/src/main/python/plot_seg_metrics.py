@@ -374,6 +374,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.control_bar_layout.addWidget(self.selected_checkbox)
         self.selected_checkbox.setChecked(True)
         self.selected_checkbox.stateChanged.connect(self.show_selected_changed)
+        self.selected_checkbox.hide() # only show once a point on the plot is selected.
 
 
     def add_selected_point_label(self):
@@ -427,6 +428,10 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             y = self.metrics_list[idx]['f1']
             self.selected_point_label.setText(f"{highlight_point_fname}  Dice: {round(y, 4)}")
             self.render_highlight_point()
+
+            self.selected_checkbox.show() # only show once a point on the plot is selected.
+        else:
+            self.selected_checkbox.hide() # only show once a point on the plot is selected.
 
     def render_highlight_point(self):
         if self.show_selected:

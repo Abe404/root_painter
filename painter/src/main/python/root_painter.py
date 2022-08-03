@@ -441,6 +441,31 @@ class RootPainter(QtWidgets.QMainWindow):
         specify_sync_dir_btn.triggered.connect(self.specify_sync_directory)
         extras_menu.addAction(specify_sync_dir_btn)
 
+
+        def view_metric_csv():
+            # select a csv file and then show it in the plots
+            options = QtWidgets.QFileDialog.Options()
+            default_loc = self.sync_dir / 'projects'
+            file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self,
+                "View Metrics CSV data",
+                str(default_loc),
+                "Metric CSV file (*.csv)",
+                options=options)
+            if file_path:
+                self.metrics_plot.view_plot_from_csv(file_path)
+
+        view_metrics_csv_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                 'View Metrics Plot from CSV',
+                                                  self)
+        self.metrics_plot = MetricsPlot()
+
+
+        view_metrics_csv_btn.triggered.connect(view_metric_csv)
+        extras_menu.addAction(view_metrics_csv_btn)
+
+
+
         if project_open:
             metrics_plot_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
                                                              'Show metrics plot',
@@ -468,6 +493,10 @@ class RootPainter(QtWidgets.QMainWindow):
                 self.extract_metrics_widget.show()
             metrics_csv_btn.triggered.connect(open_metric_export)
             extras_menu.addAction(metrics_csv_btn)
+
+
+
+
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
             def update_dataset_after_check():
                 was_extended, file_names = check_extend_dataset(self,
@@ -780,6 +809,7 @@ class RootPainter(QtWidgets.QMainWindow):
         #                                       'Segment current image', self)
         # segment_image_btn.triggered.connect(self.segment_current_image)
         # network_menu.addAction(segment_image_btn)
+
         self.add_measurements_menu(menu_bar)
         self.add_extras_menu(menu_bar, project_open=True)
 

@@ -286,6 +286,37 @@ class MetricsPlot:
             if f_metrics: 
                 self.plot_window.add_point(fname, f_metrics)
 
+    def view_plot_from_csv(self, csv_fpath):
+        # CSV Headers.
+        # file_name,accuracy,tn,fp,fn,tp,precision,recall,f1,annot_fg,annot_bg
+        csv_lines = open(csv_fpath).readlines()[1:]
+        parts_lists = [l.strip().split(',') for l in csv_lines]
+        metrics_list = []
+        fnames = []
+        for l in parts_lists:
+            (file_name, accuracy, tn, fp, fn, tp,
+             precision, recall, f1,
+             annot_fg, annot_bg) = l
+            fnames.append(file_name) 
+            metrics_list.append({
+                "accuracy": float(accuracy),
+                "tn": int(tn),
+                "fp": int(fp),
+                "fn": int(fn),
+                "tp": int(tp), 
+                "precision": float(precision),
+                "recall": float(recall),
+                "f1": float(f1),
+                "annot_fg": int(annot_fg),
+                "annot_bg": int(annot_bg)
+            })
+        self.plot_window = QtGraphMetricsPlot(
+            fnames, metrics_list, rolling_n=30)
+        self.plot_window.setWindowTitle(
+            f'RootPainter Metrics Plot: {os.path.basename(csv_fpath)}')
+        self.plot_window.show()
+        
+
 
     def create_metrics_plot(self, proj_file_path, navigate_to_file, selected_fpath): 
         """ Creates interactive plot of metrics
@@ -311,7 +342,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
     on_navigate_to_file = QtCore.pyqtSignal(str) # fname:str
 
-    def __init__(self, fnames, metrics_list, rolling_n, selected_fname):
+    def __init__(self, fnames, metrics_list, rolling_n, selected_fname=None):
         super().__init__()
 
         self.setWindowTitle('RootPainter: Metrics Plot')
@@ -611,7 +642,7 @@ if __name__ == '__main__':
     metrics_list = [{'f1': a, 'accuracy': (1-a)/2, 'annot_fg': 100, 'annot_bg': 100} for a in corrected_dice]
     rolling_n = 3
     selected_image = '7'
-    plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n, selected_image)
+    plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n, selected_image=None)
     plot.show()
    
     import random

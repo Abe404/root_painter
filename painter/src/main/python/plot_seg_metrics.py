@@ -327,6 +327,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.highlight_point = None
         self.show_selected = True
         self.graph_plot = None
+        self.scatter = None
         self.create_plot()
         self.render_data()
 
@@ -344,8 +345,10 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
 
     def add_events(self):
-        def clicked(obj, event):
-            pos = event.currentItem.ptsClicked[0].pos()
+        def clicked(obj, points):
+            # scatter plot
+            pos = points[0].pos()
+            # pos = points.currentItem.ptsClicked[0].pos() # normal plot
             fname_idx = int(pos.x()) - 1
             clicked_fname = self.fnames[fname_idx]
 
@@ -355,6 +358,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
                 self.on_navigate_to_file.emit(clicked_fname)
             # call using timer to let the click event finish first to avoid a bug.
             QtCore.QTimer.singleShot(10, nav_to_im)
+
 
         self.graph_plot.items[0].sigClicked.connect(clicked)
 
@@ -451,13 +455,49 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
                 # perhaps the user is viewing it but the segmentation
                 # does not exist yet.
 
-   
     def render_data(self):
+        assert self.graph_plot is not None, 'plot should be created before rendering data'
+
+
+        corrected_dice = self.get_corrected_dice()
+        
+        x = list(range(1, len(corrected_dice) + 1)) # start from 1 because first image is 1/N
+        y = corrected_dice
+        scatter_points = [{'pos': [x, y], 'data': f} for (x, y, f) in zip(x, y, self.fnames)]
+        self.graph_plot.clear()
+        def hover_tip(x, y, data):
+            return f'{int(x)} {data}  Dice: {round(y, 4)}'
+        self.scatter = pg.ScatterPlotItem(size=8, symbol='x', clickable=True, hoverable=True,
+                                          hoverBrush=pg.mkBrush('grey'), hoverPen=pg.mkPen('grey'),
+                                          tip=hover_tip)
+        self.scatter.addPoints(scatter_points)
+        self.graph_plot.addItem(self.scatter)
+
+        x, y = moving_average(corrected_dice, self.rolling_n)
+        # shift x forwards as images start from 1
+        x = [a + 1 for a in x]
+        self.graph_plot.plot(x, y, pen = pg.mkPen('r', width=3),
+                             symbol=None, name=f'Average (n={self.rolling_n})')
+ 
+        self.highlight_point = None # cleared now.
+
+       
+        # highlight point pos is a currently clicked point.
+        if self.highlight_point_fname is not None:
+            self.render_highlight_point()
+        self.add_events()
+
+
+   
+    def render_data_old(self):
         assert self.graph_plot is not None, 'plot should be created before rendering data'
         corrected_dice = self.get_corrected_dice()
         x = list(range(1, len(corrected_dice) + 1)) # start from 1 because first image is 1/N
         y = corrected_dice
         self.graph_plot.plot(x, y, pen=None, symbol='x', clear=True, clickable=True)
+        #hoverBrush=pg.mkBrush('green'), hoverPen=pg.mkBrush('green'))
+
+
         self.highlight_point = None # cleared now.
 
         x, y = moving_average(corrected_dice, self.rolling_n)

@@ -21,6 +21,7 @@ import math
 import json
 import time
 from functools import partial
+import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import pyqtgraph as pg
@@ -83,17 +84,31 @@ def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
         "annot_bg": int(bg_labels)
     }
 
-def compute_seg_metrics(seg_dir, annot_dir, fname):
+def compute_seg_metrics(seg_dir, annot_dir, fname, cache_dir = None):
+    
     # annot and seg are both PNG
     fname = os.path.splitext(fname)[0] + '.png'
     seg_path = os.path.join(seg_dir, fname)
     if not os.path.isfile(seg_path):
         return None # no segmentation means no metrics.
 
-    seg = imread(seg_path)
     annot_path = os.path.join(annot_dir, 'train', fname)
     if not os.path.isfile(annot_path):
         annot_path = os.path.join(annot_dir, 'val', fname)
+    
+    if os.path.isfile(annot_path):
+        annot_mtime = os.path.getmtime(annot_path)
+    else:
+        annot_mtime = 0
+
+    seg_mtime = os.path.getmtime(seg_path)
+    cache_fname = f'{fname}.{annot_mtime}.{seg_mtime}.pkl'
+    cache_fpath = os.path.join(cache_dir, cache_fname)
+    if os.path.isfile(cache_fpath): 
+        corrected_segmentation_metrics = pickle.load(open(cache_fpath, 'rb'))
+        return corrected_segmentation_metrics
+
+    seg = imread(seg_path)
 
     if os.path.isfile(annot_path):
         annot = imread(annot_path)
@@ -107,8 +122,16 @@ def compute_seg_metrics(seg_dir, annot_dir, fname):
     background = annot[:, :, 1].astype(bool).astype(int)
     corrected[foreground > 0] = 1
     corrected[background > 0] = 0
+
     corrected_segmentation_metrics = compute_metrics_from_masks(
         seg, corrected, np.sum(foreground > 0), np.sum(background > 0))
+
+    if cache_dir:
+        if not os.path.isdir(cache_dir):
+            os.makedirs(cache_dir)
+        with open(cache_fpath, 'wb') as cache_file:
+            pickle.dump(corrected_segmentation_metrics, cache_file) 
+    
     return corrected_segmentation_metrics
 
 
@@ -136,7 +159,8 @@ class Thread(QtCore.QThread):
 
         for i, fname in enumerate(self.fnames):
             self.progress_change.emit(i+1, len(self.fnames))
-            metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
+            cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
+            metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname, cache_dir)
             if metrics: 
                 all_metrics.append(metrics)
                 all_fnames.append(fname)
@@ -256,7 +280,8 @@ class MetricsPlot:
         if self.plot_window is not None:
             seg_dir = os.path.join(self.proj_dir, 'segmentations')
             annot_dir = os.path.join(self.proj_dir, 'annotations')
-            f_metrics = compute_seg_metrics(seg_dir, annot_dir, fname)
+            cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
+            f_metrics = compute_seg_metrics(seg_dir, annot_dir, fname, cache_dir)
             if f_metrics: 
                 self.plot_window.add_point(fname, f_metrics)
 
@@ -487,7 +512,6 @@ def hide_weird_options(graph_plot):
     graph_plot.vb.menu.ctrl[0].mouseCheck.hide()
     graph_plot.vb.menu.ctrl[1].mouseCheck.hide()
     graph_plot.ctrlMenu = None
-
 
 if __name__ == '__main__':
     # a quick test to demo the plot. Useful for testing a debugging.

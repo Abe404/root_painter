@@ -462,7 +462,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
         x, y = moving_average(corrected_dice, self.rolling_n)
         self.graph_plot.plot(x, y, pen = pg.mkPen('r', width=3),
-                             symbol=None, name=f'average (n={self.rolling_n})')
+                             symbol=None, name=f'Average (n={self.rolling_n})')
         
         # highlight point pos is a currently clicked point.
         if self.highlight_point_fname is not None:
@@ -502,7 +502,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         pg.setConfigOption('foreground', 'k')
         p21 = l2.addPlot()
         p21.showGrid(x = True, y = True, alpha = 0.4)
-        p21.addLegend(offset=(-90, -90))
+        p21.addLegend(offset=(-90, -90),labelTextSize='12pt' )
         p21.setLabel('left', 'Dice')
         p21.setLabel('bottom', 'Image')
         self.graph_plot = p21

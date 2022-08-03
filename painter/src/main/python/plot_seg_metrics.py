@@ -33,6 +33,7 @@ from progress_widget import BaseProgressWidget
 
 def moving_average(original, w):
     averages = []
+
     for i, x in enumerate(original):
         if i >= (w//2) and i <= (len(original) - (w-(w//2))):
             elements = original[i-(w//2):i+(w-(w//2))]
@@ -323,6 +324,8 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.fnames = fnames
         self.metrics_list = metrics_list
         self.rolling_n = rolling_n
+        self.selected_metric = 'f1'
+        self.metric_display_name = 'Dice'
         self.highlight_point_fname = selected_fname
         self.highlight_point = None
         self.show_selected = True
@@ -339,10 +342,32 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.control_bar.setMinimumHeight(60)
         self.control_bar.setLayout(self.control_bar_layout)
         self.layout.addWidget(self.control_bar)
+        self.add_metrics_dropdown()
         self.add_average_control()
         self.add_selected_point_visbility_control()
         self.add_selected_point_label()
 
+
+    def add_metrics_dropdown(self):
+        keys = ["f1", "accuracy", "tn","fp", "fn", "tp", 
+                "precision", "recall",
+                "annot_fg", "annot_bg"]
+        display_names = ["Dice", "Accuracy", "True Negatives",
+                         "False Positives", "False Negatives",
+                         "True Positives", "Precision", "Recall",
+                         "Foreground Annotation", "Background Annotation"]
+        self.metric_combo = QtWidgets.QComboBox()
+        for d in display_names:
+            self.metric_combo.addItem(d)
+
+        def selection_changed():
+            self.metric_display_name = self.metric_combo.currentText()
+            self.selected_metric = keys[display_names.index(self.metric_display_name)]
+            self.graph_plot.setLabel('left', self.metric_display_name)
+            self.render_data()
+
+        self.metric_combo.currentIndexChanged.connect(selection_changed)
+        self.control_bar_layout.addWidget(self.metric_combo)
 
     def add_events(self):
         def clicked(obj, points):
@@ -429,8 +454,9 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.highlight_point_fname = highlight_point_fname
         if self.highlight_point_fname in self.fnames:
             idx = self.fnames.index(self.highlight_point_fname)
-            y = self.metrics_list[idx]['f1']
-            self.selected_point_label.setText(f"{highlight_point_fname}  Dice: {round(y, 4)}")
+            y = self.metrics_list[idx][self.selected_metric]
+            self.selected_point_label.setText(
+                f"{highlight_point_fname}  {self.metric_display_name}: {round(y, 4)}")
             self.render_highlight_point()
 
             self.selected_checkbox.show() # only show once a point on the plot is selected.
@@ -442,7 +468,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             if self.highlight_point_fname in self.fnames:
                 idx = self.fnames.index(self.highlight_point_fname)
                 x = [idx + 1]
-                y = [self.metrics_list[idx]['f1']]
+                y = [self.metrics_list[idx][self.selected_metric]]
                 if self.highlight_point is not None:
                     self.highlight_point.setData(x, y) # update position of existing point clearing causes trouble.
                 else:
@@ -457,16 +483,16 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
     def render_data(self):
         assert self.graph_plot is not None, 'plot should be created before rendering data'
-
-
         corrected_dice = self.get_corrected_dice()
         
         x = list(range(1, len(corrected_dice) + 1)) # start from 1 because first image is 1/N
         y = corrected_dice
         scatter_points = [{'pos': [x, y], 'data': f} for (x, y, f) in zip(x, y, self.fnames)]
         self.graph_plot.clear()
+
         def hover_tip(x, y, data):
-            return f'{int(x)} {data}  Dice: {round(y, 4)}'
+            return f'{int(x)} {data}  {self.metric_display_name}: {round(y, 4)}'
+
         self.scatter = pg.ScatterPlotItem(size=8, symbol='x', clickable=True, hoverable=True,
                                           hoverBrush=pg.mkBrush('grey'), hoverPen=pg.mkPen('grey'),
                                           tip=hover_tip)
@@ -486,8 +512,6 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         if self.highlight_point_fname is not None:
             self.render_highlight_point()
         self.add_events()
-
-
    
     def render_data_old(self):
         assert self.graph_plot is not None, 'plot should be created before rendering data'
@@ -522,7 +546,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
                 annots_found += 1
             # once 6 annotations found then start recording disagreement
             if annots_found > 6:
-                corrected_dice.append(m['f1'])
+                corrected_dice.append(m[self.selected_metric])
             else:
                 corrected_dice.append(float('NaN'))
         return corrected_dice
@@ -584,7 +608,7 @@ if __name__ == '__main__':
     fnames += [f + 'b' for f in fnames]
     fnames += ['7']
     corrected_dice += [0.7]
-    metrics_list = [{'f1': a, 'annot_fg': 100, 'annot_bg': 100} for a in corrected_dice]
+    metrics_list = [{'f1': a, 'accuracy': (1-a)/2, 'annot_fg': 100, 'annot_bg': 100} for a in corrected_dice]
     rolling_n = 3
     selected_image = '7'
     plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n, selected_image)

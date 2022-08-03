@@ -325,6 +325,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.rolling_n = rolling_n
         self.highlight_point_fname = selected_fname
         self.highlight_point = None
+        self.show_selected = True
         self.graph_plot = None
         self.create_plot()
         self.render_data()
@@ -338,6 +339,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.control_bar.setLayout(self.control_bar_layout)
         self.layout.addWidget(self.control_bar)
         self.add_average_control()
+        self.add_selected_point_visbility_control()
         self.add_selected_point_label()
 
 
@@ -360,6 +362,18 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
     def avg_changed(self, sb):
         self.rolling_n = sb.value()
         self.render_data()
+
+
+    def show_selected_changed(self, state):
+        checked = (state == QtCore.Qt.Checked)
+        self.show_selected = checked
+        self.render_data()
+
+    def add_selected_point_visbility_control(self):
+        self.selected_checkbox = QtWidgets.QCheckBox("Show selected")
+        self.control_bar_layout.addWidget(self.selected_checkbox)
+        self.selected_checkbox.setChecked(True)
+        self.selected_checkbox.stateChanged.connect(self.show_selected_changed)
 
 
     def add_selected_point_label(self):
@@ -415,21 +429,22 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             self.render_highlight_point()
 
     def render_highlight_point(self):
-        if self.highlight_point_fname in self.fnames:
-            idx = self.fnames.index(self.highlight_point_fname)
-            x = [idx + 1]
-            y = [self.metrics_list[idx]['f1']]
-            if self.highlight_point is not None:
-                self.highlight_point.setData(x, y) # update position of existing point clearing causes trouble.
+        if self.show_selected:
+            if self.highlight_point_fname in self.fnames:
+                idx = self.fnames.index(self.highlight_point_fname)
+                x = [idx + 1]
+                y = [self.metrics_list[idx]['f1']]
+                if self.highlight_point is not None:
+                    self.highlight_point.setData(x, y) # update position of existing point clearing causes trouble.
+                else:
+                    self.highlight_point = self.graph_plot.plot(x, y, symbol='o',
+                        symbolPen=pg.mkPen('blue', width=1.5),
+                        symbolBrush=None, symbolSize=16)
             else:
-                self.highlight_point = self.graph_plot.plot(x, y, symbol='o',
-                    symbolPen=pg.mkPen('blue', width=1.5),
-                    symbolBrush=None, symbolSize=16)
-        else:
-            pass
-            # current file not in list. it likely doesn't have metrics yet.
-            # perhaps the user is viewing it but the segmentation
-            # does not exist yet.
+                pass
+                # current file not in list. it likely doesn't have metrics yet.
+                # perhaps the user is viewing it but the segmentation
+                # does not exist yet.
 
    
     def render_data(self):

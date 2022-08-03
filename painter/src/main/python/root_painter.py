@@ -443,7 +443,7 @@ class RootPainter(QtWidgets.QMainWindow):
 
         if project_open:
             metrics_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
-                                                        'Compute segmentation metrics',
+                                                        'Show metrics plot',
                                                         self)
             self.metrics_plot = MetricsPlot()
 
@@ -453,9 +453,8 @@ class RootPainter(QtWidgets.QMainWindow):
                 self.nav.update_nav_label()
                 self.update_file(fpath)
 
-
             def open_metric_plot():
-                self.metrics_plot.show_extract_metrics(
+                self.metrics_plot.create_metrics_plot(
                     self.proj_file_path,
                     navigate_to_file,
                     self.image_path)

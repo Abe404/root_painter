@@ -116,29 +116,34 @@ class Thread(QtCore.QThread):
     progress_change = QtCore.pyqtSignal(int, int)
     done = QtCore.pyqtSignal(str)
 
-    def __init__(self, proj_dir, csv_path, plot_path, fnames):
+    def __init__(self, proj_dir, csv_path, fnames):
         super().__init__()
         self.proj_dir = proj_dir
         self.seg_dir = os.path.join(proj_dir, 'segmentations')
         self.annot_dir = os.path.join(proj_dir, 'annotations')
         self.csv_path = csv_path
-        self.plot_path = plot_path
         self.fnames = fnames
 
     def run(self):
         headers_written = False
         all_metrics = []
         all_fnames = []
-        with open(self.csv_path, 'w+', newline='')  as csvfile:
+
+        if self.csv_path is not None:
+
+            csv_file = open(self.csv_path, 'w+', newline='')
             writer = csv.writer(csvfile, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            for i, fname in enumerate(self.fnames):
-                self.progress_change.emit(i+1, len(self.fnames))
-                metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
-                if metrics: 
-                    all_metrics.append(metrics)
-                    all_fnames.append(fname)
-                    corrected_metrics = metrics
+
+        for i, fname in enumerate(self.fnames):
+            self.progress_change.emit(i+1, len(self.fnames))
+            metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
+            if metrics: 
+                all_metrics.append(metrics)
+                all_fnames.append(fname)
+                corrected_metrics = metrics
+
+                if self.csv_path: # if csv output specified.
                     # Write the column headers
                     if not headers_written:
                         metric_keys = list(corrected_metrics.keys())
@@ -149,6 +154,7 @@ class Thread(QtCore.QThread):
                     for k in metric_keys:
                         row.append(corrected_metrics[k]) 
                     writer.writerow(row)
+
         self.done.emit(json.dumps([all_fnames, all_metrics]))
 
 
@@ -159,29 +165,28 @@ class MetricsProgressWidget(BaseProgressWidget):
     def __init__(self):
         super().__init__('Computing metrics')
 
-    def run(self, proj_file_path, csv_path, plot_path, rolling_average_size):
+    def run(self, proj_file_path, csv_path=None):
+        """ Compute metrics and optionally save to CSV
+            if csv_path is None then csv is not saved.
+        """
+        
         self.proj_file_path = proj_file_path
         self.csv_path = csv_path
-        self.plot_path = plot_path
         fnames = json.load(open(self.proj_file_path))['file_names']
         proj_dir = os.path.dirname(self.proj_file_path)
-        self.rolling_average_size = rolling_average_size
-        self.thread = Thread(proj_dir, csv_path, plot_path, fnames)
+        self.thread = Thread(proj_dir, csv_path, fnames)
         self.progress_bar.setMaximum(len(fnames))
         self.thread.progress_change.connect(self.onCountChanged)
         self.thread.done.connect(self.metrics_computed)
         self.thread.start()
 
     def metrics_computed(self, all_metrics_str):
-        QtWidgets.QMessageBox.about(self, 'Metrics Computed',
-                                    f'Metrics computed for {os.path.dirname(self.proj_file_path)}. '
-
-                                    f'The CSV file has been saved to {self.csv_path}')
         self.done.emit(all_metrics_str)
         self.close()
 
 
 class ExtractMetricsWidget(QtWidgets.QWidget):
+    """ Extract metrics as CSV """
     submit = QtCore.pyqtSignal()
     done = QtCore.pyqtSignal(str)
 
@@ -199,8 +204,8 @@ class ExtractMetricsWidget(QtWidgets.QWidget):
         text_label.setText("")
         layout.addWidget(text_label)
         text_label.setText("""
-Metrics for each of the project segmentations and annotations will be output to a CSV file and a     
-plot will be generated. The metrics measure agreement between the initial segmentation predicted     
+Metrics for each of the project segmentations and annotations will be output to a CSV file.
+The metrics measure agreement between the initial segmentation predicted     
 by the model and the corrected segmentation, which includes the initial segmentation with the     
 corrections assigned.
 
@@ -208,23 +213,7 @@ The metrics saved to the CSV file include accuracy, tn (true negatives), fp (fal
 tp (true positives), precision, recall, f1 (also known as dice score), annot_fg (number of pixels      
 annotated as foreground) and annot_bg (number of pixels annotated as background).
 
-A dice score plot will also be generated. The dice plot excludes the 
-initial images until there are at least 6 annotations, as it is assumed these initial images were 
-annotated to include clear examples and were were not annotated correctively.
-
         """)
-
-        edit_rolling_average_label = QtWidgets.QLabel()
-        edit_rolling_average_label = QtWidgets.QLabel()
-        edit_rolling_average_label.setText("Plot rolling average size:")
-        layout.addWidget(edit_rolling_average_label)
-        rolling_average_edit_widget = QtWidgets.QSpinBox()
-        rolling_average_edit_widget.setMaximum(10000)
-        rolling_average_edit_widget.setMinimum(1)
-        rolling_average_edit_widget.setValue(30)
-        self.rolling_average_edit_widget = rolling_average_edit_widget
-        layout.addWidget(rolling_average_edit_widget)
-
         submit_btn = QtWidgets.QPushButton('Extract Metrics')
         submit_btn.clicked.connect(self.extract_metrics)
         layout.addWidget(submit_btn)
@@ -233,21 +222,29 @@ annotated to include clear examples and were were not annotated correctively.
     def extract_metrics(self):
         self.progress_widget = MetricsProgressWidget()
         metrics_dir = os.path.join(os.path.dirname(self.proj_file_path), 'metrics')
-        rolling_average_n = self.rolling_average_edit_widget.value()
         if not os.path.isdir(metrics_dir):
             os.makedirs(metrics_dir)
         prefix = str(round(time.time())) + '_'
         csv_path = os.path.join(metrics_dir, f'{prefix}metrics.csv')
-        plot_path = os.path.join(metrics_dir, f'{prefix}dice.png')
+
         def metrics_computed(metric_str):
+            QtWidgets.QMessageBox.about(self, 'Metrics Computed',
+                                        f'Metrics computed for {os.path.dirname(self.proj_file_path)}. '
+                                        f'The CSV file has been saved to {csv_path}')
             self.done.emit(metric_str) 
+
         self.progress_widget.done.connect(metrics_computed) 
-        self.progress_widget.run(self.proj_file_path, csv_path, plot_path, rolling_average_n)
+        self.progress_widget.run(self.proj_file_path, csv_path)
         self.progress_widget.show()
         self.close()
 
 
 class MetricsPlot:
+
+    #A dice score plot will be generated. The dice plot excludes the 
+    #initial images until there are at least 6 annotations, as it is assumed these initial images were 
+    #annotated to include clear examples and were were not annotated correctively.
+
 
     def __init__(self):
         self.plot_window = None
@@ -262,21 +259,39 @@ class MetricsPlot:
             if f_metrics: 
                 self.plot_window.add_point(fname, f_metrics)
 
-    def show_extract_metrics(self, proj_file_path, navigate_to_file, image_path): 
+
+    def create_metrics_csv(self, proj_file_path): 
+        """ involves a progress bar as it takes time to compute the metrics """
         self.proj_file_path = proj_file_path
         self.proj_dir = os.path.dirname(self.proj_file_path)
         self.extract_metrics_widget = ExtractMetricsWidget(proj_file_path)
-
         def extract_done(metric_str):
+            QtWidgets.QMessageBox.about(self, 'Metrics Computed',
+                                        f'Metrics computed for {os.path.dirname(self.proj_file_path)}. '
+                                        f'The CSV file has been saved to {csv_path}')
+            self.close()
+        self.extract_metrics_widget.done.connect(extract_done)
+        self.extract_metrics_widget.show()
+
+
+    def create_metrics_plot(self, proj_file_path, navigate_to_file, selected_fpath): 
+        """ Creates interactive plot of metrics
+            involves a progress bar as it takes time to compute the metrics """
+        self.progress_widget = MetricsProgressWidget()
+        self.proj_file_path = proj_file_path
+        self.proj_dir = os.path.dirname(self.proj_file_path)
+
+        def metrics_computed(metric_str):
             fnames, metrics_list = json.loads(metric_str)
             self.plot_window = QtGraphMetricsPlot(
                 fnames, metrics_list, rolling_n=30,
-                selected_fname=os.path.basename(image_path))
+                selected_fname=os.path.basename(selected_fpath))
             self.plot_window.on_navigate_to_file.connect(navigate_to_file)
             self.plot_window.show()
 
-        self.extract_metrics_widget.done.connect(extract_done)
-        self.extract_metrics_widget.show()
+        self.progress_widget.done.connect(metrics_computed) 
+        self.progress_widget.run(self.proj_file_path)
+        self.progress_widget.show()
 
 
 class QtGraphMetricsPlot(QtWidgets.QMainWindow):

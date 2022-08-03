@@ -461,6 +461,8 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.highlight_point = None # cleared now.
 
         x, y = moving_average(corrected_dice, self.rolling_n)
+        # shift x forwards as images start from 1
+        x = [a + 1 for a in x]
         self.graph_plot.plot(x, y, pen = pg.mkPen('r', width=3),
                              symbol=None, name=f'Average (n={self.rolling_n})')
         

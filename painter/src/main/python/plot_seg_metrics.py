@@ -334,8 +334,8 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.control_bar_layout = QtWidgets.QHBoxLayout()
         self.control_bar_layout.setContentsMargins(0, 0, 0, 10) # left, top, right, bottom
-        self.control_bar.setMaximumHeight(50)
-        self.control_bar.setMinimumHeight(50)
+        self.control_bar.setMaximumHeight(60)
+        self.control_bar.setMinimumHeight(60)
         self.control_bar.setLayout(self.control_bar_layout)
         self.layout.addWidget(self.control_bar)
         self.add_average_control()

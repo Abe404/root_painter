@@ -31,28 +31,33 @@ from PyQt5 import QtCore
 from skimage.io import imread
 from progress_widget import BaseProgressWidget
 
+
+
 def moving_average(original, w):
     averages = []
+    x_pos_list = []
+    max_i = len(original)
+    for i in range(w//2, max_i):
+        j = i - (w//2)
+        non_nan_elements = []
+        element_positions = []
+         
+        #for i in range(start_i, stop_i):
+        while len(non_nan_elements) < w and j < max_i:
+            e = original[j]
+            
+            if not math.isnan(e):
+                non_nan_elements.append(e)
+                element_positions.append(j+1) # +1 because images start at 1
+            j += 1
+        
+        if len(element_positions) == w:
+            avg_y = np.mean(non_nan_elements)
+            avg_x = np.mean(element_positions)
+            averages.append(avg_y)
+            x_pos_list.append(avg_x) 
 
-    for i, x in enumerate(original):
-        if i >= (w//2) and i <= (len(original) - (w-(w//2))):
-            elements = original[i-(w//2):i+(w-(w//2))]
-            elements = [e for e in elements if not math.isnan(e)]
-            if elements:
-                avg = np.nanmean(elements)
-                averages.append(avg)
-            else:
-                averages.append(float('NaN'))
-        else:
-            averages.append(float('NaN'))
-     
-    x_pos = list(range(len(averages)))
-
-    if w % 2 == 0:
-        # shift left by 0.5 as each point is the average of itself and the previous point.
-        x_pos = [a - 0.5 for a in x_pos]
-
-    return x_pos, averages
+    return x_pos_list, averages
 
 
 def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
@@ -489,7 +494,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             idx = self.fnames.index(self.highlight_point_fname)
             y = self.metrics_list[idx][self.selected_metric]
             self.selected_point_label.setText(
-                f"{highlight_point_fname}  {self.metric_display_name}: {round(y, 4)}")
+                f"{self.metric_display_name}: {round(y, 4)}")
             self.render_highlight_point()
 
             self.selected_checkbox.show() # only show once a point on the plot is selected.
@@ -534,7 +539,6 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
         x, y = moving_average(corrected_dice, self.rolling_n)
         # shift x forwards as images start from 1
-        x = [a + 1 for a in x]
         self.graph_plot.plot(x, y, pen = pg.mkPen('r', width=3),
                              symbol=None, name=f'Average (n={self.rolling_n})')
  
@@ -644,7 +648,7 @@ if __name__ == '__main__':
     metrics_list = [{'f1': a, 'accuracy': (1-a)/2, 'annot_fg': 100, 'annot_bg': 100} for a in corrected_dice]
     rolling_n = 3
     selected_image = '7'
-    plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n, selected_image=None)
+    plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n, selected_fname=None)
     plot.show()
    
     import random

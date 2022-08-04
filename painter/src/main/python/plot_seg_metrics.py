@@ -371,6 +371,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.control_bar_layout.setContentsMargins(0, 0, 0, 10) # left, top, right, bottom
         self.control_bar.setMaximumHeight(60)
         self.control_bar.setMinimumHeight(60)
+        self.control_bar.setMinimumWidth(700)
         self.control_bar.setLayout(self.control_bar_layout)
         self.layout.addWidget(self.control_bar)
         self.add_metrics_dropdown()
@@ -469,6 +470,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.control_bar_layout.addWidget(spin_widget)
         spin_widget.setContentsMargins(0, 0, 0, 0)
         spin_widget.setMaximumWidth(200)
+        spin_widget.setMinimumWidth(100)
 
 
     def add_point(self, fname, metrics):

@@ -2,7 +2,13 @@
 
 Described in the paper "RootPainter: Deep Learning Segmentation of Biological Images with Corrective Annotation"
 
-https://www.biorxiv.org/content/10.1101/2020.04.16.044461v2
+Published paper available at:
+[https://doi.org/10.1111/nph.18387](https://doi.org/10.1111/nph.18387)
+
+Pre-print available at:
+[https://www.biorxiv.org/content/10.1101/2020.04.16.044461v2](https://www.biorxiv.org/content/10.1101/2020.04.16.044461v2)
+
+
 
 RootPainter is a GUI-based software tool for the rapid training of deep neural networks for use in biological image analysis. 
 RootPainter uses a client-server architecture, allowing users with a typical laptop to utilise a GPU on a more computationally powerful server.   
@@ -10,8 +16,10 @@ RootPainter uses a client-server architecture, allowing users with a typical lap
 ### Getting started quickly
 
  I suggest the [colab tutorial](https://colab.research.google.com/drive/104narYAvTBt-X4QEDrBSOZm_DRaAKHtA?usp=sharing).
+ 
+### A video demonstrating how to train and use a model is also available to [download](https://nph.onlinelibrary.wiley.com/action/downloadSupplement?doi=10.1111%2Fnph.18387&file=nph18387-sup-0002-VideoS1.mp4)
 
-### Downloads
+### Client Downloads
 
 See [releases](https://github.com/Abe404/root_painter/releases) 
 

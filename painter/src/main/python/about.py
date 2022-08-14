@@ -732,11 +732,14 @@ class AboutWindow(QtWidgets.QWidget):
         networks for use in biological image analysis.
         <br />
         <br />
-        If you find RootPainter useful in your research then please cite the 
+        If you find RootPainter useful in your research then please cite the published 
         paper: 'RootPainter: Deep Learning Segmentation of Biological Images with Corrective Annotation'
         <br />
+        The paper is now available at the following URL:
+        <a href="https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387"> https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387 </a>
         <br />
-        Version: 0.2.15
+        <br />
+        Version: 0.2.16
         <br />
         <br />
         Copyright (C) Abraham George Smith

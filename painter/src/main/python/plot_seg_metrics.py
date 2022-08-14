@@ -522,34 +522,55 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
     def render_data(self):
         assert self.graph_plot is not None, 'plot should be created before rendering data'
         corrected_dice = self.get_corrected_dice()
-        
-        x = list(range(1, len(corrected_dice) + 1)) # start from 1 because first image is 1/N
-        y = corrected_dice
-        scatter_points = [{'pos': [x, y], 'data': f} for (x, y, f) in zip(x, y, self.fnames)]
-        self.graph_plot.clear()
+        if not [c for c in corrected_dice if not math.isnan(c)]:
+            message = ('Segmentation metrics are not yet available because correctively'
+                       ' annotated images were not yet found for this project.'
+                       ' The first 6 annotations are not identified as corrective annotations'
+                       ' as they are assumed to be of clear examples. Annotate more images to'
+                       ' view segmentation metrics.')
 
-        def hover_tip(x, y, data):
-            return f'{int(x)} {data}  {self.metric_display_name}: {round(y, 4)}'
+            if not hasattr(self, 'message'):
+                self.message = QtWidgets.QLabel()
+                self.message.setStyleSheet("padding:10px;")
+                self.message.setText(message)
+                # making it multi line
+                self.message.setWordWrap(True)
+                self.layout.addWidget(self.message)
 
-        self.scatter = pg.ScatterPlotItem(size=8, symbol='x', clickable=True, hoverable=True,
-                                          hoverBrush=pg.mkBrush('grey'), hoverPen=pg.mkPen('grey'),
-                                          tip=hover_tip)
-        self.scatter.addPoints(scatter_points)
-        self.graph_plot.addItem(self.scatter)
 
-        x, y = moving_average(corrected_dice, self.rolling_n)
-        # shift x forwards as images start from 1
-        self.graph_plot.plot(x, y, pen = pg.mkPen('r', width=3),
-                             symbol=None, name=f'Average (n={self.rolling_n})')
- 
-        self.highlight_point = None # cleared now.
+        else:
 
+
+            if hasattr(self, 'message'):
+                self.message.hide()
+
+            x = list(range(1, len(corrected_dice) + 1)) # start from 1 because first image is 1/N
+            y = corrected_dice
+            scatter_points = [{'pos': [x, y], 'data': f} for (x, y, f) in zip(x, y, self.fnames)]
+            self.graph_plot.clear()
+
+            def hover_tip(x, y, data):
+                return f'{int(x)} {data}  {self.metric_display_name}: {round(y, 4)}'
+
+            self.scatter = pg.ScatterPlotItem(size=8, symbol='x', clickable=True, hoverable=True,
+                                              hoverBrush=pg.mkBrush('grey'), hoverPen=pg.mkPen('grey'),
+                                              tip=hover_tip)
+            self.scatter.addPoints(scatter_points)
+            self.graph_plot.addItem(self.scatter)
+
+            x, y = moving_average(corrected_dice, self.rolling_n)
+            # shift x forwards as images start from 1
+            self.graph_plot.plot(x, y, pen = pg.mkPen('r', width=3),
+                                 symbol=None, name=f'Average (n={self.rolling_n})')
+     
+            self.highlight_point = None # cleared now.
+
+           
+            # highlight point pos is a currently clicked point.
+            if self.highlight_point_fname is not None:
+                self.render_highlight_point()
+            self.add_events()
        
-        # highlight point pos is a currently clicked point.
-        if self.highlight_point_fname is not None:
-            self.render_highlight_point()
-        self.add_events()
-   
     def render_data_old(self):
         assert self.graph_plot is not None, 'plot should be created before rendering data'
         corrected_dice = self.get_corrected_dice()

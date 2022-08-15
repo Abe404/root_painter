@@ -373,7 +373,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.control_bar = QtWidgets.QWidget()
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.control_bar_layout = QtWidgets.QHBoxLayout()
-        self.control_bar_layout.setContentsMargins(0, 0, 0, 10) # left, top, right, bottom
+        self.control_bar_layout.setContentsMargins(10, 0, 0, 10) # left, top, right, bottom
         self.control_bar.setMaximumHeight(60)
         self.control_bar.setMinimumHeight(60)
         self.control_bar.setMinimumWidth(700)
@@ -469,7 +469,6 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.avg_spin = pg.SpinBox(
             value=self.rolling_n, bounds=[1, 1000],
             int=True, minStep=1, step=1, wrapping=False)
-
         spin_widget_layout.addWidget(self.avg_spin)
         self.avg_spin.sigValueChanged.connect(self.avg_changed)
         self.control_bar_layout.addWidget(spin_widget)

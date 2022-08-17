@@ -166,6 +166,8 @@ class Thread(QtCore.QThread):
         for i, fname in enumerate(self.fnames):
             self.progress_change.emit(i+1, len(self.fnames))
             cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
+            #£cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
+            #cache_dict = pickle.load(open(os.path.join(self.proj_dir, 'metrics_cache.pkl', 'rb'))
             metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname, cache_dir)
             if metrics: 
                 all_metrics.append(metrics)
@@ -490,6 +492,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         # called from update_file in root_painter.py
         self.highlight_point_fname = highlight_point_fname
         if self.highlight_point_fname in self.fnames:
+
             idx = self.fnames.index(self.highlight_point_fname)
             y = self.metrics_list[idx][self.selected_metric]
             self.selected_point_label.setText(
@@ -504,14 +507,17 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         if self.show_selected:
             if self.highlight_point_fname in self.fnames:
                 idx = self.fnames.index(self.highlight_point_fname)
-                x = [idx + 1]
-                y = [self.metrics_list[idx][self.selected_metric]]
-                if self.highlight_point is not None:
-                    self.highlight_point.setData(x, y) # update position of existing point clearing causes trouble.
-                else:
-                    self.highlight_point = self.graph_plot.plot(x, y, symbol='o',
-                        symbolPen=pg.mkPen('blue', width=1.5),
-                        symbolBrush=None, symbolSize=16)
+                # dont show the point if the corrected dice is NaN.
+                # This is the case for the clear examples at the start.
+                if hasattr(self, 'corrected_dice') and not math.isnan(self.corrected_dice[idx]):
+                    x = [idx + 1]
+                    y = [self.metrics_list[idx][self.selected_metric]]
+                    if self.highlight_point is not None:
+                        self.highlight_point.setData(x, y) # update position of existing point clearing causes trouble.
+                    else:
+                        self.highlight_point = self.graph_plot.plot(x, y, symbol='o',
+                            symbolPen=pg.mkPen('blue', width=1.5),
+                            symbolBrush=None, symbolSize=16)
             else:
                 pass
                 # current file not in list. it likely doesn't have metrics yet.
@@ -520,8 +526,8 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
     def render_data(self):
         assert self.graph_plot is not None, 'plot should be created before rendering data'
-        corrected_dice = self.get_corrected_dice()
-        if not [c for c in corrected_dice if not math.isnan(c)]:
+        self.corrected_dice = self.get_corrected_dice()
+        if not [c for c in self.corrected_dice if not math.isnan(c)]:
             message = ('Segmentation metrics are not yet available because correctively'
                        ' annotated images were not yet found for this project.'
                        ' The first 6 annotations are not identified as corrective annotations'
@@ -543,8 +549,8 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             if hasattr(self, 'message'):
                 self.message.hide()
 
-            x = list(range(1, len(corrected_dice) + 1)) # start from 1 because first image is 1/N
-            y = corrected_dice
+            x = list(range(1, len(self.corrected_dice) + 1)) # start from 1 because first image is 1/N
+            y = self.corrected_dice
             scatter_points = [{'pos': [x, y], 'data': f} for (x, y, f) in zip(x, y, self.fnames)]
             self.graph_plot.clear()
 
@@ -557,7 +563,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             self.scatter.addPoints(scatter_points)
             self.graph_plot.addItem(self.scatter)
 
-            x, y = moving_average(corrected_dice, self.rolling_n)
+            x, y = moving_average(self.corrected_dice, self.rolling_n)
             # shift x forwards as images start from 1
             self.graph_plot.plot(x, y, pen = pg.mkPen('r', width=3),
                                  symbol=None, name=f'Average (n={self.rolling_n})')
@@ -570,29 +576,6 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
                 self.render_highlight_point()
             self.add_events()
        
-    def render_data_old(self):
-        assert self.graph_plot is not None, 'plot should be created before rendering data'
-        corrected_dice = self.get_corrected_dice()
-        x = list(range(1, len(corrected_dice) + 1)) # start from 1 because first image is 1/N
-        y = corrected_dice
-        self.graph_plot.plot(x, y, pen=None, symbol='x', clear=True, clickable=True)
-        #hoverBrush=pg.mkBrush('green'), hoverPen=pg.mkBrush('green'))
-
-
-        self.highlight_point = None # cleared now.
-
-        x, y = moving_average(corrected_dice, self.rolling_n)
-        # shift x forwards as images start from 1
-        x = [a + 1 for a in x]
-        self.graph_plot.plot(x, y, pen = pg.mkPen('r', width=3),
-                             symbol=None, name=f'Average (n={self.rolling_n})')
-        
-        # highlight point pos is a currently clicked point.
-        if self.highlight_point_fname is not None:
-            self.render_highlight_point()
-        self.add_events()
-
-
     def get_corrected_dice(self):
         # should not consider first annotated images as these are likely
         # not done correctively.

@@ -90,7 +90,26 @@ def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
         "annot_bg": int(bg_labels)
     }
 
-def compute_seg_metrics(seg_dir, annot_dir, fname, cache_dir = None):
+
+def get_cache_key(seg_dir, annot_dir, fname):
+    fname = os.path.splitext(fname)[0] + '.png'
+    seg_path = os.path.join(seg_dir, fname)
+    if not os.path.isfile(seg_path):
+        return None # no segmentation means no metrics, meaning no cache key
+
+    annot_path = os.path.join(annot_dir, 'train', fname)
+    if not os.path.isfile(annot_path):
+        annot_path = os.path.join(annot_dir, 'val', fname)
+    if os.path.isfile(annot_path):
+        annot_mtime = os.path.getmtime(annot_path)
+    else:
+        annot_mtime = 0
+
+    seg_mtime = os.path.getmtime(seg_path)
+    cache_key = f'{fname}.{annot_mtime}.{seg_mtime}.pkl'
+    return cache_key
+
+def compute_seg_metrics(seg_dir, annot_dir, fname):
     
     # annot and seg are both PNG
     fname = os.path.splitext(fname)[0] + '.png'
@@ -106,14 +125,7 @@ def compute_seg_metrics(seg_dir, annot_dir, fname, cache_dir = None):
         annot_mtime = os.path.getmtime(annot_path)
     else:
         annot_mtime = 0
-
-    seg_mtime = os.path.getmtime(seg_path)
-    cache_fname = f'{fname}.{annot_mtime}.{seg_mtime}.pkl'
-    cache_fpath = os.path.join(cache_dir, cache_fname)
-    if os.path.isfile(cache_fpath): 
-        corrected_segmentation_metrics = pickle.load(open(cache_fpath, 'rb'))
-        return corrected_segmentation_metrics
-
+    
     seg = imread(seg_path)
 
     if os.path.isfile(annot_path):
@@ -132,12 +144,6 @@ def compute_seg_metrics(seg_dir, annot_dir, fname, cache_dir = None):
     corrected_segmentation_metrics = compute_metrics_from_masks(
         seg, corrected, np.sum(foreground > 0), np.sum(background > 0))
 
-    if cache_dir:
-        if not os.path.isdir(cache_dir):
-            os.makedirs(cache_dir)
-        with open(cache_fpath, 'wb') as cache_file:
-            pickle.dump(corrected_segmentation_metrics, cache_file) 
-    
     return corrected_segmentation_metrics
 
 
@@ -163,12 +169,22 @@ class Thread(QtCore.QThread):
             writer = csv.writer(csv_file, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
+        cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
+        if os.path.isfile(cache_dict_path):
+            cache_dict = pickle.load(open(cache_dict_path, 'rb'))
+        else:
+            cache_dict = {}
+
         for i, fname in enumerate(self.fnames):
             self.progress_change.emit(i+1, len(self.fnames))
-            cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
-            #£cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
-            #cache_dict = pickle.load(open(os.path.join(self.proj_dir, 'metrics_cache.pkl', 'rb'))
-            metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname, cache_dir)
+            # cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
+            cache_key = get_cache_key(self.seg_dir, self.annot_dir, fname)
+            if cache_key in cache_dict:
+                metrics = cache_dict[cache_key]
+            else:
+                metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
+                cache_dict[cache_key] = metrics
+
             if metrics: 
                 all_metrics.append(metrics)
                 all_fnames.append(fname)
@@ -185,6 +201,9 @@ class Thread(QtCore.QThread):
                     for k in metric_keys:
                         row.append(corrected_metrics[k]) 
                     writer.writerow(row)
+        
+        with open(cache_dict_path, 'wb') as cache_file:
+            pickle.dump(cache_dict, cache_file) 
 
         self.done.emit(json.dumps([all_fnames, all_metrics]))
 
@@ -288,10 +307,25 @@ class MetricsPlot:
         if self.plot_window is not None:
             seg_dir = os.path.join(self.proj_dir, 'segmentations')
             annot_dir = os.path.join(self.proj_dir, 'annotations')
-            cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
-            f_metrics = compute_seg_metrics(seg_dir, annot_dir, fname, cache_dir)
-            if f_metrics: 
-                self.plot_window.add_point(fname, f_metrics)
+
+
+            cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
+            cache_dict = pickle.load(open(cache_dict_path, 'rb'))
+
+            cache_key = get_cache_key(seg_dir, annot_dir, fname)
+            
+            if cache_key and cache_key in cache_dict:
+                metrics = cache_dict[cache_key]
+            else:
+                metrics = compute_seg_metrics(seg_dir, annot_dir, fname)
+                cache_dict[cache_key] = metrics
+            
+            if metrics: 
+                self.plot_window.add_point(fname, metrics)
+
+            with open(cache_dict_path, 'wb') as cache_file:
+                pickle.dump(cache_dict, cache_file) 
+
 
     def view_plot_from_csv(self, csv_fpath):
         # CSV Headers.

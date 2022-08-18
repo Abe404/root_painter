@@ -93,9 +93,9 @@ def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
 
 def get_cache_key(seg_dir, annot_dir, fname):
     fname = os.path.splitext(fname)[0] + '.png'
-    seg_path = os.path.join(seg_dir, fname)
-    if not os.path.isfile(seg_path):
-        return None # no segmentation means no metrics, meaning no cache key
+    #seg_path = os.path.join(seg_dir, fname)
+    #if not os.path.isfile(seg_path):
+    #    return None # no segmentation means no metrics, meaning no cache key
 
     #annot_path = os.path.join(annot_dir, 'train', fname)
     #if not os.path.isfile(annot_path):
@@ -304,21 +304,19 @@ class MetricsPlot:
         self.proj_dir = None
 
     def add_file_metrics(self, fname):
+        """ when a file is updated, we should update it in the metrics
+            and we should update it in the plot """
         if self.plot_window is not None:
             seg_dir = os.path.join(self.proj_dir, 'segmentations')
             annot_dir = os.path.join(self.proj_dir, 'annotations')
 
             cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
             cache_dict = pickle.load(open(cache_dict_path, 'rb'))
-
+            # cache_key is just the fname for now.
             cache_key = get_cache_key(seg_dir, annot_dir, fname)
-            
-            if cache_key and cache_key in cache_dict:
-                metrics = cache_dict[cache_key]
-            else:
-                metrics = compute_seg_metrics(seg_dir, annot_dir, fname)
-                cache_dict[cache_key] = metrics
-            
+            metrics = compute_seg_metrics(seg_dir, annot_dir, fname)
+            cache_dict[cache_key] = metrics
+
             if metrics: 
                 self.plot_window.add_point(fname, metrics)
 

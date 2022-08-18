@@ -97,16 +97,16 @@ def get_cache_key(seg_dir, annot_dir, fname):
     if not os.path.isfile(seg_path):
         return None # no segmentation means no metrics, meaning no cache key
 
-    annot_path = os.path.join(annot_dir, 'train', fname)
-    if not os.path.isfile(annot_path):
-        annot_path = os.path.join(annot_dir, 'val', fname)
-    if os.path.isfile(annot_path):
-        annot_mtime = os.path.getmtime(annot_path)
-    else:
-        annot_mtime = 0
-
-    seg_mtime = os.path.getmtime(seg_path)
-    cache_key = f'{fname}.{annot_mtime}.{seg_mtime}.pkl'
+    #annot_path = os.path.join(annot_dir, 'train', fname)
+    #if not os.path.isfile(annot_path):
+    #    annot_path = os.path.join(annot_dir, 'val', fname)
+    #if os.path.isfile(annot_path):
+    #    annot_mtime = os.path.getmtime(annot_path)
+    #else:
+    #    annot_mtime = 0
+    #seg_mtime = os.path.getmtime(seg_path)
+    #cache_key = f'{fname}.{annot_mtime}.{seg_mtime}.pkl'
+    cache_key = fname
     return cache_key
 
 def compute_seg_metrics(seg_dir, annot_dir, fname):
@@ -168,13 +168,13 @@ class Thread(QtCore.QThread):
             csv_file = open(self.csv_path, 'w+', newline='')
             writer = csv.writer(csv_file, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
-
+        start = time.time()
         cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
         if os.path.isfile(cache_dict_path):
             cache_dict = pickle.load(open(cache_dict_path, 'rb'))
         else:
             cache_dict = {}
-
+        
         for i, fname in enumerate(self.fnames):
             self.progress_change.emit(i+1, len(self.fnames))
             # cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
@@ -204,7 +204,7 @@ class Thread(QtCore.QThread):
         
         with open(cache_dict_path, 'wb') as cache_file:
             pickle.dump(cache_dict, cache_file) 
-
+        print('time to get metrics =', time.time() - start)
         self.done.emit(json.dumps([all_fnames, all_metrics]))
 
 
@@ -307,7 +307,6 @@ class MetricsPlot:
         if self.plot_window is not None:
             seg_dir = os.path.join(self.proj_dir, 'segmentations')
             annot_dir = os.path.join(self.proj_dir, 'annotations')
-
 
             cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
             cache_dict = pickle.load(open(cache_dict_path, 'rb'))

@@ -27,10 +27,11 @@ class NavWidget(QtWidgets.QWidget):
     """
     file_change = QtCore.pyqtSignal(str)
 
-    def __init__(self, all_fnames):
+    def __init__(self, all_fnames, annot_dirs):
         super().__init__()
         self.image_path = None
         self.all_fnames = all_fnames
+        self.annot_dirs = annot_dirs
         self.initUI()
 
     def initUI(self):
@@ -99,4 +100,9 @@ class NavWidget(QtWidgets.QWidget):
         dir_path, _ = os.path.split(self.image_path)
         all_paths = self.get_path_list(dir_path)
         cur_idx = all_paths.index(os.path.abspath(self.image_path))
-        self.nav_label.setText(f'{cur_idx + 1} / {len(all_paths)}')
+        
+        annotation_count = 0
+        for annot_dir in self.annot_dirs:
+            annotation_count += len(os.listdir(annot_dir))
+        self.nav_label.setText(
+            f'{cur_idx + 1} / {len(all_paths)} ({annotation_count} Annotated)')

@@ -495,8 +495,6 @@ class RootPainter(QtWidgets.QMainWindow):
             extras_menu.addAction(metrics_csv_btn)
 
 
-
-
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
             def update_dataset_after_check():
                 was_extended, file_names = check_extend_dataset(self,
@@ -554,7 +552,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # Required so graphics scene can track mouse up when mouse is not pressed
         self.graphics_view.setMouseTracking(True)
         self.scene = scene
-        self.nav = NavWidget(self.image_fnames)
+        self.nav = NavWidget(self.image_fnames, [self.train_annot_dir, self.val_annot_dir])
         self.update_file(self.image_path)
 
         # bottom bar

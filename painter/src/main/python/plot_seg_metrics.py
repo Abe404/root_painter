@@ -293,10 +293,9 @@ completion.
 
 class MetricsPlot:
 
-    #A dice score plot will be generated. The dice plot excludes the 
-    #initial images until there are at least 6 annotations, as it is assumed these initial images were 
-    #annotated to include clear examples and were were not annotated correctively.
-
+    #A dice score plot will be generated. The dice plot excludes the first few images (up until first_corrective_idx)
+    # as it is assumed these initial images were 
+    # annotated to include clear examples and were were not annotated correctively.
 
     def __init__(self):
         self.plot_window = None
@@ -315,9 +314,8 @@ class MetricsPlot:
             # cache_key is just the fname for now.
             cache_key = get_cache_key(seg_dir, annot_dir, fname)
             metrics = compute_seg_metrics(seg_dir, annot_dir, fname)
-            cache_dict[cache_key] = metrics
-
-            if metrics: 
+            if metrics:
+                cache_dict[cache_key] = metrics
                 self.plot_window.add_point(fname, metrics)
 
             with open(cache_dict_path, 'wb') as cache_file:
@@ -396,6 +394,13 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.selected_metric = 'f1'
         self.metric_display_name = 'Dice'
         self.highlight_point_fname = selected_fname
+
+        # index of first correctively annotated image. first image is 0
+        # we define this to be 6 initially as we assume the user annotated 6 images clearly.
+        # so image 7 (index of 6) will be the first correctively annotated.
+        self.first_corrective_idx = 6 
+
+
         self.highlight_point = None
         self.show_selected = True
         self.graph_plot = None
@@ -409,11 +414,12 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.control_bar_layout.setContentsMargins(10, 0, 0, 10) # left, top, right, bottom
         self.control_bar.setMaximumHeight(60)
         self.control_bar.setMinimumHeight(60)
-        self.control_bar.setMinimumWidth(700)
+        self.control_bar.setMinimumWidth(870)
         self.control_bar.setLayout(self.control_bar_layout)
         self.layout.addWidget(self.control_bar)
         self.add_metrics_dropdown()
         self.add_average_control()
+        self.add_first_corrective_control()
         self.add_selected_point_visbility_control()
         self.add_selected_point_label()
 
@@ -462,6 +468,9 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.rolling_n = sb.value()
         self.render_data()
 
+    def first_cor_changed(self, sb):
+        self.first_corrective_idx = sb.value() - 1
+        self.render_data()
 
     def show_selected_changed(self, state):
         checked = (state == QtCore.Qt.Checked)
@@ -506,9 +515,38 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.avg_spin.sigValueChanged.connect(self.avg_changed)
         self.control_bar_layout.addWidget(spin_widget)
         spin_widget.setContentsMargins(0, 0, 0, 0)
-        spin_widget.setMaximumWidth(200)
-        spin_widget.setMinimumWidth(100)
+        spin_widget.setMaximumWidth(180)
+        spin_widget.setMinimumWidth(180)
 
+    def add_first_corrective_control(self):
+        """ specify which image was the first one annotated correctively (by index) """
+        spin_widget = QtWidgets.QWidget()
+        spin_widget_layout = QtWidgets.QHBoxLayout()
+        spin_widget.setLayout(spin_widget_layout)
+        spin_widget_layout.addWidget(QtWidgets.QLabel("First annotated correctively:"))
+
+        def default_first_corrective_idx():
+            """ We start by assuming that the first 6 annotation were not corrective """
+            # should not consider first annotated images as these are likely
+            # not done correctively.
+            annots_found = 0
+            for i, m in enumerate(self.metrics_list):
+                if (m['annot_fg'] + m['annot_bg']) > 0:
+                    annots_found += 1
+                if annots_found > 6:
+                     # we have over 6 annotations so now assume the annotation is corrective
+                    return i
+            return 1000
+        
+        self.first_cor_spin = pg.SpinBox(
+            value=default_first_corrective_idx() + 1, bounds=[1, 1000],
+            int=True, minStep=1, step=1, wrapping=False)
+        spin_widget_layout.addWidget(self.first_cor_spin)
+        self.first_cor_spin.sigValueChanged.connect(self.first_cor_changed)
+        self.control_bar_layout.addWidget(spin_widget)
+        spin_widget.setContentsMargins(0, 0, 0, 0)
+        spin_widget.setMaximumWidth(260)
+        spin_widget.setMinimumWidth(260)
 
     def add_point(self, fname, metrics):
         if fname in self.fnames:
@@ -559,9 +597,11 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         assert self.graph_plot is not None, 'plot should be created before rendering data'
         self.corrected_dice = self.get_corrected_dice()
         if not [c for c in self.corrected_dice if not math.isnan(c)]:
+            self.graph_plot.clear()
+
             message = ('Segmentation metrics are not yet available because correctively'
                        ' annotated images were not yet found for this project.'
-                       ' The first 6 annotations are not identified as corrective annotations'
+                       f' The first {self.first_corrective_idx} are not identified as corrective annotations'
                        ' as they are assumed to be of clear examples. Annotate more images to'
                        ' view segmentation metrics.')
 
@@ -569,13 +609,13 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
                 self.message = QtWidgets.QLabel()
                 self.message.setStyleSheet("padding:10px;")
                 self.message.setText(message)
+
                 # making it multi line
                 self.message.setWordWrap(True)
                 self.layout.addWidget(self.message)
 
-
         else:
-
+            # enough images are annotated to show corrective annotation metrics.
 
             if hasattr(self, 'message'):
                 self.message.hide()
@@ -608,15 +648,9 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             self.add_events()
        
     def get_corrected_dice(self):
-        # should not consider first annotated images as these are likely
-        # not done correctively.
-        annots_found = 0
-        corrected_dice = [] # dice scores between predicted and corrected for corrected images.
+        corrected_dice = []
         for i, m in enumerate(self.metrics_list):
-            if (m['annot_fg'] + m['annot_bg']) > 0:
-                annots_found += 1
-            # once 6 annotations found then start recording disagreement
-            if annots_found > 6:
+            if i >= self.first_corrective_idx:
                 corrected_dice.append(m[self.selected_metric])
             else:
                 corrected_dice.append(float('NaN'))
@@ -633,7 +667,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         l.setContentsMargins(10, 10, 10, 10)
         view.setCentralItem(l)
         view.setWindowTitle('RootPainter: Segmentation Metrics')
-        view.resize(800,600)
+        view.resize(800, 600)
         l2 = l.addLayout()
         l2.setContentsMargins(0, 0, 0, 0)
         pg.setConfigOption('foreground', 'k')
@@ -691,8 +725,8 @@ if __name__ == '__main__':
         if plot.rolling_n > 30:
             plot.add_point(str(len(plot.metrics_list)),
                            {'f1': random.random(),
-                           'annot_fg': 100,
-                           'annot_bg': 100})
+                            'annot_fg': 100,
+                            'annot_bg': 100})
 
     proxy = pg.SignalProxy(plot.view.scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)
     app.exec_()

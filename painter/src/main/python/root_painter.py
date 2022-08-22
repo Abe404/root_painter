@@ -981,11 +981,11 @@ class RootPainter(QtWidgets.QMainWindow):
         brush_w = max(brush_w, 3)
 
         canvas_w = max(brush_w, 30)
-        pm = QtGui.QPixmap(canvas_w, canvas_w)
+        pm = QtGui.QPixmap(round(canvas_w), round(canvas_w))
         pm.fill(Qt.transparent)
         painter = QtGui.QPainter(pm)
 
-        painter.drawPixmap(canvas_w, canvas_w, pm)
+        painter.drawPixmap(round(canvas_w), round(canvas_w), pm)
 
         brush_rgb = self.scene.brush_color.toRgb()
         r, g, b = brush_rgb.red(), brush_rgb.green(), brush_rgb.blue()
@@ -1004,8 +1004,8 @@ class RootPainter(QtWidgets.QMainWindow):
                                   Qt.SolidLine, Qt.FlatCap))
 
         # Draw black to show where cursor is even when brush is small
-        painter.drawLine(0, (canvas_w/2), canvas_w*2, (canvas_w/2))
-        painter.drawLine((canvas_w/2), 0, (canvas_w/2), canvas_w*2)
+        painter.drawLine(0, round(canvas_w/2), round(canvas_w*2), round(canvas_w/2))
+        painter.drawLine(round(canvas_w/2), 0, round(canvas_w/2), round(canvas_w*2))
         painter.end()
 
         cursor = QtGui.QCursor(pm)

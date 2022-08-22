@@ -1,4 +1,4 @@
-PyQt5==5.15.2
+PyQt5==5.15.7
 numpy==1.22.1
 setuptools==60.5.0
 natsort==8.0.2

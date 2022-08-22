@@ -495,6 +495,17 @@ class RootPainter(QtWidgets.QMainWindow):
             extras_menu.addAction(metrics_csv_btn)
 
 
+            show_image_context_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                       'View image context',
+                                                        self)
+            def show_image_context():
+                print('show image in context')
+            show_image_context_btn.triggered.connect(show_image_context)
+            #extras_menu.addAction(show_image_context_btn)
+
+
+
+
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
             def update_dataset_after_check():
                 was_extended, file_names = check_extend_dataset(self,
@@ -984,9 +995,10 @@ class RootPainter(QtWidgets.QMainWindow):
                                   Qt.RoundCap, Qt.RoundJoin))
         ellipse_x = int(round(canvas_w/2 - (brush_w)/2))
         ellipse_y = int(round(canvas_w/2 - (brush_w)/2))
-        ellipse_w = brush_w
-        ellipse_h = brush_w
+        ellipse_w = int(round(brush_w))
+        ellipse_h = int(round(brush_w))
 
+        
         painter.drawEllipse(ellipse_x, ellipse_y, ellipse_w, ellipse_h)
         painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 180), 2,
                                   Qt.SolidLine, Qt.FlatCap))

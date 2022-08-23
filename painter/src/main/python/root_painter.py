@@ -55,7 +55,7 @@ from file_utils import get_annot_path
 from file_utils import maybe_save_annotation
 from instructions import send_instruction
 from plot_seg_metrics import MetricsPlot, ExtractMetricsWidget
-
+from im_viewer import ContextViewer
 use_plugin("pil")
 
 Image.MAX_IMAGE_PIXELS = None
@@ -495,14 +495,6 @@ class RootPainter(QtWidgets.QMainWindow):
             extras_menu.addAction(metrics_csv_btn)
 
 
-            show_image_context_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
-                                                       'View image context',
-                                                        self)
-            def show_image_context():
-                print('show image in context')
-            show_image_context_btn.triggered.connect(show_image_context)
-            #extras_menu.addAction(show_image_context_btn)
-
 
 
 
@@ -769,6 +761,52 @@ class RootPainter(QtWidgets.QMainWindow):
         toggle_image_visibility_btn.setStatusTip('Show or hide image')
         toggle_image_visibility_btn.triggered.connect(self.show_hide_image)
         view_menu.addAction(toggle_image_visibility_btn)
+
+
+        show_image_context_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                   'View image context',
+                                                    self)
+
+        show_image_context_btn.setShortcut('Ctrl+C')
+
+        def show_image_context():
+            fname = os.path.splitext(self.png_fname)[0]
+            tile_num_str = fname.split('_')[-1]
+            fname = fname[:len(fname) - len('_' + tile_num_str)]
+            proj_settings = json.load(open(self.proj_file_path))
+
+            if 'original_image_dir' in proj_settings:
+                original_image_dir = proj_settings['original_image_dir']
+            else:
+                # if the project doesn't yet have the path for the original
+                # images then ask the user for it.
+                msg = QtWidgets.QMessageBox()
+                output = ("Original image directory not yet specified. "
+                         "Please specify the original image directory.")
+                msg.setText(output)
+                msg.exec_()
+                original_image_dir = QtWidgets.QFileDialog.getExistingDirectory()
+                if not original_image_dir:
+                    return
+                else:
+                    proj_settings['original_image_dir'] = original_image_dir
+                    with open(self.proj_file_path, 'w') as file:
+                        json.dump(proj_settings, file, indent=4)
+
+            original_images = os.listdir(original_image_dir)
+            original_fname = None
+            for fname_with_ext in original_images:
+                if os.path.splitext(fname_with_ext)[0] == fname:
+                    original_fname = fname_with_ext
+                    break 
+            original_fpath = os.path.join(original_image_dir, original_fname)
+            self.context_viewer = ContextViewer(original_fpath, self.graphics_view.image)
+            self.context_viewer.show()
+
+        show_image_context_btn.triggered.connect(show_image_context)
+        print('view menu add action')
+        view_menu.addAction(show_image_context_btn)
+
 
         def zoom_in():
             self.graphics_view.zoom *= 1.1

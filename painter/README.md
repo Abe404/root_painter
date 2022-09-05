@@ -40,3 +40,20 @@ Or alternatively
 And then create the installer. Installers must be created on the target platform i.e windows installer must be created on windows and osx on osx etc.
 
     > python src/build/installer
+
+
+### Ubuntu (deb file)
+
+## to build the application
+
+    > python src/build/clean.py
+    > python src/build/freeze.py
+
+## and to build the installer
+
+    > back src/build/make_ubuntu_installer.sh
+
+
+
+
+

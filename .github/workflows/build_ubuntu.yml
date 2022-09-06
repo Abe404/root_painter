@@ -43,6 +43,7 @@ jobs:
         source env/bin/activate
         pip install -r requirements.txt
         pip install pyopengl # to fix issue xcb issue with ubuntu 20
+        sudo apt-get install libqt5gui5-gles
 
     - name: Build software
       run: |

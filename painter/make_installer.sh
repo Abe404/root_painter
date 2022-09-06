@@ -17,9 +17,12 @@
 # Mandatory fields are Package, Version, Architecture, Maintainer and Descript.
 # binary pack control file is located in src/build/DEBIAN_control
 
-mkdir dist/main/DEBIAN
-cp src/build/DEBIAN_control dist/main/DEBIAN/control
+# the /usr/local/bin folder is required so the deb file unpacks the application into the correct location.
+mkdir -p dist/ubuntu_setup/usr/local/bin
+mkdir dist/ubuntu_setup/DEBIAN
+cp -r src/build/DEBIAN_control dist/ubuntu_setup/DEBIAN/control
+cp -r dist/RootPainter dist/ubuntu_setup/usr/local/bin/RootPainter
 
-dpkg-deb --build dist/main
-mv dist/main.deb dist/RootPainter.deb
+dpkg-deb --build dist/ubuntu_setup
+mv dist/ubuntu_setup.deb dist/RootPainter.deb
 echo 'output debian package to dist/RootPainter.deb'

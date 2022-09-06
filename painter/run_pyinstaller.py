@@ -55,6 +55,9 @@ PyInstaller.__main__.run([
 
     '--log-level', 'DEBUG', 
 
+    # Name to assign to the bundled app and spec file (default: first script’s basename)
+    '--name', 'RootPainter',
+
     # scriptname: Name of scriptfile to be processed.
     'src/main/python/main.py'
 ])

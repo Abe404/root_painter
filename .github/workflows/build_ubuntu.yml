@@ -37,9 +37,6 @@ jobs:
 
     - name: Install dependencies
       run: |
-        #  to fix https://github.com/Abe404/root_painter/issues/41 as suggested here: 
-        #  https://github.com/pyqtgraph/pyqtgraph/issues/1220#issuecomment-636640544
-        sudo apt-get install -y libxcb-xfixes0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0
         cd painter
         python -m pip install --upgrade pip
         python -m venv env

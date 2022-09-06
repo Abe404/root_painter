@@ -1,9 +1,3 @@
-source ./env/bin/activate
-python compile.py
-echo "output executable available at dist/main/main"
-
-rm main.spec # temporary file generated as part of the build process.
-
 # from man dpkg-deb
 # dpkl-deb --build creates a debian archive from the filesystem tree stroed in binary-directory.
 # binary-directory must have a DEBIAN subdirectory, which contains the control
@@ -29,4 +23,3 @@ cp src/build/DEBIAN_control dist/main/DEBIAN/control
 dpkg-deb --build dist/main
 mv dist/main.deb dist/RootPainter.deb
 echo 'output debian package to dist/RootPainter.deb'
-

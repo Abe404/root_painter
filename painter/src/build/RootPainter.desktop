@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=RootPainter
+Comment=RootPainter
+Exec=/usr/local/bin/RootPainter/RootPainter
+Terminal=false
+Type=Application
+Icon=/usr/local/bin/RootPainter/painter/icons/icon.ico

@@ -40,12 +40,12 @@ advice.
 
 
 import PyQt5
+import os
 
 # To address missing plugins issue. https://github.com/pyqt/python-qt5/issues/2
 dirname = os.path.dirname(PyQt5.__file__)
 print('dirname', dirname)
 plugin_path = os.path.join(dirname, 'plugins', 'platforms')
-import os
 os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
 
 

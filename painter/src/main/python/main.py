@@ -22,6 +22,7 @@ import json
 import traceback
 
 from PyQt5 import QtWidgets
+import PyQt5
 
 from root_painter import RootPainter
 
@@ -70,4 +71,11 @@ def init_root_painter():
         sys.exit(exit_code)
 
 if __name__ == '__main__':
+
+    # To address missing plugins issue. https://github.com/pyqt/python-qt5/issues/2
+    dirname = os.path.dirname(PyQt5.__file__)
+    plugin_path = os.path.join(dirname, 'plugins', 'platforms')
+    os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
+
+
     init_root_painter()

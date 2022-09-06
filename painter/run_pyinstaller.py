@@ -56,6 +56,8 @@ PyInstaller.__main__.run([
     # Where to put all the temporary work files .log, .pyz and etc. (default: ./build)
     '--workpath', 'dist/tmp_files',
 
+    '--log-level', 'DEBUG', 
+
     # scriptname: Name of scriptfile to be processed.
     'src/main/python/main.py'
 ])

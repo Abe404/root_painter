@@ -29,6 +29,6 @@ mkdir dist/ubuntu_setup/DEBIAN
 cp -r src/build/DEBIAN_control dist/ubuntu_setup/DEBIAN/control
 cp -r dist/RootPainter dist/ubuntu_setup/usr/local/bin/RootPainter
 
-dpkg-deb --build --root-owner-group dist/ubuntu_setup
+dpkg-deb --build dist/ubuntu_setup
 mv dist/ubuntu_setup.deb dist/RootPainter.deb
 echo 'output debian package to dist/RootPainter.deb'

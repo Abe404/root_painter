@@ -39,6 +39,14 @@ advice.
 # https://pyinstaller.org/en/stable/usage.html
 
 
+import PyQt5
+
+# To address missing plugins issue. https://github.com/pyqt/python-qt5/issues/2
+dirname = os.path.dirname(PyQt5.__file__)
+print('dirname', dirname)
+plugin_path = os.path.join(dirname, 'plugins', 'platforms')
+os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
+
 
 PyInstaller.__main__.run([
     # --noconfirm: don't ask user to confirm when deleting existing files in dist folder.

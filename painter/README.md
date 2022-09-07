@@ -46,14 +46,13 @@ And then create the installer. Installers must be created on the target platform
 
 ## to build the application
 
-    > python src/build/clean.py
-    > python src/build/freeze.py
+    > bash make_software.sh
 
-## and to build the installer
+## to build the installer
 
-    > back src/build/make_ubuntu_installer.sh
+    > bash make_installer.sh
 
+The output installer will be located at dist/RootPainter.deb
 
-
-
-
+## Installer the installer
+> sudo dpkg -i dist/RootPainter.deb

@@ -47,6 +47,7 @@ jobs:
     - name: Build software
       run: |
         cd painter
+        source env/bin/activate
         python src/build/run_pyinstaller.py
 
     - name: Make installer

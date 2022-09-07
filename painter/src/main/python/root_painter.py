@@ -66,6 +66,10 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def __init__(self, sync_dir):
         super().__init__()
+        # give the main RootPainter window an Icon.
+        app_dir = os.path.dirname(os.path.realpath(__file__))
+        self.setWindowIcon(QtGui.QIcon(os.path.join(app_dir, 'icons/linux/128.png')))
+
         self.assign_sync_directory(sync_dir)
         self.tracking = False
         self.image_pixmap_holder = None

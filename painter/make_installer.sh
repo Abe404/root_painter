@@ -28,6 +28,7 @@ cp src/build/RootPainter.desktop dist/ubuntu_setup/usr/share/applications
 mkdir dist/ubuntu_setup/DEBIAN
 cp -r src/build/DEBIAN_control dist/ubuntu_setup/DEBIAN/control
 cp -r dist/RootPainter dist/ubuntu_setup/usr/local/bin/RootPainter
+cp -r src/main/icons/Icon.ico dist/ubuntu_setup/usr/local/bin/RootPainter/Icon.ico
 
 dpkg-deb --build dist/ubuntu_setup
 mv dist/ubuntu_setup.deb dist/RootPainter.deb

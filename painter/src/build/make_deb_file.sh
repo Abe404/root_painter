@@ -1,3 +1,7 @@
+
+# run from within painter directory
+# bash src/build/make_deb_file.sh
+
 # from man dpkg-deb
 # dpkl-deb --build creates a debian archive from the filesystem tree stroed in binary-directory.
 # binary-directory must have a DEBIAN subdirectory, which contains the control

@@ -62,6 +62,9 @@ PyInstaller.__main__.run([
     # see https://pyinstaller.org/en/stable/usage.html?highlight=icon#cmdoption-i
     '--icon', 'src/main/icons/Icon.ico',
 
+    # I dont actually use the spec file yet, so put the auto-generated one in dist to avoid cluttering the repo
+    '--specpath', 'dist', 
+
     # scriptname: Name of scriptfile to be processed.
     'src/main/python/main.py'
 ])

@@ -47,12 +47,12 @@ jobs:
     - name: Build software
       run: |
         cd painter
-        bash make_software.sh
+        python src/build/run_pyinstaller.py
 
     - name: Make installer
       run: |
         cd painter
-        bash make_installer.sh
+        bash src/build/make_deb_file.sh
 
     - name: Upload package
       uses: actions/upload-artifact@v2

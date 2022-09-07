@@ -46,11 +46,11 @@ And then create the installer. Installers must be created on the target platform
 
 ## to build the application
 
-    > bash make_software.sh
+    > python src/build/run_pyinstaller.py
 
-## to build the installer
+## to build the linux package (deb file)
 
-    > bash make_installer.sh
+    > bash src/build/make_installer.sh
 
 The output installer will be located at dist/RootPainter.deb
 

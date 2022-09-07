@@ -58,6 +58,8 @@ PyInstaller.__main__.run([
     # Name to assign to the bundled app and spec file (default: first script’s basename)
     '--name', 'RootPainter',
 
+    '--icon', 'src/main/icons/Icon.ico',
+
     # scriptname: Name of scriptfile to be processed.
     'src/main/python/main.py'
 ])

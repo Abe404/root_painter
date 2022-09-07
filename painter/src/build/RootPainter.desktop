@@ -4,4 +4,4 @@ Comment=RootPainter
 Exec=/usr/local/bin/RootPainter/RootPainter
 Terminal=false
 Type=Application
-Icon=/usr/local/bin/RootPainter/icons/linux/256.png
+Icon=/usr/local/bin/RootPainter/icons/icon.svg

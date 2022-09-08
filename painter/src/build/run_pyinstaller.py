@@ -52,8 +52,11 @@ PyInstaller.__main__.run([
 
     # Where to put all the temporary work files .log, .pyz and etc. (default: ./build)
     '--workpath', 'dist/tmp_files',
-
-    '--log-level', 'DEBUG', 
+    
+    # --debug==all provides a significant amount of diagnostic information.
+    # This can be useful during development of a complex package, or when your
+    # app doesn’t seem to be starting, or just to learn how the runtime works.
+    # '--debug', 'all', 
 
     # Name to assign to the bundled app and spec file (default: first script’s basename)
     '--name', 'RootPainter',
@@ -64,6 +67,12 @@ PyInstaller.__main__.run([
 
     # I dont actually use the spec file yet, so put the auto-generated one in dist to avoid cluttering the repo
     '--specpath', 'dist', 
+
+    # Windows and Mac OS X: do not provide a console window for standard i/o.
+    # On Mac OS this also triggers building a Mac OS .app bundle. On Windows
+    # this option is automatically set if the first script is a ‘.pyw’ file.
+    # This option is ignored on *NIX systems.
+    '--windowed',
 
     # scriptname: Name of scriptfile to be processed.
     'src/main/python/main.py'

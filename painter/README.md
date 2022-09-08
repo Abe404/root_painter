@@ -10,12 +10,6 @@ I typically suggest using a virtual environment for this.
 
     > pip install -r requirements.txt
 
-### Mac
-
-For generating the installer on MacOSX, the `create-dmg` command is required. It is recommended to install using homebrew to install:
-
-    > brew install create-dmg
-
 ### Windows
 
 For generating executable on Windows, ensure that the NSIS tools are installed and available in path: https://nsis.sourceforge.io/Main_Page
@@ -42,17 +36,40 @@ And then create the installer. Installers must be created on the target platform
     > python src/build/installer
 
 
-### Ubuntu (deb file)
 
-## to build the application
+
+
+### Building application on OSX/Max (.dmg file)
+
+
+#### Install dependencies
+
+For generating the installer on MacOSX, the `create-dmg` command is required. It is recommended to install using homebrew to install:
+
+    > brew install create-dmg
+
+
+#### to build the application
 
     > python src/build/run_pyinstaller.py
 
-## to build the linux package (deb file)
 
-    > bash src/build/make_installer.sh
+#### to build the installer (.dmg file)
+
+    > bash src/build/make_dmg_file.sh
+
+
+### Building application on Ubuntu (deb file)
+
+#### to build the application
+
+    > python src/build/run_pyinstaller.py
+
+#### to build the linux package (deb file)
+
+    > bash src/build/make_deb_file.sh
 
 The output installer will be located at dist/RootPainter.deb
 
-## Installer the installer
+#### Installer the installer
 > sudo dpkg -i dist/RootPainter.deb

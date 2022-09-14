@@ -53,11 +53,6 @@ else:
     shutil.copyfile(os.path.join('src/main/icons', icon_fname), icon_fname)
 
 
-# icon path should be relative to the dist folder
-shutil.copyfile(os.path.join('src/main/icons', icon_fname),
-                icon_fname)
-
-
 
 # pyinstaller command line argument documentation is available from:
 # https://pyinstaller.org/en/stable/usage.html
@@ -94,7 +89,7 @@ PyInstaller.__main__.run([
     # thereby making the OS to show some default (default: apply PyInstaller's icon)
     # thereby making the OS to show some default (default: apply PyInstaller's icon)
     #'-i', './src/main/icons/Icon.ico',  # windows
-    '--icon', icon_fname,  # should be relative to the dist directory
+    '--icon', os.path.join('src', 'main', 'icons', icon_fname),  # should be relative to the dist directory
     # I dont actually use the spec file yet, so put the auto-generated one in dist to avoid cluttering the repo
     '--specpath', 'dist', 
 

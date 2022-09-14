@@ -95,6 +95,12 @@ PyInstaller.__main__.run([
     # This option is ignored on *NIX systems.
     '--windowed',
 
+    # Mac OS .app bundle identifier is used as the default unique program name
+    # for code signing purposes. The usual form is a hierarchical name in reverse DNS
+    # notation. For example: com.mycompany.department.appname (default: first
+    # script’s basename)
+    '--osx-bundle-identifier', 'com.rootpainter',
+
     # scriptname: Name of scriptfile to be processed.
     'src/main/python/main.py'
 ])

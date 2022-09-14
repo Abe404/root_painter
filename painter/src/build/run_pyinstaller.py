@@ -50,6 +50,12 @@ if platform == "darwin":
 shutil.copyfile(os.path.join('src/main/icons', icon_fname),
                 os.path.join('dist', icon_fname))
 
+# icon path should be relative to the dist folder
+shutil.copyfile(os.path.join('src/main/icons', icon_fname),
+                icon_fname)
+
+
+
 # pyinstaller command line argument documentation is available from:
 # https://pyinstaller.org/en/stable/usage.html
 

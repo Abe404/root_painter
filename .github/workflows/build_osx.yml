@@ -1,0 +1,64 @@
+# Copyright (C) 2022 André Pedersen
+# Copyright (C) 2022 Abraham George Smith
+
+#This program is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+name: Build OSX
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  build:
+    runs-on: macos-10.15
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python '3.9.5'
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9.5'
+
+    - name: Install dependencies
+      run: |
+        cd painter
+        python -m pip install --upgrade pip
+        python -m venv env
+        source env/bin/activate
+        # install pyinstaller seperately to use different version depending on platform
+        pip install pyinstaller==4.8 # fix for https://github.com/Abe404/root_painter/issues/41
+        pip install -r requirements.txt
+
+    - name: Build software
+      run: |
+        cd painter
+        source env/bin/activate
+        python src/build/run_pyinstaller.py
+
+    - name: Make installer
+      run: |
+        cd painter
+        bash src/build/make_dmg_file.sh
+
+    - name: Upload package
+      uses: actions/upload-artifact@v2
+      with:
+        name: Package
+        path: ${{github.workspace}}/painter/dist/RootPainter.dmg
+        if-no-files-found: error

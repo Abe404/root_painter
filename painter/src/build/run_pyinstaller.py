@@ -45,10 +45,13 @@ if not os.path.isdir('dist'):
 icon_fname = 'Icon.ico' # ico for windows.
 if platform == "darwin":
     icon_fname = 'Icon.icns' # icns for mac
+    # icon path should be relative to the dist folder
+    shutil.copyfile(os.path.join('src/main/icons', icon_fname),
+                    os.path.join('dist', icon_fname))
+else:
+    # icon path should be relative to the dist folder
+    shutil.copyfile(os.path.join('src/main/icons', icon_fname), icon_fname)
 
-# icon path should be relative to the dist folder
-shutil.copyfile(os.path.join('src/main/icons', icon_fname),
-                os.path.join('dist', icon_fname))
 
 # icon path should be relative to the dist folder
 shutil.copyfile(os.path.join('src/main/icons', icon_fname),

@@ -1,0 +1,59 @@
+# Copyright (C) 2022 André Pedersen
+# Copyright (C) 2022 Abraham Smith
+
+#This program is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+name: Build Windows
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  build:
+    runs-on: windows-2019
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller==5.0
+        pip install -r painter/requirements.txt
+
+    - name: Build software
+      run: |
+        cd painter
+        python src/build/run_pyinstaller.py
+
+    - name: Make installer
+      run: |
+        makensis.exe src/build/assets/Installer.nsi
+        cp -r RootPainter.exe dist/RootPainter.exe
+
+    - name: Upload package
+      uses: actions/upload-artifact@v2
+      with:
+        name: Package
+        path: ${{github.workspace}}/dist/RootPainter.exe
+        if-no-files-found: error

@@ -28,7 +28,7 @@ fi
 # --app-drop-link is important to make it convenient to install.
 # --app-drop-link <x> <y>: make a drop link to Applications, at location x, y
 
-create-dmg --volname 'RootPainter' --app-drop-link 10 170 RootPainter.dmg ./dist/RootPainter.app
+create-dmg --volname 'RootPainter' --app-drop-link 10 170 dist/RootPainter.dmg ./dist/RootPainter.app
 
 
 echo 'output OSX installer to dist/RootPainter.dmg'

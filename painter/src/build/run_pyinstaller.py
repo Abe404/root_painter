@@ -33,10 +33,26 @@ So the plan for now is to go with more options passed to PyInstaller, and then
 only move onto using a custom spec file when this is recommended by the above
 advice.
 """
+import shutil
+import os
+from sys import platform
 
+# pyinstaller expects icon file to be in the dist folder
+if not os.path.isdir('dist'):
+    os.makedirs('dist')
+
+# Icon for used for mac or windows (linux has different mechanism, see make_deb_file.sh)
+icon_fname = 'Icon.ico' # ico for windows.
+if platform == "darwin":
+    icon_fname = 'Icon.icns' # icns for mac
+
+# icon path should be relative to the dist folder
+shutil.copyfile(os.path.join('src/main/icons', icon_fname),
+                os.path.join('dist', icon_fname))
 
 # pyinstaller command line argument documentation is available from:
 # https://pyinstaller.org/en/stable/usage.html
+
 PyInstaller.__main__.run([
     # --noconfirm: don't ask user to confirm when deleting existing files in dist folder.
     '--noconfirm',
@@ -63,8 +79,13 @@ PyInstaller.__main__.run([
 
     # I dont think this makes a difference for ubuntu, but I think it will help on OSX.
     # see https://pyinstaller.org/en/stable/usage.html?highlight=icon#cmdoption-i
-    '--icon', 'src/main/icons/Icon.ico',
-
+    # -i FILE.exe,ID or FILE.icns or "NONE"> FILE.ico: apply the icon to a Windows
+    # executable. FILE.exe,ID: extract the icon with ID from an exe. FILE.icns: apply
+    # the icon to the .app bundle on Mac OS. Use "NONE" to not apply any icon,
+    # thereby making the OS to show some default (default: apply PyInstaller's icon)
+    # thereby making the OS to show some default (default: apply PyInstaller's icon)
+    #'-i', './src/main/icons/Icon.ico',  # windows
+    '--icon', icon_fname,  # should be relative to the dist directory
     # I dont actually use the spec file yet, so put the auto-generated one in dist to avoid cluttering the repo
     '--specpath', 'dist', 
 

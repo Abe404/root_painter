@@ -55,11 +55,11 @@ jobs:
     - name: Make installer
       run: |
         cd painter
-        bash src/build/make_dmg_file.sh
+        pkgbuild --component dist/RootPainter.app --install-location /Applications dist/RootPainter.pkg
 
     - name: Upload package
       uses: actions/upload-artifact@v2
       with:
         name: Package
-        path: ${{github.workspace}}/painter/dist/RootPainter.dmg
+        path: ${{github.workspace}}/painter/dist/RootPainter.pkg
         if-no-files-found: error

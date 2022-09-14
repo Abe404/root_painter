@@ -54,9 +54,10 @@ For generating the installer on MacOSX, the `create-dmg` command is required. It
     > python src/build/run_pyinstaller.py
 
 
-#### to build the installer (.dmg file)
+#### to build the installer (.pkg file)
 
-    > bash src/build/make_dmg_file.sh
+    > pkgbuild --component dist/RootPainter.app --install-location /Applications dist/RootPainter.pkg
+
 
 
 ### Building application on Ubuntu (deb file)

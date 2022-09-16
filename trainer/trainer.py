@@ -61,9 +61,6 @@ from startup import startup_setup, ensure_required_folders_exist
 
 
 
-epoch_updates = 0
-shuffle_buffer = []
-loader_fin = False
 
 class Trainer():
 
@@ -92,7 +89,7 @@ class Trainer():
         for i in range(torch.cuda.device_count()):
             total_mem += torch.cuda.get_device_properties(i).total_memory
         self.bs = total_mem // mem_per_item
-        self.shuffle_buffer_limit = 128  # uses around 10GB of shared memory
+        self.bs = min(12, self.bs)
         print('Batch size', self.bs)
         self.optimizer = None
         # used to check for updates
@@ -258,8 +255,6 @@ class Trainer():
         return found_train_annot and found_val_annot
 
     def train_one_epoch(self):
-        global epoch_updates, loader_fin
-        
         if not self.train_and_val_annotation_exists():
             # no training until data ready
             return
@@ -270,18 +265,6 @@ class Trainer():
             self.write_message('Training started')
             self.log('Starting Training')
 
-        epoch_updates = 0 # counter to say when epoch has finished.
-        loader_fin = False # flag used to say when data loader done.
-        loader_thread = Thread(target=self.loader_worker)
-        trainer_thread = Thread(target=self.trainer_worker)
-        loader_thread.start()
-        trainer_thread.start()
-        loader_thread.join()
-        trainer_thread.join()
-     
-     
-    def loader_worker(self):
-        global loader_fin, shuffle_buffer
         train_loader = DataLoader(self.train_set, self.bs,
                                   shuffle=True,
                                   collate_fn=data_utils.collate_fn,  
@@ -292,31 +275,9 @@ class Trainer():
                                   num_workers=min(multiprocessing.cpu_count(), 12),
                                   drop_last=False, pin_memory=True)
         
-        for step, (batch_im_tiles, batch_fg_tiles,
-                   batch_bg_tiles, batch_classes) in enumerate(train_loader):
-
-            for im_tile, fg_tiles, bg_tiles, classes in zip(
-                batch_im_tiles, batch_fg_tiles,
-                batch_bg_tiles, batch_classes):
-
-                shuffle_buffer.append([0, (im_tile, fg_tiles,
-                                           bg_tiles, classes)])
-
-            if len(shuffle_buffer) > self.shuffle_buffer_limit:
-                # remove the oldest item
-                shuffle_buffer = sorted(shuffle_buffer, key=itemgetter(0))[:self.shuffle_buffer_limit]
-
-            if (epoch_updates*self.bs) > 612:
-                break # break out but leave the updater running until we get out of this loop
-
-        loader_fin = True # now we are out of the loop tell updater to stop.
-
-    def trainer_worker(self):
-        global shuffle_buffer 
-        global epoch_updates
-        global loader_fin
         epoch_start = time.time()
         self.model.train()
+
         tps = 0
         fps = 0
         tns = 0
@@ -324,63 +285,39 @@ class Trainer():
         defined_total = 0
         loss_sum = 0
 
-        while True:
-            # if the loader worker finished then it's time to stop.
-            if loader_fin:
-                break
-            
-            # must be at least a batch before processing data.
-            if len(shuffle_buffer) >= self.bs:
-                # Get least used items 
-                least_used = sorted(shuffle_buffer, key=itemgetter(0))[:self.bs]
-                batch_im_tiles = [l[1][0] for l in least_used]
-                batch_fg_tiles = [l[1][1] for l in least_used]
-                batch_bg_tiles = [l[1][2] for l in least_used]
-                batch_classes = [l[1][3] for l in least_used]
+        for step, (batch_im_tiles, batch_fg_tiles,
+                   batch_bg_tiles, batch_classes) in enumerate(train_loader):
 
-                batch_im_tiles = torch.from_numpy(np.array(batch_im_tiles)).cuda()
-                #print('time for prep', time.time() - t)
-                self.optimizer.zero_grad()
-                outputs = self.model(batch_im_tiles)
 
-                (batch_loss, batch_tps, batch_tns,
-                 batch_fps, batch_fns, defined_total) = get_batch_loss(
-                    outputs, batch_fg_tiles, batch_bg_tiles,
-                    batch_classes, self.train_config['classes'])
-             
-                tps += batch_tps
-                fps += batch_fps
-                tns += batch_tns
-                fns += batch_fns
+            self.check_for_instructions()
 
-                loss_sum += batch_loss.item() # float
-                batch_loss.backward()
-                self.optimizer.step()
-                sys.stdout.write(f"\rTraining {(epoch_updates+1) * self.bs}/"
-                    f"612"
-                    f" loss={round(batch_loss.item(), 3)}"
-                    f" buffer_staleness={round(np.mean([s[0] for s in shuffle_buffer]), 3)}")
-                sys.stdout.flush()
-                self.check_for_instructions() # could update training parameter
-                if not self.training:
-                    return
+            batch_im_tiles = torch.from_numpy(np.array(batch_im_tiles)).cuda()
 
-                # add to age as it will now be used in training
-                for item in least_used:
-                    item[0] += 1
 
-                # total steps in epoch
-                epoch_updates += 1
-        
-            # We don't want this to go on forever
-            # Perhaps something has goes wrong
-            if (epoch_updates*self.bs) > (612 * 2):
-                print('we have gone way over the limit.'
-                      'Assume data loader crashed'
-                      ' and that it is time to finish the epoch anyway.') 
-                break
+            self.optimizer.zero_grad()
+            outputs = self.model(batch_im_tiles)
 
-        duration = round(time.time() - epoch_start, 3)
+            (batch_loss, batch_tps, batch_tns,
+             batch_fps, batch_fns, defined_total) = get_batch_loss(
+                outputs, batch_fg_tiles, batch_bg_tiles,
+                batch_classes, self.train_config['classes'])
+         
+            tps += batch_tps
+            fps += batch_fps
+            tns += batch_tns
+            fns += batch_fns
+
+            loss_sum += batch_loss.item()
+            batch_loss.backward()
+            self.optimizer.step()
+            sys.stdout.write(f"\rTraining {(step+1) * self.bs}/"
+                f"612"
+                f" loss={round(loss_sum, 3)}")
+            sys.stdout.flush()
+            self.check_for_instructions() # could update training parameter
+            if not self.training:
+                return
+            duration = round(time.time() - epoch_start, 3)
         print('epoch train duration', duration)
         self.log_metrics('train', get_metrics(tps, fps, tns, fns,
                                               defined_total, duration))
@@ -509,6 +446,24 @@ class Trainer():
 
     def segment_file(self, in_dir, seg_dir, fname, model_paths, classes, sync_save):
         fpath = os.path.join(in_dir, fname)
+
+        # When the client navigates through images, there is a risk that 
+        # they may not realise that training has not been started.
+        # These segmentation instructions keep getting processed so
+        # use this as an opportunity to let them know the network is
+        # not training
+        try: 
+            if not self.training:
+                # if the seg dir is in the same folder as a folder called messages.
+                # then assume messages should go to this folder.
+                proj_dir = os.path.dirname(seg_dir)
+                msg_dir = os.path.join(proj_dir, 'messages')
+                if os.path.isdir(msg_dir) and not self.msg_dir:
+                    self.msg_dir = msg_dir
+                message = "Network not training"
+                self.write_message(message)
+        except Exception as e:
+            print('excpetion writing mesage', e)
 
         # Segmentations are always saved as PNG.
         out_paths = []

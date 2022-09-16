@@ -89,7 +89,7 @@ class Trainer():
         for i in range(torch.cuda.device_count()):
             total_mem += torch.cuda.get_device_properties(i).total_memory
         self.bs = total_mem // mem_per_item
-        self.shuffle_buffer_limit = 128  # uses around 10GB of shared memory
+        self.bs = min(12, self.bs)
         print('Batch size', self.bs)
         self.optimizer = None
         # used to check for updates
@@ -443,9 +443,32 @@ class Trainer():
                               sync_save=len(fnames) == 1)
         duration = time.time() - start
         print(f'Seconds to segment {len(fnames)} images: ', round(duration, 3))
+<<<<<<< HEAD
 
     def segment_file(self, in_dir, seg_dir, fname, model_paths, classes, sync_save):
+=======
+        
+    def segment_file(self, in_dir, seg_dir, fname, model_paths, sync_save):
+>>>>>>> master
         fpath = os.path.join(in_dir, fname)
+
+        # When the client navigates through images, there is a risk that 
+        # they may not realise that training has not been started.
+        # These segmentation instructions keep getting processed so
+        # use this as an opportunity to let them know the network is
+        # not training
+        try: 
+            if not self.training:
+                # if the seg dir is in the same folder as a folder called messages.
+                # then assume messages should go to this folder.
+                proj_dir = os.path.dirname(seg_dir)
+                msg_dir = os.path.join(proj_dir, 'messages')
+                if os.path.isdir(msg_dir) and not self.msg_dir:
+                    self.msg_dir = msg_dir
+                message = "Network not training"
+                self.write_message(message)
+        except Exception as e:
+            print('excpetion writing mesage', e)
 
         # Segmentations are always saved as PNG.
         out_paths = []

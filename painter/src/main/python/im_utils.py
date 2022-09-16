@@ -33,9 +33,16 @@ def is_image(fname):
 
 def load_image(photo_path):
     photo = imread(photo_path)
+
     # sometimes photo is a list where first element is the photo
     if len(photo.shape) == 1:
         photo = photo[0]
+
+    # JFIF files have an extra dimension at the start containing two elements
+    # The first element is the image.
+    if len(photo.shape) == 4 and photo.shape[0] == 2:
+        photo = photo[0]
+
     # if 4 channels then convert to rgb
     # (presuming 4th channel is alpha channel)
     if len(photo.shape) > 2 and photo.shape[2] == 4:
@@ -74,6 +81,15 @@ def gen_composite(annot_dir, photo_dir, comp_dir, fname, ext='.jpg'):
                                 (background.shape[0]//2,
                                  background.shape[1]//2, 3))
             annot = resize(annot, (annot.shape[0]//2, annot.shape[1]//2, 3))
+        # if the annotation has 4 channels (that means alpha included)
+        if len(annot.shape) and annot.shape[2] == 4:
+            # then save alpha channel
+            alpha_channel = annot[:, :, 3]
+            # convert the annot to just the rgb
+            annot = annot[:, :, :3]
+            # and set to 0 if the alpha was 0
+            annot[alpha_channel == 0] = [0, 0, 0]
+
         annot = rgb2gray(annot)
         annot = img_as_ubyte(annot)
         background = img_as_ubyte(background)

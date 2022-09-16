@@ -40,6 +40,7 @@ from sys import platform
 # pyinstaller expects icon file to be in the dist folder
 if not os.path.isdir('dist'):
     os.makedirs('dist')
+    os.makedirs('dist/tmp_files')
 
 # Icon for used for mac or windows (linux has different mechanism, see make_deb_file.sh)
 icon_fname = 'favicon2.ico' # ico for windows.
@@ -48,10 +49,13 @@ if platform == "darwin":
     # icon path should be relative to the dist folder
     shutil.copyfile(os.path.join('src/main/icons', icon_fname),
                     os.path.join('dist', icon_fname))
+
 else:
     # icon path should be relative to the dist folder
     shutil.copyfile(os.path.join('src/main/icons', icon_fname), icon_fname)
 
+    shutil.copyfile(os.path.join('src/main/icons', icon_fname),
+                    os.path.join('dist/tmp_files', icon_fname))
 
 
 # pyinstaller command line argument documentation is available from:
@@ -89,7 +93,8 @@ PyInstaller.__main__.run([
     # thereby making the OS to show some default (default: apply PyInstaller's icon)
     # thereby making the OS to show some default (default: apply PyInstaller's icon)
     #'-i', './src/main/icons/Icon.ico',  # windows
-    '--icon', os.path.join('src', 'main', 'icons', icon_fname),  # should be relative to the dist directory
+    #'--icon', os.path.join('dist', 'src', 'main', 'icons', icon_fname),  # should be relative to the dist directory
+    '--icon', icon_fname,  # should be relative to the dist directory
     # I dont actually use the spec file yet, so put the auto-generated one in dist to avoid cluttering the repo
     '--specpath', 'dist', 
 

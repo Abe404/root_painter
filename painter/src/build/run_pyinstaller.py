@@ -40,22 +40,22 @@ from sys import platform
 # pyinstaller expects icon file to be in the dist folder
 if not os.path.isdir('dist'):
     os.makedirs('dist')
-    os.makedirs('dist/tmp_files')
+    os.makedirs(os.path.join('dist', 'tmp_files')
 
 # Icon for used for mac or windows (linux has different mechanism, see make_deb_file.sh)
 icon_fname = 'favicon2.ico' # ico for windows.
 if platform == "darwin":
     icon_fname = 'Icon.icns' # icns for mac
     # icon path should be relative to the dist folder
-    shutil.copyfile(os.path.join('src/main/icons', icon_fname),
+    shutil.copyfile(os.path.join('src', 'main', 'icons', icon_fname),
                     os.path.join('dist', icon_fname))
 
 else:
     # icon path should be relative to the dist folder
-    shutil.copyfile(os.path.join('src/main/icons', icon_fname), icon_fname)
+    shutil.copyfile(os.path.join('src', 'main', 'icons', icon_fname), icon_fname)
 
-    shutil.copyfile(os.path.join('src/main/icons', icon_fname),
-                    os.path.join('dist/tmp_files', icon_fname))
+    shutil.copyfile(os.path.join('src', 'main', 'icons', icon_fname),
+                    os.path.join('dist', 'tmp_files', icon_fname))
 
 
 # pyinstaller command line argument documentation is available from:
@@ -75,7 +75,7 @@ PyInstaller.__main__.run([
     '--hidden-import', 'pyqtgraph.imageview.ImageViewTemplate_pyqt5',
 
     # Where to put all the temporary work files .log, .pyz and etc. (default: ./build)
-    '--workpath', 'dist/tmp_files',
+    '--workpath', os.path.join('dist', 'tmp_files'), 
     
     # --debug==all provides a significant amount of diagnostic information.
     # This can be useful during development of a complex package, or when your
@@ -111,5 +111,5 @@ PyInstaller.__main__.run([
     '--osx-bundle-identifier', 'com.rootpainter',
 
     # scriptname: Name of scriptfile to be processed.
-    'src/main/python/main.py'
+    os.path.join('src', 'main', 'python', 'main.py')
 ])

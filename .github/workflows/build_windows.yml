@@ -49,7 +49,7 @@ jobs:
     - name: Make installer
       run: |
         cd painter
-        makensis.exe src/build/assets/Installer.nsi
+        makensis.exe Installer.nsi
 
     - name: Upload package
       uses: actions/upload-artifact@v2

@@ -40,7 +40,7 @@ from sys import platform
 # pyinstaller expects icon file to be in the dist folder
 if not os.path.isdir('dist'):
     os.makedirs('dist')
-    os.makedirs(os.path.join('dist', 'tmp_files')
+    os.makedirs(os.path.join('dist', 'tmp_files'))
 
 # Icon for used for mac or windows (linux has different mechanism, see make_deb_file.sh)
 icon_fname = 'favicon2.ico' # ico for windows.

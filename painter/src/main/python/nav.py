@@ -28,11 +28,14 @@ class NavWidget(QtWidgets.QWidget):
     file_change = QtCore.pyqtSignal(str)
     class_change = QtCore.pyqtSignal(str)
 
-    def __init__(self, all_fnames, classes):
+    # annot_dirs are specified so we can show the number of annotations annotated in the
+    # label
+    def __init__(self, all_fnames, classes, annot_dirs):
         super().__init__()
         self.image_path = None
         self.all_fnames = all_fnames
         self.classes = classes
+        self.annot_dirs = annot_dirs
         self.initUI()
 
     def initUI(self):

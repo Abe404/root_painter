@@ -628,7 +628,8 @@ class RootPainter(QtWidgets.QMainWindow):
         # Required so graphics scene can track mouse up when mouse is not pressed
         self.graphics_view.setMouseTracking(True)
         self.scene = scene
-        self.nav = NavWidget(self.image_fnames, self.classes)
+        self.nav = NavWidget(self.image_fnames, self.classes,
+                             [self.get_train_annot_dir(), self.get_val_annot_dir()])
         self.update_file(self.image_path)
 
         # bottom bar

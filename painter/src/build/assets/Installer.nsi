@@ -44,7 +44,7 @@ FunctionEnd
 ;General
 
   Name "RootPainter"
-  OutFile ".\dist\RootPainterInstaller.exe"
+  OutFile "..\..\..\dist\RootPainterInstaller.exe"
 
 ;--------------------------------
 ;Interface Settings

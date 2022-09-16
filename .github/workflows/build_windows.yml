@@ -48,6 +48,7 @@ jobs:
 
     - name: Make installer
       run: |
+        cd painter
         makensis.exe src/build/assets/Installer.nsi
         cp -r RootPainter.exe dist/RootPainter.exe
 

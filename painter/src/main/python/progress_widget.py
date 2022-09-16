@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #pylint: disable=I1101
 
 from PyQt5 import QtWidgets
+from humanfriendly import format_timespan
 
 
 class DoneMessageWindow(QtWidgets.QWidget):
@@ -59,7 +60,15 @@ class BaseProgressWidget(QtWidgets.QWidget):
     def __init__(self, task):
         super().__init__()
         self.task = task
+        self.start_time = time.time()
         self.initUI()
+
+    def get_seconds_remaining(self, processed_so_far, total):
+        seconds_so_far = time.time() - self.start_time
+        seconds_per_image = seconds_so_far / procesed_so_far
+        remaining_images = self.total_images - processed_so_far
+        estimated_remaining_seconds = seconds_per_image * remaining_images
+        return estimated_remaining_seconds
 
     def initUI(self):
         layout = QtWidgets.QVBoxLayout()
@@ -75,7 +84,10 @@ class BaseProgressWidget(QtWidgets.QWidget):
         self.setWindowTitle(self.task)
 
     def onCountChanged(self, value, total):
-        self.info_label.setText(f'{self.task} {value}/{total}')
+        seconds_remaining = self.get_seconds_remaining(value, total)
+        self.info_label.setText(f'{self.task} {value}/{total}. '
+                                'Estimated time remaining: '
+                                f'{format_timespan(seconds_remaining)}')
         self.progress_bar.setValue(value)
 
     def done(self, errors=[]):

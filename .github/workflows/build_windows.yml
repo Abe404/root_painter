@@ -50,11 +50,10 @@ jobs:
       run: |
         cd painter
         makensis.exe src/build/assets/Installer.nsi
-        cp -r RootPainter.exe dist/RootPainter.exe
 
     - name: Upload package
       uses: actions/upload-artifact@v2
       with:
         name: Package
-        path: ${{github.workspace}}/dist/RootPainter.exe
+        path: ${{github.workspace}}/dist/RootPainterInstaller.exe
         if-no-files-found: error

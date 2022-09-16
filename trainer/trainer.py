@@ -443,13 +443,8 @@ class Trainer():
                               sync_save=len(fnames) == 1)
         duration = time.time() - start
         print(f'Seconds to segment {len(fnames)} images: ', round(duration, 3))
-<<<<<<< HEAD
 
     def segment_file(self, in_dir, seg_dir, fname, model_paths, classes, sync_save):
-=======
-        
-    def segment_file(self, in_dir, seg_dir, fname, model_paths, sync_save):
->>>>>>> master
         fpath = os.path.join(in_dir, fname)
 
         # When the client navigates through images, there is a risk that 

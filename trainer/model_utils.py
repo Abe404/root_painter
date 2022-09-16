@@ -102,7 +102,7 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir,
             if im_utils.is_photo(fname):
                 fnames.append(fname)
                 dirnames.append(val_annot_dir)
-    cnn.half()
+
     # TODO: In order to speed things up, be a bit smarter here
     # by only segmenting the parts of the image where we have
     # some annotation defined.
@@ -132,8 +132,8 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir,
         try:
             annot = imread(annot_path)
         except Exception as ex:
-            print('Exception reading annotation inside validation method.'
-                  'Will retry in 0.1 seconsds')
+            print(f'Exception reading annotation {annot_path} inside validation method.'
+                  'Will retry in 0.1 seconds')
             print(fname, ex)
             time.sleep(0.1)
             annot = imread(annot_path)
@@ -217,7 +217,6 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
     # then add predictions from the previous models to form an ensemble
     for model_path in model_paths:
         cnn = load_model(model_path, classes)
-        cnn.half()
         pred_maps = unet_segment(cnn, image,
                                 bs, in_w, out_w, threshold=None)
         for i, pred_map in enumerate(pred_maps):
@@ -271,7 +270,7 @@ def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
                 tiles_to_process.append(tile)
         tiles_for_gpu = torch.from_numpy(np.array(tiles_to_process))
         tiles_for_gpu.cuda()
-        tiles_for_gpu = tiles_for_gpu.half()
+        tiles_for_gpu = tiles_for_gpu.float()
         batches.append(tiles_for_gpu)
     
     class_output_tiles = None # list of tiles for each class

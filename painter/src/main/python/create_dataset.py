@@ -21,6 +21,7 @@ from pathlib import Path
 import itertools
 import json
 from random import shuffle
+import traceback
 
 import numpy as np
 from PyQt5 import QtWidgets
@@ -157,7 +158,7 @@ class CreationThread(QtCore.QThread):
     Runs another thread.
     """
     progress_change = QtCore.pyqtSignal(int, int)
-    done = QtCore.pyqtSignal()
+    done = QtCore.pyqtSignal(list)
 
     def __init__(self, images_for_dataset, target_dir,
                  pieces_from_each_image, target_size):
@@ -168,11 +169,17 @@ class CreationThread(QtCore.QThread):
         self.target_size = target_size
 
     def run(self):
+        error_messages = []
         for i, fpath in enumerate(self.images_for_dataset):
-            save_im_pieces(fpath, self.target_dir,
-                           self.pieces_from_each_image, self.target_size)
+            try:  
+                save_im_pieces(fpath, self.target_dir,
+                               self.pieces_from_each_image, self.target_size)
+            except Exception as e:
+                msg = f'Exception saving image pieces for {fpath} \n {traceback.format_exc()}'
+                print(msg)
+                error_messages.append(msg)
             self.progress_change.emit(i+1, len(self.images_for_dataset))
-        self.done.emit()
+        self.done.emit(error_messages)
 
 
 class CreateDatasetWidget(QtWidgets.QWidget):

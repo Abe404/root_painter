@@ -2,10 +2,26 @@
 
 Described in the paper "RootPainter: Deep Learning Segmentation of Biological Images with Corrective Annotation"
 
-https://www.biorxiv.org/content/10.1101/2020.04.16.044461v2
+Published peer-reviewed paper available in the New Phytologist at:
+[https://doi.org/10.1111/nph.18387](https://doi.org/10.1111/nph.18387)
+
+BioRxiv Pre-print available at:
+[https://www.biorxiv.org/content/10.1101/2020.04.16.044461v2](https://www.biorxiv.org/content/10.1101/2020.04.16.044461v2)
 
 RootPainter is a GUI-based software tool for the rapid training of deep neural networks for use in biological image analysis. 
 RootPainter uses a client-server architecture, allowing users with a typical laptop to utilise a GPU on a more computationally powerful server.   
+
+### Getting started quickly
+
+ I suggest the [colab tutorial](https://colab.research.google.com/drive/104narYAvTBt-X4QEDrBSOZm_DRaAKHtA?usp=sharing).
+ 
+### A video demonstrating how to train and use a model is also available to [download](https://nph.onlinelibrary.wiley.com/action/downloadSupplement?doi=10.1111%2Fnph.18387&file=nph18387-sup-0002-VideoS1.mp4)
+
+### Client Downloads
+
+See [releases](https://github.com/Abe404/root_painter/releases) 
+
+If you are not confident with the linux administration then to get started quickly I suggest the [colab tutorial](https://colab.research.google.com/drive/104narYAvTBt-X4QEDrBSOZm_DRaAKHtA?usp=sharing).
 
 #### Server setup 
 
@@ -39,12 +55,14 @@ On windows:
 env\Scripts\activate.bat
 ```
 
-3. Install dependencies in the virtual environment. (takes over 3 minutes)
+3. Install PyTorch using pip by following the instructions at the [pytorch website](https://pytorch.org/get-started/locally/)
+
+4. Install the other dependencies in the virtual environment
 ```
 pip install -r requirements.txt
 ```
 
-4. Run root painter. This will first create the sync directory.
+5. Run root painter. This will first create the sync directory.
 ```
 python main.py
 ```

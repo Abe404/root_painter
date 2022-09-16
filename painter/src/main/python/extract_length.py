@@ -23,7 +23,7 @@ from skimage.morphology import skeletonize
 from PIL import Image
 from base_extract import BaseExtractWidget
 
-def save_length_to_csv(seg_dir, fname, writer):
+def save_length_to_csv(seg_dir, fname, writer, headers):
     seg_im = Image.open(os.path.join(seg_dir, fname))
     seg_im = np.array(seg_im)
     seg_im = seg_im[:, :, 2].astype(bool).astype(int)

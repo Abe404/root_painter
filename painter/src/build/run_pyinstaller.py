@@ -106,3 +106,7 @@ PyInstaller.__main__.run([
     # scriptname: Name of scriptfile to be processed.
     os.path.join('src', 'main', 'python', 'main.py')
 ])
+
+
+print('list cwd', os.listdir(os.getcwd()))
+print('list cwd/dist', os.listdir(os.path.join(os.getcwd(), 'dist')))

@@ -1,9 +1,9 @@
 !include MUI2.nsh
 !include FileFunc.nsh
-!define MUI_ICON ".\dist\Icon.ico"
-!define MUI_UNICON "\dist\Icon.ico"
+!define MUI_ICON "..\..\..\dist\Icon.ico"
+!define MUI_UNICON "..\..\..\dist\Icon.ico"
 
-!getdllversion ".\dist\RootPainter\RootPainter.exe" ver
+!getdllversion "...\..\..\dist\RootPainter\RootPainter.exe" ver
 !define VERSION "0.2.18.0"
 
 VIProductVersion "${VERSION}"
@@ -79,7 +79,7 @@ FunctionEnd
   "Software\Microsoft\Windows\CurrentVersion\Uninstall\RootPainter"
 Section
   SetOutPath "$InstDir"
-  File /r ".\dist\RootPainter\*"
+  File /r "..\..\..\dist\RootPainter\*"
   WriteRegStr SHCTX "Software\RootPainter" "" $InstDir
   WriteUninstaller "$InstDir\uninstall.exe"
   CreateShortCut "$SMPROGRAMS\RootPainter.lnk" "$InstDir\RootPainter.exe"

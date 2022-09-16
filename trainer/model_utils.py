@@ -102,7 +102,6 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir,
             if im_utils.is_photo(fname):
                 fnames.append(fname)
                 dirnames.append(val_annot_dir)
-    cnn.half()
 
     # TODO: In order to speed things up, be a bit smarter here
     # by only segmenting the parts of the image where we have

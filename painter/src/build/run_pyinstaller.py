@@ -110,3 +110,4 @@ PyInstaller.__main__.run([
 
 print('list cwd', os.listdir(os.getcwd()))
 print('list cwd/dist', os.listdir(os.path.join(os.getcwd(), 'dist')))
+print('list cwd/dist/RootPainter', os.listdir(os.path.join(os.getcwd(), 'dist', 'RootPainter')))

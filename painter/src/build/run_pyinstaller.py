@@ -85,8 +85,6 @@ PyInstaller.__main__.run([
     # the icon to the .app bundle on Mac OS. Use "NONE" to not apply any icon,
     # thereby making the OS to show some default (default: apply PyInstaller's icon)
     # thereby making the OS to show some default (default: apply PyInstaller's icon)
-    #'-i', './src/main/icons/Icon.ico',  # windows
-    #'--icon', os.path.join('dist', 'src', 'main', 'icons', icon_fname),  # should be relative to the dist directory
     '--icon', icon_fname,  # should be relative to the dist directory
     # I dont actually use the spec file yet, so put the auto-generated one in dist to avoid cluttering the repo
     '--specpath', 'dist', 
@@ -107,7 +105,7 @@ PyInstaller.__main__.run([
     os.path.join('src', 'main', 'python', 'main.py')
 ])
 
-
+# Useful when debugging to see what these folders look like.
 print('list cwd', os.listdir(os.getcwd()))
 print('list cwd/dist', os.listdir(os.path.join(os.getcwd(), 'dist')))
 print('list cwd/dist/RootPainter', os.listdir(os.path.join(os.getcwd(), 'dist', 'RootPainter')))

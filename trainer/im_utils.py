@@ -63,18 +63,21 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
     max_attempts = 60
     attempts = 0
 
-    # these two are used for debugging to allow
-    # printing of one of the paths that failed.
-    latest_im_path = None
+    # used for logging which file caused the problem.
     latest_annot_path = None
-
-    while True:
+    latest_im_path = None
+    latest_error = None
+    while attempts < max_attempts:
         attempts += 1
         # file systems are unpredictable.
         # We may have problems reading the file.
         # try-catch to avoid this.
         # (just try again)
         try:
+            # set to None each time.
+            latest_annot_path = None
+            latest_im_path = None
+
             # This might take ages, profile and optimize
             fnames = []
              # each annotation corresponds to an individual class.
@@ -117,21 +120,29 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
             image_path = glob.glob(image_path_part + '.*')[0]
             latest_im_path = image_path
             image = load_image(image_path)
+            latest_annot_path = annot_path
+            annot = imread(annot_path).astype(bool)
+            assert np.sum(annot) > 0
             assert image.shape[2] == 3 # should be RGB
 
             # also return fname for debugging purposes.
             return image, annots, classes, fname
 
         except Exception as e:
+            latest_error = e
             # This could be due to an empty annotation saved by the user.
             # Which happens rarely due to deleting all labels in an
             # existing annotation and is not a problem.
             # give it some time and try again.
             time.sleep(0.1)
-            if attempts >= max_attempts:
-                raise Exception(f'Could not load annotation and photo, latest im:'
-                                f'{latest_im_path}, latest annot:{latest_annot_path}'
-                                f', Exception {e} {traceback.format_exc()}')
+
+    if attempts == max_attempts:
+        if latest_annot_path is None: # if annot path still None we know it failed on the photo
+            raise Exception(f'Could not load photo {latest_im_path}, {latest_error}')
+        else:
+            # otherwise it must have failed on the annotation
+            raise Exception(f'Could not load annotation {latest_annot_path}, {e}')
+
 
 def pad(image, width: int, mode='reflect', constant_values=0):
     # only pad the first two dimensions
@@ -140,8 +151,8 @@ def pad(image, width: int, mode='reflect', constant_values=0):
         # don't pad channels
         pad_width.append((0, 0))
     if mode == 'reflect':
-        return skim_util.pad(image, pad_width, mode)
-    return skim_util.pad(image, pad_width, mode=mode,
+        return np.pad(image, pad_width, mode)
+    return np.pad(image, pad_width, mode=mode,
                          constant_values=constant_values)
 
 

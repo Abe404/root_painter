@@ -20,16 +20,14 @@ import os
 from pathlib import Path
 import json
 import traceback
-
 from PyQt5 import QtWidgets
-from fbs_runtime.application_context.PyQt5 import ApplicationContext
 
 from root_painter import RootPainter
 
 def init_root_painter():
     settings_path = os.path.join(Path.home(), 'root_painter_settings.json')
     try:
-        app_context = ApplicationContext()
+        app = QtWidgets.QApplication([])
         # if the settings file does not exist then create it with
         # a user specified sync_dir
         if not os.path.isfile(settings_path):
@@ -57,7 +55,7 @@ def init_root_painter():
         main_window.closed.connect(reopen)
         main_window.show()
 
-        exit_code = app_context.app.exec_()
+        exit_code = app.exec_()
     except Exception as e:
         msg = QtWidgets.QMessageBox()
         output = f"""

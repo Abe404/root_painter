@@ -23,11 +23,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # pylint: disable=W0703
 
 # too many public methods
-# pylint: disable=R0904
 
 import sys
 import os
-from pathlib import PurePath
+from pathlib import PurePath, Path
 import json
 from functools import partial
 
@@ -55,7 +54,8 @@ from file_utils import last_fname_with_annotations
 from file_utils import get_annot_path
 from file_utils import maybe_save_annotation
 from instructions import send_instruction
-
+from plot_seg_metrics import MetricsPlot, ExtractMetricsWidget
+from im_viewer import ContextViewer
 use_plugin("pil")
 
 Image.MAX_IMAGE_PIXELS = None
@@ -66,11 +66,11 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def __init__(self, sync_dir):
         super().__init__()
-        self.sync_dir = sync_dir
-        self.instruction_dir = sync_dir / 'instructions'
-        self.send_instruction = partial(send_instruction,
-                                        instruction_dir=self.instruction_dir,
-                                        sync_dir=sync_dir)
+        # give the main RootPainter window an Icon.
+        app_dir = os.path.dirname(os.path.realpath(__file__))
+        self.setWindowIcon(QtGui.QIcon(os.path.join(app_dir, 'icons/linux/128.png')))
+
+        self.assign_sync_directory(sync_dir)
         self.tracking = False
         self.image_pixmap_holder = None
         self.seg_pixmap_holder = None
@@ -82,9 +82,17 @@ class RootPainter(QtWidgets.QMainWindow):
         self.pre_segment_count = 0
         self.im_width = None
         self.im_height = None
+        self.metrics_plot = None
 
         self.initUI()
-        
+
+    def assign_sync_directory(self, sync_dir):
+        self.sync_dir = sync_dir
+        self.instruction_dir = sync_dir / 'instructions'
+        self.send_instruction = partial(send_instruction,
+                                        instruction_dir=self.instruction_dir,
+                                        sync_dir=sync_dir)
+
     def mouse_scroll(self, event):
         scroll_up = event.angleDelta().y() > 0
         modifiers = QtWidgets.QApplication.keyboardModifiers()
@@ -177,7 +185,7 @@ class RootPainter(QtWidgets.QMainWindow):
             self.message_dir = self.proj_location / 'messages'
 
             self.proj_file_path = proj_file_path
-    
+
             # If there are any annotations which have already been saved
             # then go through the annotations in the order specified
             # by self.image_fnames
@@ -230,11 +238,18 @@ class RootPainter(QtWidgets.QMainWindow):
 
 
     def update_file(self, fpath):
+        
+        fname = os.path.basename(fpath)
+
+        # update selected point in the plot.
+        # do first to give fast user feedback. 
+        if self.metrics_plot and self.metrics_plot.plot_window:
+            self.metrics_plot.plot_window.set_highlight_point(fname)
+
+
         # Save current annotation (if it exists) before moving on
         self.save_annotation()
 
-        # save current annotation first
-        fname = os.path.basename(fpath)
         # set first image from project to be current image
         self.image_path = os.path.join(self.dataset_dir, fname)
         self.png_fname = os.path.splitext(fname)[0] + '.png'
@@ -453,6 +468,24 @@ class RootPainter(QtWidgets.QMainWindow):
         self.setWindowTitle("RootPainter")
         self.resize(layout.sizeHint())
 
+    def specify_sync_directory(self):
+        """ User may choose to update the sync directory.
+            This may happen if they initially specified the wrong
+            sync directory.
+
+        """
+        settings_path = os.path.join(Path.home(), 'root_painter_settings.json')
+        dir_path = QtWidgets.QFileDialog.getExistingDirectory()
+        if dir_path:
+            with open(settings_path, 'w') as json_file:
+                content = {
+                    "sync_dir": os.path.abspath(dir_path)
+                }
+                json.dump(content, json_file, indent=4)
+            self.sync_dir = Path(json.load(open(settings_path, 'r'))['sync_dir'])
+            self.assign_sync_directory(self.sync_dir)
+
+
     def add_extras_menu(self, menu_bar, project_open=False):
         extras_menu = menu_bar.addMenu('Extras')
         comp_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extract composites', self)
@@ -465,7 +498,69 @@ class RootPainter(QtWidgets.QMainWindow):
         conv_to_rve_btn.triggered.connect(self.show_conv_to_rve)
         extras_menu.addAction(conv_to_rve_btn)
 
+        specify_sync_dir_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                 'Specify sync directory',
+                                                 self)
+        specify_sync_dir_btn.triggered.connect(self.specify_sync_directory)
+        extras_menu.addAction(specify_sync_dir_btn)
+
+
+        def view_metric_csv():
+            # select a csv file and then show it in the plots
+            options = QtWidgets.QFileDialog.Options()
+            default_loc = self.sync_dir / 'projects'
+            file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self,
+                "View Metrics CSV data",
+                str(default_loc),
+                "Metric CSV file (*.csv)",
+                options=options)
+            if file_path:
+                self.metrics_plot.view_plot_from_csv(file_path)
+
+        view_metrics_csv_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                 'View Metrics Plot from CSV',
+                                                  self)
+        self.metrics_plot = MetricsPlot()
+
+
+        view_metrics_csv_btn.triggered.connect(view_metric_csv)
+        extras_menu.addAction(view_metrics_csv_btn)
+
+
+
         if project_open:
+            metrics_plot_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                             'Show metrics plot',
+                                                              self)
+            self.metrics_plot = MetricsPlot()
+            def navigate_to_file(fname):
+                fpath = os.path.join(self.dataset_dir, fname)
+                self.nav.image_path = fpath
+                self.nav.update_nav_label()
+                self.update_file(fpath)
+            def open_metric_plot():
+                self.metrics_plot.create_metrics_plot(
+                    self.proj_file_path,
+                    navigate_to_file,
+                    self.image_path)
+            metrics_plot_btn.triggered.connect(open_metric_plot)
+            extras_menu.addAction(metrics_plot_btn)
+
+            metrics_csv_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                            'Export metrics CSV',
+                                                             self)
+            self.metrics_plot = MetricsPlot()
+            def open_metric_export():
+                self.extract_metrics_widget = ExtractMetricsWidget(self.proj_file_path)
+                self.extract_metrics_widget.show()
+            metrics_csv_btn.triggered.connect(open_metric_export)
+            extras_menu.addAction(metrics_csv_btn)
+
+
+
+
+
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
             def update_dataset_after_check():
                 was_extended, file_names = check_extend_dataset(self,
@@ -478,7 +573,6 @@ class RootPainter(QtWidgets.QMainWindow):
                     self.nav.update_nav_label()
             extend_dataset_btn.triggered.connect(update_dataset_after_check)
             extras_menu.addAction(extend_dataset_btn)
-
 
     def add_about_menu(self, menu_bar):
         about_menu = menu_bar.addMenu('About')
@@ -496,7 +590,8 @@ class RootPainter(QtWidgets.QMainWindow):
             class_action = QtWidgets.QAction(QtGui.QIcon('missing.png'), 
                                              class_name, self)
             # update class via nav to keep nav up to date whilst avoiding a double update.
-            class_action.triggered.connect(partial(self.nav.cb.setCurrentIndex, self.classes.index(class_name)))
+            class_action.triggered.connect(partial(self.nav.cb.setCurrentIndex,
+                                                   self.classes.index(class_name)))
             class_action.setShortcut(str(i+1))
             class_menu.addAction(class_action)
 
@@ -533,7 +628,8 @@ class RootPainter(QtWidgets.QMainWindow):
         # Required so graphics scene can track mouse up when mouse is not pressed
         self.graphics_view.setMouseTracking(True)
         self.scene = scene
-        self.nav = NavWidget(self.image_fnames, self.classes)
+        self.nav = NavWidget(self.image_fnames, self.classes,
+                             [self.get_train_annot_dir(), self.get_val_annot_dir()])
         self.update_file(self.image_path)
 
         # bottom bar
@@ -672,6 +768,10 @@ class RootPainter(QtWidgets.QMainWindow):
         options_menu.addAction(pre_segment_count_action)
         pre_segment_count_action.triggered.connect(self.open_pre_segment_count_dialog)
 
+        brush_edit_action = QtWidgets.QAction(QtGui.QIcon(""), "Change brush size", self)
+        options_menu.addAction(brush_edit_action)
+        brush_edit_action.triggered.connect(self.show_brush_size_edit)
+
         # change brush colors
         change_foreground_color_action = QtWidgets.QAction(QtGui.QIcon(""),
                                                            "Foreground brush colour",
@@ -737,6 +837,52 @@ class RootPainter(QtWidgets.QMainWindow):
         toggle_image_visibility_btn.triggered.connect(self.show_hide_image)
         view_menu.addAction(toggle_image_visibility_btn)
 
+
+        show_image_context_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                   'View image context',
+                                                    self)
+
+        show_image_context_btn.setShortcut('Ctrl+C')
+
+        def show_image_context():
+            fname = os.path.splitext(self.png_fname)[0]
+            tile_num_str = fname.split('_')[-1]
+            fname = fname[:len(fname) - len('_' + tile_num_str)]
+            proj_settings = json.load(open(self.proj_file_path))
+
+            if 'original_image_dir' in proj_settings:
+                original_image_dir = proj_settings['original_image_dir']
+            else:
+                # if the project doesn't yet have the path for the original
+                # images then ask the user for it.
+                msg = QtWidgets.QMessageBox()
+                output = ("Original image directory not yet specified. "
+                         "Please specify the original image directory.")
+                msg.setText(output)
+                msg.exec_()
+                original_image_dir = QtWidgets.QFileDialog.getExistingDirectory()
+                if not original_image_dir:
+                    return
+                else:
+                    proj_settings['original_image_dir'] = original_image_dir
+                    with open(self.proj_file_path, 'w') as file:
+                        json.dump(proj_settings, file, indent=4)
+
+            original_images = os.listdir(original_image_dir)
+            original_fname = None
+            for fname_with_ext in original_images:
+                if os.path.splitext(fname_with_ext)[0] == fname:
+                    original_fname = fname_with_ext
+                    break 
+            original_fpath = os.path.join(original_image_dir, original_fname)
+            self.context_viewer = ContextViewer(original_fpath, self.graphics_view.image)
+            self.context_viewer.show()
+
+        show_image_context_btn.triggered.connect(show_image_context)
+        print('view menu add action')
+        view_menu.addAction(show_image_context_btn)
+
+
         def zoom_in():
             self.graphics_view.zoom *= 1.1
             self.graphics_view.update_zoom()
@@ -785,6 +931,7 @@ class RootPainter(QtWidgets.QMainWindow):
         #                                       'Segment current image', self)
         # segment_image_btn.triggered.connect(self.segment_current_image)
         # network_menu.addAction(segment_image_btn)
+
         self.add_measurements_menu(menu_bar)
         self.add_extras_menu(menu_bar, project_open=True)
         if len(self.classes):
@@ -938,16 +1085,23 @@ class RootPainter(QtWidgets.QMainWindow):
         self.scene.brush_color = self.scene.eraser_color
         self.update_cursor()
 
+    def show_brush_size_edit(self):
+         new_size, ok = QtWidgets.QInputDialog.getInt(self, "",
+                 "Bursh size can also be altered by holding shift and moving the cursor. \n \n \n Select brush size", self.scene.brush_size, 1, 300, 1)
+         if ok:
+             self.scene.brush_size = new_size
+             self.update_cursor()
+
     def update_cursor(self):
         brush_w = self.scene.brush_size * self.graphics_view.zoom * 0.93
         brush_w = max(brush_w, 3)
 
         canvas_w = max(brush_w, 30)
-        pm = QtGui.QPixmap(canvas_w, canvas_w)
+        pm = QtGui.QPixmap(round(canvas_w), round(canvas_w))
         pm.fill(Qt.transparent)
         painter = QtGui.QPainter(pm)
 
-        painter.drawPixmap(canvas_w, canvas_w, pm)
+        painter.drawPixmap(round(canvas_w), round(canvas_w), pm)
 
         brush_rgb = self.scene.brush_color.toRgb()
         r, g, b = brush_rgb.red(), brush_rgb.green(), brush_rgb.blue()
@@ -957,16 +1111,17 @@ class RootPainter(QtWidgets.QMainWindow):
                                   Qt.RoundCap, Qt.RoundJoin))
         ellipse_x = int(round(canvas_w/2 - (brush_w)/2))
         ellipse_y = int(round(canvas_w/2 - (brush_w)/2))
-        ellipse_w = brush_w
-        ellipse_h = brush_w
+        ellipse_w = int(round(brush_w))
+        ellipse_h = int(round(brush_w))
 
+        
         painter.drawEllipse(ellipse_x, ellipse_y, ellipse_w, ellipse_h)
         painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 180), 2,
                                   Qt.SolidLine, Qt.FlatCap))
 
         # Draw black to show where cursor is even when brush is small
-        painter.drawLine(0, (canvas_w/2), canvas_w*2, (canvas_w/2))
-        painter.drawLine((canvas_w/2), 0, (canvas_w/2), canvas_w*2)
+        painter.drawLine(0, round(canvas_w/2), round(canvas_w*2), round(canvas_w/2))
+        painter.drawLine(round(canvas_w/2), 0, round(canvas_w/2), round(canvas_w*2))
         painter.end()
 
         cursor = QtGui.QCursor(pm)
@@ -994,3 +1149,7 @@ class RootPainter(QtWidgets.QMainWindow):
                                                     self.png_fname,
                                                     self.get_train_annot_dir(),
                                                     self.get_val_annot_dir())
+
+            self.metrics_plot.add_file_metrics(os.path.basename(self.image_path))
+
+

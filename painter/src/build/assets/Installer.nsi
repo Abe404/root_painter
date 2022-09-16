@@ -1,3 +1,4 @@
+; The paths are relative to this file and not where it was executed from
 !include MUI2.nsh
 !include FileFunc.nsh
 !define MUI_ICON "..\..\..\dist\Icon.ico"

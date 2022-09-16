@@ -60,6 +60,9 @@ else:
 
 # pyinstaller command line argument documentation is available from:
 # https://pyinstaller.org/en/stable/usage.html
+import os
+print('current directory = ', os.getcwd())
+print('current directory files = ', os.listdir(os.getcwd()))
 
 PyInstaller.__main__.run([
     # --noconfirm: don't ask user to confirm when deleting existing files in dist folder.

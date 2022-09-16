@@ -10,3 +10,4 @@ imagecodecs==2021.11.20
 matplotlib==3.5.2
 pyqtgraph==0.12.4
 qimage2ndarray==1.9.0
+humanfriendly==10.0

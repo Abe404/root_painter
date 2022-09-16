@@ -20,7 +20,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # Module has no member
 #pylint: disable=I1101
 
+
+import time
 from PyQt5 import QtWidgets
+from humanfriendly import format_timespan
 
 
 class DoneMessageWindow(QtWidgets.QWidget):
@@ -59,7 +62,15 @@ class BaseProgressWidget(QtWidgets.QWidget):
     def __init__(self, task):
         super().__init__()
         self.task = task
+        self.start_time = None
         self.initUI()
+
+    def get_seconds_remaining(self, processed_so_far, total):
+        seconds_so_far = time.time() - self.start_time
+        seconds_per_image = seconds_so_far / processed_so_far
+        remaining_images = total - processed_so_far
+        estimated_remaining_seconds = seconds_per_image * remaining_images
+        return estimated_remaining_seconds
 
     def initUI(self):
         layout = QtWidgets.QVBoxLayout()
@@ -75,7 +86,18 @@ class BaseProgressWidget(QtWidgets.QWidget):
         self.setWindowTitle(self.task)
 
     def onCountChanged(self, value, total):
-        self.info_label.setText(f'{self.task} {value}/{total}')
+        if value < 2:
+            # first image could take a while due to the initial delay in syncing
+            # so start estimating remaining time from second image onwards.
+            self.start_time = time.time() 
+            self.info_label.setText(f'{self.task} {value}/{total}. '
+                                    'Estimating time remaining..')
+        else:
+            # value-1 because start_time is once the first image has completed.
+            seconds_remaining = self.get_seconds_remaining(value-1, total)
+            self.info_label.setText(f'{self.task} {value}/{total}. '
+                                    'Estimated time remaining: '
+                                    f'{format_timespan(seconds_remaining)}')
         self.progress_bar.setValue(value)
 
     def done(self, errors=[]):

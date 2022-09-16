@@ -42,7 +42,7 @@ if not os.path.isdir('dist'):
     os.makedirs('dist')
 
 # Icon for used for mac or windows (linux has different mechanism, see make_deb_file.sh)
-icon_fname = 'Icon.ico' # ico for windows.
+icon_fname = 'favicon.ico' # ico for windows.
 if platform == "darwin":
     icon_fname = 'Icon.icns' # icns for mac
     # icon path should be relative to the dist folder

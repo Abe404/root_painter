@@ -181,6 +181,13 @@ def add_gaussian_noise(image, sigma):
     return image + gaussian_noise
 
 def get_tiles(image, in_tile_shape, out_tile_shape):
+    """ This function returns tiles with size in_tile_shape
+        These tiles will cover the image such that when processed
+        the output of each tile with in_tile_shape can be cropped
+        to out_tile_shape and cover the original image.
+    """
+
+
     width_diff = in_tile_shape[1] - out_tile_shape[1]
     pad_width = width_diff // 2
     padded_photo = pad(image, pad_width)

@@ -175,8 +175,8 @@ def tiles_from_coords(image, coords, tile_shape):
     return tiles
 
 def save_then_move(out_path, seg_alpha):
-    """ need to save in a temp folder first and
-        then move to the segmentation folder after saving
+    """ need to save as a tmp file first (.tmp.fname) and
+        then rename after saving.
         this is because scripts are monitoring the segmentation folder
         and the file saving takes time..
         We don't want the scripts that monitor the segmentation
@@ -184,7 +184,7 @@ def save_then_move(out_path, seg_alpha):
         as this causes errors. Thus we save and then rename.
     """
     fname = os.path.basename(out_path)
-    temp_path = os.path.join('/tmp', fname)
+    temp_path = os.path.join(os.path.dirname(out_path), '.tmp.' + fname)
     imsave(temp_path, seg_alpha)
     shutil.copy(temp_path, out_path)
     os.remove(temp_path)

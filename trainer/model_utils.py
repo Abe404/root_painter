@@ -166,7 +166,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w,
                                     out_w, threshold=None)
         pred_sum += np.fliplr(flipped_pred)
         pred_count += 1
-    image = im_utils.crop_from_pad_settings(pred_sum, pad_settings)
+    pred_sum = im_utils.crop_from_pad_settings(pred_sum, pad_settings)
     foreground_probs = pred_sum / pred_count
     predicted = foreground_probs > threshold
     predicted = predicted.astype(int)

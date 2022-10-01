@@ -109,7 +109,7 @@ def get_val_metrics(cnn, val_annot_dir, dataset_dir, in_w, out_w, bs):
         image, pad_settings = im_utils.pad_to_min(image, min_w=572, min_h=572)
         predicted = unet_segment(cnn, image, bs, in_w,
                                  out_w, threshold=0.5)
-        predicted = im_utils.crop_from_pad_settings(image, pad_settings)
+        predicted = im_utils.crop_from_pad_settings(predicted, pad_settings)
 
         # mask defines which pixels are defined in the annotation.
         mask = foreground + background

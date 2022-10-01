@@ -430,14 +430,6 @@ class Trainer():
                 # its ok just skip it.
                 print('Exception loading', fpath, e)
                 return
-            # if input is smaller than this, behaviour is unpredictable.
-            if photo.shape[0] < self.in_w or photo.shape[1] < self.in_w:
-                # skip images that are too small.
-                message = (f"image {fname} too small to segment. Width "
-                           f" and height must be at least {self.in_w}")
-                print(message)
-                self.log(message)
-                self.write_message(message)
             seg_start = time.time()
             segmented = ensemble_segment(model_paths, photo, self.bs,
                                          self.in_w, self.out_w)

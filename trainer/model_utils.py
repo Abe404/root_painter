@@ -106,8 +106,11 @@ def get_val_metrics(cnn, val_annot_dir, dataset_dir, in_w, out_w, bs):
         image_path_part = os.path.join(dataset_dir, os.path.splitext(fname)[0])
         image_path = glob.glob(image_path_part + '.*')[0]
         image = im_utils.load_image(image_path)
+        image, pad_settings = im_utils.pad_to_min(image, min_w=572, min_h=572)
         predicted = unet_segment(cnn, image, bs, in_w,
                                  out_w, threshold=0.5)
+        predicted = im_utils.crop_from_pad_settings(predicted, pad_settings)
+
         # mask defines which pixels are defined in the annotation.
         mask = foreground + background
         mask = mask.astype(bool).astype(int)
@@ -146,6 +149,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w,
     """ Average predictions from each model specified in model_paths """
     pred_sum = None
     pred_count = 0
+    image, pad_settings = im_utils.pad_to_min(image, min_w=in_w, min_h=in_w)
     # then add predictions from the previous models to form an ensemble
     for model_path in model_paths:
         cnn = load_model(model_path)
@@ -162,6 +166,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w,
                                     out_w, threshold=None)
         pred_sum += np.fliplr(flipped_pred)
         pred_count += 1
+    pred_sum = im_utils.crop_from_pad_settings(pred_sum, pad_settings)
     foreground_probs = pred_sum / pred_count
     predicted = foreground_probs > threshold
     predicted = predicted.astype(int)

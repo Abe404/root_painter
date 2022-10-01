@@ -149,7 +149,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w,
     """ Average predictions from each model specified in model_paths """
     pred_sum = None
     pred_count = 0
-    image, pad_settings = im_utils.pad_to_min(min_w=in_w, min_h=in_w)
+    image, pad_settings = im_utils.pad_to_min(image, min_w=in_w, min_h=in_w)
     # then add predictions from the previous models to form an ensemble
     for model_path in model_paths:
         cnn = load_model(model_path)

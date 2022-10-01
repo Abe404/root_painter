@@ -116,7 +116,7 @@ def crop_from_pad_settings(image, pad_settings):
     return image[h_pad_before:h_pad_after, w_pad_before:w_pad_after]
 
 
-def pad_to_min(image, min_w, min_h):
+def pad_to_min(im, min_w, min_h):
     h, w, _ = im.shape
     h_pad = 0
     w_pad = 0

@@ -107,6 +107,32 @@ def pad(image, width: int, mode='reflect', constant_values=0):
                          constant_values=constant_values)
 
 
+def crop_from_pad_settings(image, pad_settings):
+    """ Crop image back to what it was before padding using
+        the pad_settings. See pad_to_min for how 
+        pad_settings are generated and used """
+    h_pad_before, h_pad_after = pad_settings[0]
+    w_pad_before, w_pad_after = pad_settings[1]
+    return image[h_pad_before:h_pad_after, w_pad_before:w_pad_after]
+
+
+def pad_to_min(image, min_w, min_h):
+    h, w, _ = im.shape
+    h_pad = 0
+    w_pad = 0
+    if h < min_h:
+        h_pad = min_h - h
+    if w < min_width:
+        w_pad = min_w - w
+    h_pad_before = h_pad // 2
+    h_pad_after = h_pad - h_pad_before
+    w_pad_before = w_pad // 2
+    w_pad_after = w_pad - w_pad_before
+    pad_settings = ((h_pad_before, h_pad_after), (w_pad_before, w_pad_after), (0, 0))
+    if h_pad or w_pad:
+        im = np.pad(im, pad_settings, mode='reflect')
+    return im, pad_settings
+
 def add_salt_pepper(image, intensity):
     image = np.array(image)
     white = [1, 1, 1]

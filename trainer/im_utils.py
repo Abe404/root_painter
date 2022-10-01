@@ -113,7 +113,11 @@ def crop_from_pad_settings(image, pad_settings):
         pad_settings are generated and used """
     h_pad_before, h_pad_after = pad_settings[0]
     w_pad_before, w_pad_after = pad_settings[1]
-    return image[h_pad_before:h_pad_after, w_pad_before:w_pad_after]
+    h_start = h_pad_before
+    h_stop = image.shape[0] - h_pad_after
+    w_start = w_pad_before
+    w_stop = image.shape[1] - w_pad_after
+    return image[h_start:h_stop, w_start:w_stop]
 
 
 def pad_to_min(im, min_w, min_h):

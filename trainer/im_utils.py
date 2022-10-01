@@ -122,7 +122,7 @@ def pad_to_min(im, min_w, min_h):
     w_pad = 0
     if h < min_h:
         h_pad = min_h - h
-    if w < min_width:
+    if w < min_w:
         w_pad = min_w - w
     h_pad_before = h_pad // 2
     h_pad_after = h_pad - h_pad_before

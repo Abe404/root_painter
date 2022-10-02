@@ -13,7 +13,7 @@ setup(
   license = 'GPL-2.0', 
   description = 'Trainer (server component) for RootPainter',
   long_description=long_description,
-  long_description_content_type='text/markdown'
+  long_description_content_type='text/markdown',
   author = 'Abraham George Smith',
   url = 'https://github.com/Abe404/root_painter',
   entry_points={

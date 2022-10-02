@@ -19,6 +19,7 @@ import os
 import time
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
+import file_utils
 from progress_widget import BaseProgressWidget
 from instructions import send_instruction
 from im_utils import is_image
@@ -37,7 +38,7 @@ class SegmentWatchThread(QtCore.QThread):
 
     def run(self):
         while True:
-            done_fnames = os.listdir(self.segment_dir)
+            done_fnames = file_utils.ls(self.segment_dir)
             done_fnames = [f for f in done_fnames if is_image(f)]
             count = len(done_fnames)
             if count >= self.total_images:
@@ -77,7 +78,7 @@ class SegmentFolderWidget(QtWidgets.QWidget):
         selected_models = self.selected_models
         input_dir = self.input_dir
         output_dir = self.output_dir
-        all_fnames = os.listdir(str(input_dir))
+        all_fnames = file_utils.ls(str(input_dir))
         all_fnames = [f for f in all_fnames if is_image(f)]
         # need to make sure all train photos are copied now.
         content = {

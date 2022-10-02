@@ -2,14 +2,14 @@ from setuptools import setup
 from pathlib import Path
 import io
 
-#current_dir = Path(__file__).parent
-#long_description = io.open(current_dir / "README.md", mode="r", encoding="utf-8").read()
+current_dir = Path(__file__).parent
+long_description = io.open(current_dir / "README.md", mode="r", encoding="utf-8").read()
 
 setup(
   name = 'root_painter_trainer',
   package_dir = {'root_painter_trainer': 'trainer'},
   packages = ['root_painter_trainer'],
-  version = '0.2.18.9',
+  version = '0.2.19.0',
   license = 'GPL-2.0', 
   description = 'Trainer (server component) for RootPainter',
   author = 'Abraham George Smith',

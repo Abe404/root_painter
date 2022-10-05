@@ -410,10 +410,18 @@ class Trainer():
                 msg_dir = os.path.join(proj_dir, 'messages')
                 if os.path.isdir(msg_dir) and not self.msg_dir:
                     self.msg_dir = msg_dir
-                message = "Network not training"
-                self.write_message(message)
+                if self.msg_dir:
+                    message = "Network not training"
+                    self.write_message(message)
+                else:
+                    # if we didn't find an obvious message location
+                    # then the current instruction might not be assocated with
+                    # any particular project, so do not send a message.
+                    pass
+
         except Exception as e:
-            print('excpetion writing mesage', e)
+            stack = traceback.format_exc()
+            print('excpetion writing mesage', e, stack)
 
         # Segmentations are always saved as PNG.
         out_path = os.path.join(seg_dir, os.path.splitext(fname)[0] + '.png')

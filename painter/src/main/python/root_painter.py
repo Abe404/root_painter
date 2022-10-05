@@ -45,7 +45,7 @@ from extract_count import ExtractCountWidget
 from extract_regions import ExtractRegionsWidget
 from extract_length import ExtractLengthWidget
 from extract_comp import ExtractCompWidget
-from convert_seg import ConvertSegForRVEWidget
+from convert_seg import ConvertSegWidget, convert_seg_to_rve, convert_seg_to_annot
 from graphics_scene import GraphicsScene
 from graphics_view import CustomGraphicsView
 from nav import NavWidget
@@ -199,7 +199,6 @@ class RootPainter(QtWidgets.QMainWindow):
                                          self.train_annot_dir,
                                          self.val_annot_dir)
         self.update_image()
-
 
         self.scene.history = []
         self.scene.redo_list = []
@@ -438,6 +437,12 @@ class RootPainter(QtWidgets.QMainWindow):
                                              self)
         conv_to_rve_btn.triggered.connect(self.show_conv_to_rve)
         extras_menu.addAction(conv_to_rve_btn)
+
+        conv_to_annot_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                            'Convert segmentations to annotations',
+                                             self)
+        conv_to_annot_btn.triggered.connect(self.show_conv_to_annot)
+        extras_menu.addAction(conv_to_annot_btn)
 
         specify_sync_dir_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
                                                  'Specify sync directory',
@@ -903,8 +908,16 @@ class RootPainter(QtWidgets.QMainWindow):
     def show_conv_to_rve(self):
         """ show window to convert segmentations
             to RhizoVision Explorer compatible format """
-        self.convert_to_rve_widget = ConvertSegForRVEWidget()
+        self.convert_to_rve_widget = ConvertSegWidget(
+            convert_seg_to_rve, 'RhizoVision Explorer compatible format')
         self.convert_to_rve_widget.show()
+
+    def show_conv_to_annot(self):
+        """ show window to convert segmentations
+            to annotations"""
+        self.convert_to_annot_widget = ConvertSegWidget(
+            convert_seg_to_annot, 'annotations')
+        self.convert_to_annot_widget.show()
 
     def stop_training(self):
         self.info_label.setText("Stopping training...")

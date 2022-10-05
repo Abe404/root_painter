@@ -1,5 +1,6 @@
 """
 Copyright (C) 2020 Abraham George Smith
+Copyright (C) 2022 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,20 +17,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #pylint: disable=I1101,C0111,W0201,R0903,E0611, R0902, R0914
 import os
+import numpy as np
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from progress_widget import BaseProgressWidget
 from skimage.io import imread, imsave
 from skimage import img_as_ubyte
 
-class Thread(QtCore.QThread):
+class ConvertThread(QtCore.QThread):
     progress_change = QtCore.pyqtSignal(int, int)
     done = QtCore.pyqtSignal()
 
-    def __init__(self, seg_dir, out_dir):
+    def __init__(self, conversion_function, seg_dir, out_dir):
         super().__init__()
         self.seg_dir = seg_dir
         self.out_dir = out_dir
+        self.conversion_function = conversion_function
 
     def run(self):
         seg_fnames = os.listdir(str(self.seg_dir))
@@ -38,21 +41,37 @@ class Thread(QtCore.QThread):
             self.progress_change.emit(i+1, len(seg_fnames))
             if os.path.isfile(os.path.join(self.seg_dir, os.path.splitext(f)[0] + '.png')):
                 # Load RootPainter seg blue channel and invert.
-                rve_seg = imread(os.path.join(self.seg_dir, f))[:, :, 2] == 0
-                rve_seg = img_as_ubyte(rve_seg)
-                imsave(os.path.join(self.out_dir, f), rve_seg, check_contrast=False)
+                seg = imread(os.path.join(self.seg_dir, f))
+                converted_seg = self.conversion_function(seg)
+                imsave(os.path.join(self.out_dir, f),
+                       converted_seg, check_contrast=False)
         self.done.emit()
 
+
+def convert_seg_to_rve(seg):
+    # Load RootPainter blue channel and invert.
+    rve_seg = (seg[:, :, 2] == 0)
+    return img_as_ubyte(rve_seg)
+
+def convert_seg_to_annot(seg):
+    """ segmention blue channel is foreground annotation
+        everything else is background annotation """
+    seg_blue = seg[:, :, 2] # foreground prediction
+    annot = np.zeros(seg.shape)
+    annot[:, :, 0] = (seg_blue > 0)# Red channel
+    annot[:, :, 1] = (seg_blue == 0) # bg channel
+    annot[:, :, 3] = np.ones(seg_blue.shape) # alpha channel - everything defined.
+    return img_as_ubyte(annot)
 
 class ConvertProgressWidget(BaseProgressWidget):
 
     def __init__(self):
         super().__init__('Converting Segmentations')
 
-    def run(self, seg_dir, out_dir):
+    def run(self, convert_function, seg_dir, out_dir):
         self.seg_dir = seg_dir
         self.out_dir = out_dir
-        self.thread = Thread(seg_dir, out_dir)
+        self.thread = ConvertThread(convert_function, seg_dir, out_dir)
         seg_fnames = os.listdir(str(self.seg_dir))
         seg_fnames = [f for f in seg_fnames if os.path.splitext(f)[1] == '.png']
         self.progress_bar.setMaximum(len(seg_fnames))
@@ -68,19 +87,21 @@ class ConvertProgressWidget(BaseProgressWidget):
         self.close()
 
 
-class ConvertSegForRVEWidget(QtWidgets.QWidget):
+class ConvertSegWidget(QtWidgets.QWidget):
     submit = QtCore.pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, convert_function, output_type):
         super().__init__()
         self.seg_dir = None
         self.out_dir = None
+        self.convert_function = convert_function
+        self.output_type_name = output_type
         self.initUI()
 
     def initUI(self):
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
-        self.setWindowTitle("Convert Segmentations for RhizoVision Explorer")
+        self.setWindowTitle(f"Convert Segmentations to {self.output_type_name}")
 
         # Add specify seg directory button
         seg_dir_label = QtWidgets.QLabel()
@@ -117,7 +138,7 @@ class ConvertSegForRVEWidget(QtWidgets.QWidget):
 
     def convert_segmentations(self):
         self.progress_widget = ConvertProgressWidget()
-        self.progress_widget.run(self.seg_dir, self.out_dir)
+        self.progress_widget.run(self.convert_function, self.seg_dir, self.out_dir)
         self.progress_widget.show()
         self.close()
 

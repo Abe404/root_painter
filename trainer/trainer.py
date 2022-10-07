@@ -460,10 +460,18 @@ class Trainer():
                 msg_dir = os.path.join(proj_dir, 'messages')
                 if os.path.isdir(msg_dir) and not self.msg_dir:
                     self.msg_dir = msg_dir
-                message = "Network not training"
-                self.write_message(message)
+                if self.msg_dir:
+                    message = "Network not training"
+                    self.write_message(message)
+                else:
+                    # if we didn't find an obvious message location
+                    # then the current instruction might not be assocated with
+                    # any particular project, so do not send a message.
+                    pass
+
         except Exception as e:
-            print('excpetion writing mesage', e)
+            stack = traceback.format_exc()
+            print('excpetion writing mesage', e, stack)
 
         # Segmentations are always saved as PNG.
         out_paths = []
@@ -487,14 +495,6 @@ class Trainer():
                 # its ok just skip it.
                 print('Exception loading', fpath, e)
                 return
-            # if input is smaller than this, behaviour is unpredictable.
-            if photo.shape[0] < self.in_w or photo.shape[1] < self.in_w:
-                # skip images that are too small.
-                message = (f"image {fname} too small to segment. Width "
-                           f" and height must be at least {self.in_w}")
-                print(message)
-                self.log(message)
-                self.write_message(message)
             seg_start = time.time()
             seg_maps = ensemble_segment(model_paths, photo, self.bs,
                                         self.in_w, self.out_w, classes)

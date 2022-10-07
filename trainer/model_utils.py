@@ -157,10 +157,11 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir,
         # ensure image has a prediction.
         if not image_path in image_class_pred_maps:
             image = im_utils.load_image(image_path)
-
+            image, pad_settings = im_utils.pad_to_min(image, min_w=572, min_h=572)
             # predictions for all classes
             class_pred_maps = unet_segment(cnn, image, bs, in_w,
                                            out_w, threshold=0.5)
+            class_pred_maps = im_utils.crop_from_pad_settings(class_pred_maps, pad_settings)
             image_class_pred_maps[image_path] = class_pred_maps
 
     # the annotation is 729 by 729, so how is it possible for the
@@ -213,7 +214,11 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
                      threshold=0.5):
     """ Average predictions from each model specified in model_paths """
     pred_count = 0
+<<<<<<< HEAD
     class_pred_sums = [None] * len(classes)
+=======
+    image, pad_settings = im_utils.pad_to_min(image, min_w=in_w, min_h=in_w)
+>>>>>>> master
     # then add predictions from the previous models to form an ensemble
     for model_path in model_paths:
         cnn = load_model(model_path, classes)
@@ -234,6 +239,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
             pred_map = np.fliplr(flipped_pred)
             class_pred_sums[i] += pred_map
         pred_count += 1
+<<<<<<< HEAD
 
     class_pred_maps = []
     for pred_sum in class_pred_sums:
@@ -242,6 +248,13 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
         predicted = predicted.astype(int)
         class_pred_maps.append(predicted)
     return class_pred_maps
+=======
+    pred_sum = im_utils.crop_from_pad_settings(pred_sum, pad_settings)
+    foreground_probs = pred_sum / pred_count
+    predicted = foreground_probs > threshold
+    predicted = predicted.astype(int)
+    return predicted
+>>>>>>> master
 
 def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
 

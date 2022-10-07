@@ -71,8 +71,8 @@ def get_file_pieces(im, target_size):
 
     # first get all possible ways to slice the images.
     # The minimum width or height possible is 600 (CNN input size is 572)
-    max_h_pieces = im_h // 600
-    max_w_pieces = im_w // 600
+    max_h_pieces = max(1, im_h // 600)
+    max_w_pieces = max(1, im_w // 600)
 
     poss_h_pieces = list(range(1, max_h_pieces + 1))
     poss_w_pieces = list(range(1, max_w_pieces + 1))

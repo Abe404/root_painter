@@ -156,6 +156,36 @@ def pad(image, width: int, mode='reflect', constant_values=0):
                          constant_values=constant_values)
 
 
+def crop_from_pad_settings(image, pad_settings):
+    """ Crop image back to what it was before padding using
+        the pad_settings. See pad_to_min for how 
+        pad_settings are generated and used """
+    h_pad_before, h_pad_after = pad_settings[0]
+    w_pad_before, w_pad_after = pad_settings[1]
+    h_start = h_pad_before
+    h_stop = image.shape[0] - h_pad_after
+    w_start = w_pad_before
+    w_stop = image.shape[1] - w_pad_after
+    return image[h_start:h_stop, w_start:w_stop]
+
+
+def pad_to_min(im, min_w, min_h):
+    h, w, _ = im.shape
+    h_pad = 0
+    w_pad = 0
+    if h < min_h:
+        h_pad = min_h - h
+    if w < min_w:
+        w_pad = min_w - w
+    h_pad_before = h_pad // 2
+    h_pad_after = h_pad - h_pad_before
+    w_pad_before = w_pad // 2
+    w_pad_after = w_pad - w_pad_before
+    pad_settings = ((h_pad_before, h_pad_after), (w_pad_before, w_pad_after), (0, 0))
+    if h_pad or w_pad:
+        im = np.pad(im, pad_settings, mode='reflect')
+    return im, pad_settings
+
 def add_salt_pepper(image, intensity):
     image = np.array(image)
     white = [1, 1, 1]
@@ -225,8 +255,8 @@ def tiles_from_coords(image, coords, tile_shape):
 
 
 def save_then_move(out_path, seg_alpha):
-    """ need to save in a temp folder first and
-        then move to the segmentation folder after saving
+    """ need to save as a tmp file first (.tmp.fname) and
+        then rename after saving.
         this is because scripts are monitoring the segmentation folder
         and the file saving takes time..
         We don't want the scripts that monitor the segmentation
@@ -234,8 +264,7 @@ def save_then_move(out_path, seg_alpha):
         as this causes errors. Thus we save and then rename.
     """
     fname = os.path.basename(out_path)
-    # give unique ID as images with multiple classes will have the same name
-    temp_path = os.path.join('/tmp', f"{uuid.uuid1()}_{fname}")
+    temp_path = os.path.join(os.path.dirname(out_path), '.tmp.' + fname)
     imsave(temp_path, seg_alpha)
     shutil.copy(temp_path, out_path)
     os.remove(temp_path)

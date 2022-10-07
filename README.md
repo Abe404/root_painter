@@ -32,40 +32,18 @@ Other options to run the server component of RootPainter on a remote machine inc
 
 For the next steps I assume you have a suitable GPU and CUDA installed.
 
-1. Clone the RootPainter code from the repository and then cd into the trainer directory (the server component).
+1. To install the RootPainter trainer:
+
 ```
-git clone https://github.com/Abe404/root_painter.git
-cd root_painter/trainer
+pip install root-painter-trainer
 ```
 
-2. To avoid alterating global packages. I suggest using a virtual environment. Create a virtual environment 
+2. To run the trainer.  This will first create the sync directory.
+
 ```
-python -m venv env
+start-trainer
 ```
 
-And then activate it.
-
-On linux:
-```
-source ./env/bin/activate
-```
-
-On windows:
-```
-env\Scripts\activate.bat
-```
-
-3. Install PyTorch using pip by following the instructions at the [pytorch website](https://pytorch.org/get-started/locally/)
-
-4. Install the other dependencies in the virtual environment
-```
-pip install -r requirements.txt
-```
-
-5. Run root painter. This will first create the sync directory.
-```
-python main.py
-```
 You will be prompted to input a location for the sync directory. This is the folder where files are shared between the client and server. I will use ~/root_painter_sync.
 RootPainter will then create some folders inside ~/root_painter_sync.
 The server should print the automatically selected batch size, which should be greater than 0. It will then start watching for instructions from the client.

@@ -27,6 +27,7 @@ from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 
 from im_utils import is_image
+import file_utils
 from name_edit_widget import NameEditWidget
 from palette import PaletteEditWidget
 
@@ -238,7 +239,7 @@ class CreateProjectWidget(QtWidgets.QWidget):
 
         dataset = os.path.basename(dataset_path)
         # get files in random order for training.
-        all_fnames = os.listdir(dataset_path)
+        all_fnames = file_utils.ls(dataset_path)
         # images only
         all_fnames = [a for a in all_fnames if is_image(a)]
 

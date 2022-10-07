@@ -214,11 +214,8 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
                      threshold=0.5):
     """ Average predictions from each model specified in model_paths """
     pred_count = 0
-<<<<<<< HEAD
     class_pred_sums = [None] * len(classes)
-=======
     image, pad_settings = im_utils.pad_to_min(image, min_w=in_w, min_h=in_w)
->>>>>>> master
     # then add predictions from the previous models to form an ensemble
     for model_path in model_paths:
         cnn = load_model(model_path, classes)
@@ -239,22 +236,15 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
             pred_map = np.fliplr(flipped_pred)
             class_pred_sums[i] += pred_map
         pred_count += 1
-<<<<<<< HEAD
 
     class_pred_maps = []
     for pred_sum in class_pred_sums:
+        pred_sum = im_utils.crop_from_pad_settings(pred_sum, pad_settings)
         mean_pred_map = pred_sum / pred_count
         predicted = mean_pred_map > threshold
         predicted = predicted.astype(int)
         class_pred_maps.append(predicted)
     return class_pred_maps
-=======
-    pred_sum = im_utils.crop_from_pad_settings(pred_sum, pad_settings)
-    foreground_probs = pred_sum / pred_count
-    predicted = foreground_probs > threshold
-    predicted = predicted.astype(int)
-    return predicted
->>>>>>> master
 
 def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
 

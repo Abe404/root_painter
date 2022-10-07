@@ -50,7 +50,7 @@ from startup import startup_setup, ensure_required_folders_exist
 
 class Trainer():
 
-    def __init__(self, sync_dir=None):
+    def __init__(self, sync_dir=None, patch_size=572):
         if sync_dir:
             self.sync_dir = sync_dir
         else:
@@ -67,8 +67,8 @@ class Trainer():
         self.train_config = None
         self.model = None
         self.first_loop = True
-        self.in_w = 572
-        self.out_w = 500
+        self.in_w = args.patch_size
+        self.out_w = self.in_w - 72
         mem_per_item = 3800000000
         total_mem = 0
         print('GPU Available', torch.cuda.is_available())

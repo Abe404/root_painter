@@ -161,8 +161,12 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir,
             # predictions for all classes
             class_pred_maps = unet_segment(cnn, image, bs, in_w,
                                            out_w, threshold=0.5)
-            class_pred_maps = im_utils.crop_from_pad_settings(class_pred_maps, pad_settings)
-            image_class_pred_maps[image_path] = class_pred_maps
+            # crop those that were padded
+            cropped_pred_maps = []
+            for class_pred_map in class_pred_maps:
+                class_pred_map = im_utils.crop_from_pad_settings(class_pred_map, pad_settings)
+                cropped_pred_maps.append(class_pred_map)
+            image_class_pred_maps[image_path] = cropped_pred_maps
 
     # the annotation is 729 by 729, so how is it possible for the
     # foregrounds and backgrounds to have dimensions of 786by786????

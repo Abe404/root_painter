@@ -3,7 +3,7 @@
 This is is a guide for getting started with the RootPainter software
 using sshfs to connect the client and server components. RootPainter is described in [this paper.](https://www.biorxiv.org/content/10.1101/2020.04.16.044461v1)
 
-This page includes instructions for setting up the server. Once it is complete you can follow the [lung tutorial](cxr_lung_tutorial.md) for an example of how to use RootPainter to train a model using the graphical client.
+This page includes instructions for setting up the server. After completing these instructions, you can follow the [lung tutorial](cxr_lung_tutorial.md) for an example of how to use RootPainter to train a model using the graphical client.
 
 I assume you have ssh access to a linux server with a suitable GPU and CUDA installed.
 

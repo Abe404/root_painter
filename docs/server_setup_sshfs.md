@@ -12,7 +12,7 @@ ssh username@xxx.xxx.xxx.xxx
 
 2. Clone the RootPainter code from the repository and then cd into the trainer directory (the server component).
 ```
-git clone --branch 0.2.4 https://github.com/Abe404/root_painter.git
+git clone https://github.com/Abe404/root_painter.git
 cd root_painter/trainer
 ```
 
@@ -24,7 +24,7 @@ source ./env/bin/activate
 
 4. Install dependencies in the virtual environment. (takes over 3 minutes)
 ```
-pip install torch==1.3.1 -f https://download.pytorch.org/whl/torch_stable.html
+pip install torch
 pip install -r requirements.txt
 ```
 

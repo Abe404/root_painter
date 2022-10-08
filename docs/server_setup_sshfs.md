@@ -48,7 +48,7 @@ sudo apt-get install sshfs
 ```
 OSX:
 ```
-brew install sshfs
+Download and install [macFUSE](https://github.com/osxfuse/osxfuse/releases)
 ```
 
 Windows:

@@ -42,18 +42,20 @@ If you see a batch size above 0 and 'Started main loop. Checking for instruction
 
 6. To mount the sync directory from your local machine you will need to install sshfs locally (SSH Filesystem client).
 
-Debian / Ubuntu:
+**If you are using Debian / Ubuntu**
 ```
 sudo apt-get install sshfs
 ```
-OSX:
+
+**If you are using mac / OSX:**
+
 Download the [macFUSE dmg](https://github.com/osxfuse/osxfuse/releases).
 Open the OSXFuse dmg and run the installer.
 Similarly, download the [SSHFS pkg](http://osxfuse.github.io)
 and run the downloaded SSHFS installer.
 
 
-Windows:
+**If you are using Windows:**
 See [sshfs-win](https://github.com/billziss-gh/sshfs-win)
 
 

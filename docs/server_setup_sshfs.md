@@ -55,9 +55,19 @@ Windows:
 See [sshfs-win](https://github.com/billziss-gh/sshfs-win)
 
 
-7. Create the directory and mount the drive locally using sshfs. 
+7. Create the directory that you will mount.
+
+You will need to run this command on your local machine.
+
 ```
 mkdir ~/Desktop/root_painter_sync
+```
+
+
+8.   mount the drive locally using sshfs. 
+
+You will need to run the following command on your local machine. You should replace username with the username of the corresponding user on the server (the one you use when sshing into your server). You should also replace xxx.xxx.xxx.xxx with the ip address of your server.
+```
 sudo sshfs -o allow_other,default_permissions username@xxx.xxx.xxx.xxx:/home/username/root_painter_sync ~/Desktop/root_painter_sync
 ```
 

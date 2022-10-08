@@ -47,7 +47,10 @@ Debian / Ubuntu:
 sudo apt-get install sshfs
 ```
 OSX:
-Download and install [macFUSE](https://github.com/osxfuse/osxfuse/releases)
+Download the [macFUSE dmg](https://github.com/osxfuse/osxfuse/releases).
+Open the OSXFuse dmg and run the installer.
+Similarly, download the [SSHFS pkg](http://osxfuse.github.io)
+and run the downloaded SSHFS installer.
 
 
 Windows:

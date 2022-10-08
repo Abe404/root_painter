@@ -36,6 +36,8 @@ You will be prompted to input a location for the sync directory. This is the fol
 RootPainter will then create some folders inside ~/root_painter_sync.
 The server should print the automatically selected batch size, which should be greater than 0. It will then start watching for instructions from the client.
 
+If you see a batch size above 0 and 'Started main loop. Checking for instructions..' in the console output then this means you have been successful in starting the server and can move onto the next step.
+
 6. To mount the sync directory from your local machine you will need to install sshfs locally (SSH Filesystem client).
 
 Debian / Ubuntu:

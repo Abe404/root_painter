@@ -21,19 +21,32 @@ import glob
 import sys
 
 import numpy as np
+from PyQt5 import QtGui
 from skimage import color
 from skimage.io import imread, imsave
 from skimage import img_as_ubyte
 from skimage.transform import resize
 from skimage.color import rgb2gray
+import qimage2ndarray
+from PIL import Image, ImageOps
 
 def is_image(fname):
     extensions = {".jpg", ".png", ".jpeg", '.tif', '.tiff'}
     return any(fname.lower().endswith(ext) for ext in extensions)
 
-def load_image(photo_path):
-    photo = imread(photo_path)
 
+def fpath_to_pixmap(fpath):
+    """ Load image from fpath and convert to a PyQt5 pixmap object """
+    np_im = load_image(fpath)
+    #print('np_img shape = ', np_im.shape)
+    q_image = qimage2ndarray.array2qimage(np_im)
+    return QtGui.QPixmap.fromImage(q_image)
+
+def load_image(photo_path):
+    #photo = imread(photo_path)
+    photo = Image.open(photo_path)
+    photo = ImageOps.exif_transpose(photo)
+    photo = np.array(photo)
     # sometimes photo is a list where first element is the photo
     if len(photo.shape) == 1:
         photo = photo[0]

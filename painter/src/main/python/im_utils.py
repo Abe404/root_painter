@@ -38,7 +38,6 @@ def is_image(fname):
 def fpath_to_pixmap(fpath):
     """ Load image from fpath and convert to a PyQt5 pixmap object """
     np_im = load_image(fpath)
-    #print('np_img shape = ', np_im.shape)
     q_image = qimage2ndarray.array2qimage(np_im)
     return QtGui.QPixmap.fromImage(q_image)
 

@@ -46,11 +46,17 @@ from model_utils import save_if_better
 from im_utils import is_photo, load_image, save_then_move
 from file_utils import ls
 from startup import startup_setup, ensure_required_folders_exist
-
+from unet import get_valid_patch_sizes
 
 class Trainer():
 
     def __init__(self, sync_dir=None, patch_size=572):
+
+        valid_sizes = get_valid_patch_sizes()
+        assert patch_size in valid_patch_sizes, (f'Specified patch size of {patch_size}'
+                f'is not valid. Valid patch sizes are {vaild_patch_sizes}')
+
+
         if sync_dir:
             self.sync_dir = sync_dir
         else:

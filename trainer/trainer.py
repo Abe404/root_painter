@@ -53,8 +53,8 @@ class Trainer():
     def __init__(self, sync_dir=None, patch_size=572):
 
         valid_sizes = get_valid_patch_sizes()
-        assert patch_size in valid_patch_sizes, (f'Specified patch size of {patch_size}'
-                f'is not valid. Valid patch sizes are {vaild_patch_sizes}')
+        assert patch_size in valid_sizes, (f'Specified patch size of {patch_size}'
+                f'is not valid. Valid patch sizes are {vaild_sizes}')
 
 
         if sync_dir:

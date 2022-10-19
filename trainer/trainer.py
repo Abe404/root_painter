@@ -54,7 +54,7 @@ class Trainer():
 
         valid_sizes = get_valid_patch_sizes()
         assert patch_size in valid_sizes, (f'Specified patch size of {patch_size}'
-                f'is not valid. Valid patch sizes are {vaild_sizes}')
+                f'is not valid. Valid patch sizes are {valid_sizes}')
 
 
         if sync_dir:

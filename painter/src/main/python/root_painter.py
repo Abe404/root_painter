@@ -53,6 +53,7 @@ from visibility_widget import VisibilityWidget
 from file_utils import last_fname_with_annotations
 from file_utils import get_annot_path
 from file_utils import maybe_save_annotation
+import im_utils
 from instructions import send_instruction
 from plot_seg_metrics import MetricsPlot, ExtractMetricsWidget
 from im_viewer import ContextViewer
@@ -270,12 +271,14 @@ class RootPainter(QtWidgets.QMainWindow):
         self.update_window_title()
 
 
-
     def update_image(self):
         # Will also update self.im_width and self.im_height
         assert os.path.isfile(self.image_path), f"Cannot find file {self.image_path}"
-        image_pixmap = QtGui.QPixmap(self.image_path)
+
+        # There's a problem with this function, as some images are loaded in the wrong orientation.
+        image_pixmap = im_utils.fpath_to_pixmap(self.image_path)
         im_size = image_pixmap.size()
+
         im_width, im_height = im_size.width(), im_size.height()
         assert im_width > 0, self.image_path
         assert im_height > 0, self.image_path
@@ -736,7 +739,8 @@ class RootPainter(QtWidgets.QMainWindow):
                     # sometimes problems reading file.
                     # don't worry about this exception
             else:
-                print('no seg found', end=",")
+                pass
+                # 'no seg found'
             QtCore.QTimer.singleShot(500, check)
         QtCore.QTimer.singleShot(500, check)
 

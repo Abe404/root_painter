@@ -5,6 +5,8 @@ Described in the paper "RootPainter: Deep Learning Segmentation of Biological Im
 Published peer-reviewed paper available in the New Phytologist at:
 [https://doi.org/10.1111/nph.18387](https://doi.org/10.1111/nph.18387)
 
+To see a list of work using (or citing) the RootPainter paper, please see the [google scholar page](https://scholar.google.com/scholar?cites=12740268016453642124)
+
 BioRxiv Pre-print available at:
 [https://www.biorxiv.org/content/10.1101/2020.04.16.044461v2](https://www.biorxiv.org/content/10.1101/2020.04.16.044461v2)
 

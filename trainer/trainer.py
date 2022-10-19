@@ -67,7 +67,7 @@ class Trainer():
         self.train_config = None
         self.model = None
         self.first_loop = True
-        self.in_w = args.patch_size
+        self.in_w = patch_size
         self.out_w = self.in_w - 72
         mem_per_item = 3800000000
         total_mem = 0

@@ -9,7 +9,7 @@ setup(
   name = 'root_painter_trainer',
   package_dir = {'root_painter_trainer': 'trainer'},
   packages = ['root_painter_trainer'],
-  version = '0.2.19.0',
+  version = '0.2.19.1',
   license = 'GPL-2.0', 
   description = 'Trainer (server component) for RootPainter',
   long_description=long_description,

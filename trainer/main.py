@@ -23,11 +23,18 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--syncdir',
                     help=('location of directory where data is'
                            ' synced between the client and server'))
+parser.add_argument('--patchsize',
+                    type=int,
+                    default=572,
+                    help=('size of patch width and height in pixels'))
+parser.add_argument('--maxworkers',
+                    type=int,
+                    default=12,
+                    help=('maximum number of workers used for the dataloader'))
+
+
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    if args.syncdir:
-        trainer = Trainer(sync_dir=args.syncdir)
-    else:
-        trainer = Trainer()
+    trainer = Trainer(sync_dir=args.syncdir, patch_size=args.patchsize, max_workers=args.maxworkers)
     trainer.main_loop()

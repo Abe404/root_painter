@@ -50,7 +50,7 @@ from unet import get_valid_patch_sizes
 
 class Trainer():
 
-    def __init__(self, sync_dir=None, patch_size=572):
+    def __init__(self, sync_dir=None, patch_size=572, max_workers=12):
 
         valid_sizes = get_valid_patch_sizes()
         assert patch_size in valid_sizes, (f'Specified patch size of {patch_size}'
@@ -77,6 +77,7 @@ class Trainer():
         self.out_w = self.in_w - 72
         mem_per_item = 3800000000
         total_mem = 0
+        self.max_workers = max_workers
         print('GPU Available', torch.cuda.is_available())
         for i in range(torch.cuda.device_count()):
             total_mem += torch.cuda.get_device_properties(i).total_memory
@@ -224,10 +225,11 @@ class Trainer():
 
         train_loader = DataLoader(self.train_set, self.bs, shuffle=True,
                                   # 12 workers is good for performance
-                                  # on 2 RTX2080 Tis
+                                  # on 2 RTX2080 Tis (but depends on CPU also)
                                   # 0 workers is good for debugging
-                                  # don't go above 12 workers and don't go above the number of cpus
-                                  num_workers=min(multiprocessing.cpu_count(), 12),
+                                  # don't go above max_workers (user specified but default 12) 
+                                  # and don't go above the number of cpus, provided by cpu_count.
+                                  num_workers=min(multiprocessing.cpu_count(), self.max_workers),
                                   drop_last=False, pin_memory=True)
         epoch_start = time.time()
         self.model.train()

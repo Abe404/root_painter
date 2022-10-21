@@ -24,6 +24,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import torch.nn as nn
 
+
+def get_valid_patch_sizes():
+    return list((572 - (16*i) for i in range(31)))
+
 class DownBlock(nn.Module):
     def __init__(self, in_channels):
         super().__init__()

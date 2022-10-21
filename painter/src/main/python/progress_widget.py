@@ -86,7 +86,10 @@ class BaseProgressWidget(QtWidgets.QWidget):
         self.setWindowTitle(self.task)
 
     def onCountChanged(self, value, total):
-        if value < 2:
+        # 'not self.start_time' because value could be greater than 2
+        # (and self.start_time could be None, causing bugs)
+        # if segmenting the remaining images from a partially segmented dataset
+        if value < 2 or not self.start_time:
             # first image could take a while due to the initial delay in syncing
             # so start estimating remaining time from second image onwards.
             self.start_time = time.time() 

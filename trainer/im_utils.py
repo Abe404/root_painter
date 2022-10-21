@@ -24,6 +24,8 @@ from math import ceil
 import random
 import numpy as np
 import skimage.util as skim_util
+
+from PIL import Image, ImageOps
 from skimage import color
 from skimage.exposure import rescale_intensity
 from skimage.io import imread, imsave
@@ -220,7 +222,10 @@ def save_then_move(out_path, seg_alpha):
     os.remove(temp_path)
 
 def load_image(photo_path):
-    photo = imread(photo_path)
+    photo = Image.open(photo_path)
+    photo = ImageOps.exif_transpose(photo)
+    photo = np.array(photo)
+
     # sometimes photo is a list where first element is the photo
     if len(photo.shape) == 1:
         photo = photo[0]

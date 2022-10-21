@@ -45,7 +45,7 @@ from extract_count import ExtractCountWidget
 from extract_regions import ExtractRegionsWidget
 from extract_length import ExtractLengthWidget
 from extract_comp import ExtractCompWidget
-from convert_seg import ConvertSegForRVEWidget
+from convert_seg import ConvertSegWidget, convert_seg_to_rve, convert_seg_to_annot
 from graphics_scene import GraphicsScene
 from graphics_view import CustomGraphicsView
 from nav import NavWidget
@@ -53,6 +53,7 @@ from visibility_widget import VisibilityWidget
 from file_utils import last_fname_with_annotations
 from file_utils import get_annot_path
 from file_utils import maybe_save_annotation
+import im_utils
 from instructions import send_instruction
 from plot_seg_metrics import MetricsPlot, ExtractMetricsWidget
 from im_viewer import ContextViewer
@@ -200,7 +201,6 @@ class RootPainter(QtWidgets.QMainWindow):
                                          self.val_annot_dir)
         self.update_image()
 
-
         self.scene.history = []
         self.scene.redo_list = []
 
@@ -211,12 +211,14 @@ class RootPainter(QtWidgets.QMainWindow):
         self.update_window_title()
 
 
-
     def update_image(self):
         # Will also update self.im_width and self.im_height
         assert os.path.isfile(self.image_path), f"Cannot find file {self.image_path}"
-        image_pixmap = QtGui.QPixmap(self.image_path)
+
+        # There's a problem with this function, as some images are loaded in the wrong orientation.
+        image_pixmap = im_utils.fpath_to_pixmap(self.image_path)
         im_size = image_pixmap.size()
+
         im_width, im_height = im_size.width(), im_size.height()
         assert im_width > 0, self.image_path
         assert im_height > 0, self.image_path
@@ -439,6 +441,12 @@ class RootPainter(QtWidgets.QMainWindow):
         conv_to_rve_btn.triggered.connect(self.show_conv_to_rve)
         extras_menu.addAction(conv_to_rve_btn)
 
+        conv_to_annot_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                            'Convert segmentations to annotations',
+                                             self)
+        conv_to_annot_btn.triggered.connect(self.show_conv_to_annot)
+        extras_menu.addAction(conv_to_annot_btn)
+
         specify_sync_dir_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
                                                  'Specify sync directory',
                                                  self)
@@ -659,7 +667,8 @@ class RootPainter(QtWidgets.QMainWindow):
                     # sometimes problems reading file.
                     # don't worry about this exception
             else:
-                print('no seg found', end=",")
+                pass
+                # 'no seg found'
             QtCore.QTimer.singleShot(500, check)
         QtCore.QTimer.singleShot(500, check)
 
@@ -903,8 +912,16 @@ class RootPainter(QtWidgets.QMainWindow):
     def show_conv_to_rve(self):
         """ show window to convert segmentations
             to RhizoVision Explorer compatible format """
-        self.convert_to_rve_widget = ConvertSegForRVEWidget()
+        self.convert_to_rve_widget = ConvertSegWidget(
+            convert_seg_to_rve, 'RhizoVision Explorer compatible format')
         self.convert_to_rve_widget.show()
+
+    def show_conv_to_annot(self):
+        """ show window to convert segmentations
+            to annotations"""
+        self.convert_to_annot_widget = ConvertSegWidget(
+            convert_seg_to_annot, 'annotations')
+        self.convert_to_annot_widget.show()
 
     def stop_training(self):
         self.info_label.setText("Stopping training...")

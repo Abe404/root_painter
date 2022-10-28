@@ -467,12 +467,6 @@ class Trainer():
                 # then assume messages should go to this folder.
                 proj_dir = os.path.dirname(seg_dir)
                 msg_dir = os.path.join(proj_dir, 'messages')
-                
-                # for multiclass projects the msg_dir is the parent. 
-                proj_dir = os.path.dirname(proj_dir)
-                multiclass_msg_dir = os.path.join(proj_dir, 'messages')
-                if os.path.isdir(multiclass_msg_dir):
-                    msg_dir = multiclass_msg_dir
 
                 if os.path.isdir(msg_dir) and not self.msg_dir:
                     self.msg_dir = msg_dir

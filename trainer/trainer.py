@@ -64,7 +64,7 @@ from unet import get_valid_patch_sizes
 
 class Trainer():
 
-    def __init__(self, sync_dir=None, patch_size=572, max_workers=12):
+    def __init__(self, sync_dir=None, patch_size=572, max_workers=12, max_batch_size=12):
 
         valid_sizes = get_valid_patch_sizes()
         assert patch_size in valid_sizes, (f'Specified patch size of {patch_size}'
@@ -97,7 +97,7 @@ class Trainer():
         for i in range(torch.cuda.device_count()):
             total_mem += torch.cuda.get_device_properties(i).total_memory
         self.bs = total_mem // mem_per_item
-        self.bs = min(12, self.bs)
+        self.bs = min(max_batch_size, self.bs)
         print('Batch size', self.bs)
         self.optimizer = None
         # used to check for updates

@@ -31,10 +31,13 @@ parser.add_argument('--maxworkers',
                     type=int,
                     default=12,
                     help=('maximum number of workers used for the dataloader'))
-
-
+parser.add_argument('--maxbatchsize',
+                    type=int,
+                    default=12,
+                    help=('maximum batch size used'))
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    trainer = Trainer(sync_dir=args.syncdir, patch_size=args.patchsize, max_workers=args.maxworkers)
+    trainer = Trainer(sync_dir=args.syncdir, patch_size=args.patchsize,
+                      max_workers=args.maxworkers, max_batch_size=args.maxbatchsize)
     trainer.main_loop()

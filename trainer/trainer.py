@@ -446,6 +446,14 @@ class Trainer():
                 create_first_model_with_random_weights(model_dir, classes)
                 model_paths = model_utils.get_latest_model_paths(model_dir, 1)
 
+
+        # load first model to get the classes
+        # warning: we are loading a 5mb file to get a short list of strings.
+        # this might be worth optimising.
+        # map location to cpu to avoid GPU RAM surge.
+        classes = torch.load(model_paths[0], map_location='cpu')['classes']
+
+
         start = time.time()
         for fname in fnames:
             self.segment_file(in_dir, seg_dir, fname,
@@ -456,7 +464,7 @@ class Trainer():
 
     def segment_file(self, in_dir, seg_dir, fname, model_paths, classes, sync_save):
         fpath = os.path.join(in_dir, fname)
-
+    
         # When the client navigates through images, there is a risk that 
         # they may not realise that training has not been started.
         # These segmentation instructions keep getting processed so
@@ -488,8 +496,12 @@ class Trainer():
         out_paths = []
         if len(classes) > 1:
             for c in classes:
-                out_paths.append(os.path.join(seg_dir, c,
-                                              os.path.splitext(fname)[0] + '.png'))
+                out_dir = os.path.join(seg_dir, c)
+                if not os.path.isdir(out_dir):
+                    print('creating segmentation directory', out_dir)
+                    os.makedirs(out_dir)
+                out_paths.append(os.path.join(out_dir, os.path.splitext(fname)[0] + '.png'))
+
         else:
             out_paths.append(os.path.join(seg_dir, os.path.splitext(fname)[0] + '.png'))
 
@@ -508,7 +520,7 @@ class Trainer():
                 return
             seg_start = time.time()
             seg_maps = ensemble_segment(model_paths, photo, self.bs,
-                                        self.in_w, self.out_w)
+                                        self.in_w, self.out_w, classes)
             print(f'ensemble segment {fname}, dur', round(time.time() - seg_start, 2))
 
             # The segmentation for each class is saved in seperate file

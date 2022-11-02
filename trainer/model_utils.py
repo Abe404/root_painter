@@ -225,7 +225,7 @@ def save_if_better(model_dir, cur_model, prev_model_path,
         return True
     return False
 
-def ensemble_segment(model_paths, image, bs, in_w, out_w,
+def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
                      threshold=0.5):
     """ Average predictions from each model specified in model_paths """
     pred_count = 0
@@ -233,7 +233,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w,
     image, pad_settings = im_utils.pad_to_min(image, min_w=in_w, min_h=in_w)
     # then add predictions from the previous models to form an ensemble
     for model_path in model_paths:
-        cnn, classes = load_model(model_path)
+        cnn, classes = load_model(model_path, classes)
         pred_maps = unet_segment(cnn, image,
                                 bs, in_w, out_w, threshold=None)
         for i, pred_map in enumerate(pred_maps):

@@ -52,17 +52,26 @@ def get_latest_model_paths(model_dir, k):
     return fpaths
 
 def load_model(model_path, classes):
+    state_dict = torch.load(model_path)
+    if 'classes' not in state_dict:
+        print(f'adding classes {classes} to model and resaving')
+        # this fixes older multiclass models that did not have classes saved.
+        # classes should be saved wih the model to enable segment folder to function
+        state_dict['classes'] = classes
+        torch.save(state_dict, model_path)
+    classes = state_dict['classes']
+    del state_dict['classes'] # pytorch cant handle this key.
     model = UNetGNRes(classes)
     try:
-        model.load_state_dict(torch.load(model_path))
+        model.load_state_dict(state_dict)
         model = torch.nn.DataParallel(model)
     # bare except
     # pylint: disable=W0702
     except:
         model = torch.nn.DataParallel(model)
-        model.load_state_dict(torch.load(model_path))
+        model.load_state_dict(state_dict)
     model.cuda()
-    return model
+    return model, classes
 
 def create_first_model_with_random_weights(model_dir, classes):
     # used when no model was specified on project creation.
@@ -79,7 +88,7 @@ def create_first_model_with_random_weights(model_dir, classes):
 
 def get_prev_model(model_dir, classes):
     prev_path = get_latest_model_paths(model_dir, k=1)[0]
-    prev_model = load_model(prev_path, classes)
+    prev_model = load_model(prev_path, classes)[0]
     return prev_model, prev_path
 
 def get_val_metrics(cnn, val_annot_dirs, dataset_dir,
@@ -199,7 +208,7 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir,
     return metrics
 
 def save_if_better(model_dir, cur_model, prev_model_path,
-                   cur_f1, prev_f1):
+                   cur_f1, prev_f1, model_classes):
     print('prev f1', str(round(prev_f1, 5)).ljust(7, '0'),
           'cur f1', str(round(cur_f1, 5)).ljust(7, '0'))
     if cur_f1 > prev_f1:
@@ -210,11 +219,13 @@ def save_if_better(model_dir, cur_model, prev_model_path,
         model_name = str(model_num).zfill(6) + '_' + str(now) + '.pkl'
         model_path = os.path.join(model_dir, model_name)
         print('saving', model_path, time.strftime('%H:%M:%S', time.localtime(now)))
-        torch.save(cur_model.state_dict(), model_path)
+        state_dict = cur_model.state_dict()
+        state_dict['classes'] = model_classes # save classes with model to enable segmentation without loading the project.
+        torch.save(state_dict, model_path)
         return True
     return False
 
-def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
+def ensemble_segment(model_paths, image, bs, in_w, out_w,
                      threshold=0.5):
     """ Average predictions from each model specified in model_paths """
     pred_count = 0
@@ -222,7 +233,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w, classes,
     image, pad_settings = im_utils.pad_to_min(image, min_w=in_w, min_h=in_w)
     # then add predictions from the previous models to form an ensemble
     for model_path in model_paths:
-        cnn = load_model(model_path, classes)
+        cnn, classes = load_model(model_path)
         pred_maps = unet_segment(cnn, image,
                                 bs, in_w, out_w, threshold=None)
         for i, pred_map in enumerate(pred_maps):

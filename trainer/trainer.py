@@ -214,7 +214,7 @@ class Trainer():
             model_paths = model_utils.get_latest_model_paths(model_dir, 1)
 
             if model_paths:
-                self.model = model_utils.load_model(model_paths[0], classes)
+                self.model = model_utils.load_model(model_paths[0], classes)[0]
             else:
                 self.model = create_first_model_with_random_weights(model_dir, classes)
             self.optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01,
@@ -362,7 +362,8 @@ class Trainer():
         self.log_metrics('cur_val', cur_metrics)
         self.log_metrics('prev_val', prev_metrics)
         was_saved = save_if_better(model_dir, self.model, prev_path,
-                                   cur_metrics['f1'], prev_metrics['f1'])
+                                   cur_metrics['f1'], prev_metrics['f1'],
+                                   model_classes=self.train_config['classes'])
         if was_saved:
             self.epochs_without_progress = 0
         else:
@@ -497,7 +498,7 @@ class Trainer():
                 return
             seg_start = time.time()
             seg_maps = ensemble_segment(model_paths, photo, self.bs,
-                                        self.in_w, self.out_w, classes)
+                                        self.in_w, self.out_w)
             print(f'ensemble segment {fname}, dur', round(time.time() - seg_start, 2))
 
             # The segmentation for each class is saved in seperate file

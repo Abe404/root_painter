@@ -39,7 +39,14 @@ class SegmentWatchThread(QtCore.QThread):
     def run(self):
         while True:
             done_fnames = file_utils.ls(self.segment_dir)
-            done_fnames = [f for f in done_fnames if is_image(f)]
+            if len(done_fnames):
+                first_path = os.path.join(self.segment_dir, done_fnames[0])
+                # if the output is directories (not files)
+                # then assume each directory will contain a segmentation for 
+                # each output file, so track progress this way.
+                if os.path.isdir(first_path):
+                    done_fnames = file_utils.ls(first_path)
+                done_fnames = [f for f in done_fnames if is_image(f)]
             count = len(done_fnames)
             if count >= self.total_images:
                 self.done.emit()

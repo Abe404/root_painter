@@ -150,17 +150,17 @@ class SegmentFolderWidget(QtWidgets.QWidget):
 
     def validate(self):
         if not self.input_dir:
-            self.info_label.setText("Input directory must be specified to create project")
+            self.info_label.setText("Input directory must be specified")
             self.submit_btn.setEnabled(False)
             return
 
         if not self.output_dir:
-            self.info_label.setText("Output directory must be specified to create project")
+            self.info_label.setText("Output directory must be specified")
             self.submit_btn.setEnabled(False)
             return
 
         if not self.selected_models:
-            self.info_label.setText("Starting model must be specified to create project")
+            self.info_label.setText("Starting model must be specified")
             self.submit_btn.setEnabled(False)
             return
         self.info_label.setText("")
@@ -205,3 +205,51 @@ class SegmentFolderWidget(QtWidgets.QWidget):
                 self.model_label.setText(f'{len(file_paths)} model files selected')
             self.selected_models = file_paths
             self.validate()
+
+
+if __name__ == '__main__':
+    from pathlib import Path
+    import argparse
+    import os
+    import sys
+
+    parser = argparse.ArgumentParser(description='segment folder')
+    parser.add_argument('--inputdir',
+                        type=str,
+                        help='path to directory of images to segment')
+    parser.add_argument('--outputdir',
+                        type=str,
+                        help='path to segmentation output directory')
+    parser.add_argument('--syncdir',
+                        type=str,
+                        help='path to sync directory')
+    parser.add_argument('--model',
+                        type=str,
+                        help='path to model')
+
+    args = parser.parse_args()
+
+    assert os.path.isdir(args.inputdir), f'The inputdir path {args.inputdir} does not exist'
+    assert os.path.isdir(args.outputdir), f'The outputdir path {args.outputdir} does not exist'
+    assert os.path.isfile(args.model), f'The model path {args.model} does not exist'
+    assert os.path.isdir(args.syncdir), f'The syncdir path {args.syncdir} does not exist'
+
+    input_dir = os.path.abspath(args.inputdir)
+    output_dir = os.path.abspath(args.outputdir)
+    model_path = os.path.abspath(args.model)
+    sync_dir = os.path.abspath(args.syncdir)
+    all_fnames = file_utils.ls(str(input_dir))
+    all_fnames = [f for f in all_fnames if is_image(f)]
+    assert Path(input_dir).is_relative_to(sync_dir), 'input directory must be within sync dir'
+    assert Path(output_dir).is_relative_to(sync_dir), 'output path must be within sync dir'
+    assert Path(model_path).is_relative_to(sync_dir), 'model must be within sync dir'
+    instructions_dir = os.path.join(sync_dir, 'instructions')
+    # all images must also exist on server.
+    content = {
+        "model_paths": [model_path],
+        "dataset_dir": input_dir,
+        "seg_dir": output_dir,
+        "file_names": all_fnames
+    }
+    print('sending instruction')
+    send_instruction('segment', content, instructions_dir, sync_dir)

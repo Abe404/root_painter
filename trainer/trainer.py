@@ -451,7 +451,13 @@ class Trainer():
         # warning: we are loading a 5mb file to get a short list of strings.
         # this might be worth optimising.
         # map location to cpu to avoid GPU RAM surge.
-        classes = torch.load(model_paths[0], map_location='cpu')['classes']
+        try:
+            classes = torch.load(model_paths[0], map_location='cpu')['classes']
+        except:
+            # place holder single class for backwards compatability with old binary clients
+            classes = ['annotation']
+
+
 
 
         start = time.time()

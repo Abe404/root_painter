@@ -1,5 +1,5 @@
 """
-Copyright (C) 2020 Abraham George Smith
+Copyright (C) 2020,2021,2022 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -739,7 +739,7 @@ class AboutWindow(QtWidgets.QWidget):
         <a href="https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387"> https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387 </a>
         <br />
         <br />
-        Version: 0.2.20
+        Version: 0.2.20: Multiclass edition.
         <br />
         <br />
         Copyright (C) Abraham George Smith

@@ -218,8 +218,21 @@ def save_then_move(out_path, seg_alpha):
     fname = os.path.basename(out_path)
     temp_path = os.path.join(os.path.dirname(out_path), '.tmp.' + fname)
     imsave(temp_path, seg_alpha)
-    shutil.copy(temp_path, out_path)
-    os.remove(temp_path)
+
+    attempts = 0
+    max_attempts = 50
+    # we found on google colab that writing a file doesn't mean
+    # that it will immediately exist. so we will retry 50 times in case
+    # it takes some time (5 seconds).
+    while attempts < max_attempts:
+        attempts += 1
+        if os.path.isfile(temp_path):
+            shutil.copy(temp_path, out_path)
+            os.remove(temp_path)
+            return
+        time.sleep(0.1)
+    raise Exception(f'Could not find image at {temp_path} '
+                    f'after trying {max_attempts} times')
 
 def load_image(photo_path):
     photo = Image.open(photo_path)

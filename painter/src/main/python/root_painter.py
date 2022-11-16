@@ -138,6 +138,8 @@ class RootPainter(QtWidgets.QMainWindow):
         # extract json
         with open(proj_file_path, 'r') as json_file:
             settings = json.load(json_file)
+        
+
             self.dataset_dir = self.sync_dir / 'datasets' / PurePath(settings['dataset'])
 
             self.proj_location = self.sync_dir / PurePath(settings['location'])

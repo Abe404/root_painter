@@ -231,8 +231,6 @@ class CreateProjectWidget(QtWidgets.QWidget):
                             'models' / model_name)
             original_model_file = self.selected_model
 
-
-        dataset = os.path.basename(dataset_path)
         # get files in random order for training.
         all_fnames = file_utils.ls(dataset_path)
         # images only
@@ -240,11 +238,18 @@ class CreateProjectWidget(QtWidgets.QWidget):
 
         all_fnames = sorted(all_fnames)
         random.shuffle(all_fnames)
+       
+
+        dataset_abs_path = os.path.abspath(dataset_path)
+        datasets_abs_path = os.path.abspath(os.path.join(self.sync_dir, 'datasets'))
+        # remove the sync_dir/datasets part from the initial part of the dataset path.
+        # as the server will prepend the 'datasets' directory when searching for the dataset.
+        dataset_rel_path = os.path.relpath(dataset_abs_path, datasets_abs_path)
 
         # create project file.
         project_info = {
             'name': project_name,
-            'dataset': dataset,
+            'dataset': str(PurePosixPath(dataset_rel_path)),
             'original_model_file': original_model_file,
             'location': str(PurePosixPath(project_location)),
             'file_names': all_fnames

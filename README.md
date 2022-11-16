@@ -27,7 +27,7 @@ There is a [youtube video](https://www.youtube.com/watch?v=73u73tBvRO4) of a wor
 
 See [releases](https://github.com/Abe404/root_painter/releases) 
 
-If you are not confident with the linux administration then to get started quickly I suggest the [colab tutorial](https://colab.research.google.com/drive/104narYAvTBt-X4QEDrBSOZm_DRaAKHtA?usp=sharing).
+If you are not confident installing and running python applications on the command line then to get started quickly I suggest the [colab tutorial](https://colab.research.google.com/drive/104narYAvTBt-X4QEDrBSOZm_DRaAKHtA?usp=sharing).
 
 #### Server setup 
 

@@ -45,6 +45,7 @@ from extract_count import ExtractCountWidget
 from extract_regions import ExtractRegionsWidget
 from extract_length import ExtractLengthWidget
 from extract_comp import ExtractCompWidget
+from mask_images import MaskImWidget
 from convert_seg import ConvertSegWidget, convert_seg_to_rve, convert_seg_to_annot
 from graphics_scene import GraphicsScene
 from graphics_view import CustomGraphicsView
@@ -430,6 +431,9 @@ class RootPainter(QtWidgets.QMainWindow):
             self.sync_dir = Path(json.load(open(settings_path, 'r'))['sync_dir'])
             self.assign_sync_directory(self.sync_dir)
 
+    def show_mask_images(self):
+        self.mask_im_widget = MaskImWidget()
+        self.mask_im_widget.show()
 
     def add_extras_menu(self, menu_bar, project_open=False):
         extras_menu = menu_bar.addMenu('Extras')
@@ -455,6 +459,10 @@ class RootPainter(QtWidgets.QMainWindow):
         specify_sync_dir_btn.triggered.connect(self.specify_sync_directory)
         extras_menu.addAction(specify_sync_dir_btn)
 
+
+        mask_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Mask images', self)
+        mask_btn.triggered.connect(self.show_mask_images)
+        extras_menu.addAction(mask_btn)
 
         def view_metric_csv():
             # select a csv file and then show it in the plots
@@ -508,10 +516,6 @@ class RootPainter(QtWidgets.QMainWindow):
             metrics_csv_btn.triggered.connect(open_metric_export)
             extras_menu.addAction(metrics_csv_btn)
 
-
-
-
-
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
             def update_dataset_after_check():
                 was_extended, file_names = check_extend_dataset(self,
@@ -524,6 +528,11 @@ class RootPainter(QtWidgets.QMainWindow):
                     self.nav.update_nav_label()
             extend_dataset_btn.triggered.connect(update_dataset_after_check)
             extras_menu.addAction(extend_dataset_btn)
+          
+
+
+        
+
     
 
     def add_about_menu(self, menu_bar):

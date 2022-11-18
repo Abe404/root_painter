@@ -93,7 +93,13 @@ PyInstaller.__main__.run([
     # On Mac OS this also triggers building a Mac OS .app bundle. On Windows
     # this option is automatically set if the first script is a ‘.pyw’ file.
     # This option is ignored on *NIX systems.
-    '--windowed',
+    #'--windowed',
+    
+    #-c, --console, --nowindowed
+    # Open a console window for standard i/o (default). On Windows this option
+    # has no effect if the first script is a ‘.pyw’ file.
+    # NOTE: console brought back in for debugging purposes.
+    '--console',
 
     # Mac OS .app bundle identifier is used as the default unique program name
     # for code signing purposes. The usual form is a hierarchical name in reverse DNS

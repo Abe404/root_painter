@@ -1,5 +1,5 @@
 Package: RootPainter
-Version: 0.2.20
+Version: 0.2.21
 Architecture: i386
 Maintainer: Abraham George Smith ags@di.ku.dk
 Description: RootPainter enables the rapid training of neural networks for biological image segmentation.

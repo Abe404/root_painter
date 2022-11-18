@@ -101,7 +101,7 @@ class MaskImWidget(QtWidgets.QWidget):
         specify_im_dir_btn.clicked.connect(self.select_im_dir)
         layout.addWidget(specify_im_dir_btn)
 
-        # Add specify comp directory button
+        # Add specify output directory button
         out_dir_label = QtWidgets.QLabel()
         out_dir_label.setText("Output directory: Not yet specified")
         layout.addWidget(out_dir_label)
@@ -113,7 +113,7 @@ class MaskImWidget(QtWidgets.QWidget):
 
 
         info_label = QtWidgets.QLabel()
-        info_label.setText("Segmentation directory, image and composites directory"
+        info_label.setText("Segmentation directory, image and output directory"
                            "must be specified.")
         layout.addWidget(info_label)
         self.info_label = info_label

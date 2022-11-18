@@ -81,7 +81,9 @@ def create_first_model_with_random_weights(model_dir, classes):
     model = UNetGNRes(classes)
     model = torch.nn.DataParallel(model)
     model_path = os.path.join(model_dir, model_name)
-    torch.save(model.state_dict(), model_path)
+    state_dict = model.state_dict()
+    state_dict['classes'] = classes # save classes with model to enable segmentation without loading the project.
+    torch.save(state_dict, model_path)
     model.cuda()
     return model
 

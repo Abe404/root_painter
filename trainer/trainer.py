@@ -256,7 +256,7 @@ class Trainer():
             foreground_tiles = foreground_tiles.cuda()
             defined_tiles = defined_tiles.cuda()
 
-            predicted, loss = = self.train_step(photo_tiles, defined_tiles, foreground_tiles)
+            predicted, loss = self.train_step(photo_tiles, defined_tiles, foreground_tiles)
 
             # we only want to calculate metrics on the
             # part of the predictions for which annotations are defined

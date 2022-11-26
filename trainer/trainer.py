@@ -256,16 +256,8 @@ class Trainer():
             foreground_tiles = foreground_tiles.cuda()
             defined_tiles = defined_tiles.cuda()
 
-            predicted = self.train_step(photo_tiles, defined_tiles, foreground_tiles)
+            predicted, loss = = self.train_step(photo_tiles, defined_tiles, foreground_tiles)
 
-            self.buffer = self.buffer[-128:] # keep last 128
-            item = random.choice(self.buffer)
-            photo_tiles = torch.clone(item[0]).cuda()
-            foreground_tiles = torch.clone(item[1]).cuda()
-            defined_tiles = torch.clone(item[2]).cuda()
-
-            self.train_step(photo_tiles, defined_tiles, foreground_tiles)
-            
             # we only want to calculate metrics on the
             # part of the predictions for which annotations are defined
             # so remove all predictions and foreground labels where
@@ -282,6 +274,16 @@ class Trainer():
             fns += torch.sum((foregrounds_list == 1) * (preds_list == 0)).cpu().numpy()
             defined_total += torch.sum(defined_list > 0).cpu().numpy()
             loss_sum += loss.item() # float
+
+            # extra train step with buffer item.
+            self.buffer = self.buffer[-128:] # keep last 128
+            item = random.choice(self.buffer)
+            photo_tiles = torch.clone(item[0]).cuda()
+            foreground_tiles = torch.clone(item[1]).cuda()
+            defined_tiles = torch.clone(item[2]).cuda()
+
+            self.train_step(photo_tiles, defined_tiles, foreground_tiles)
+ 
 
             sys.stdout.write(f"Training {(step+1) * self.bs}/"
                              f"{len(train_loader.dataset)} "
@@ -315,7 +317,7 @@ class Trainer():
         self.optimizer.step()
         foreground_probs *= defined_tiles
         predicted = foreground_probs > 0.5
-        return predicted
+        return predicted, loss
 
     def log_metrics(self, name, metrics):
         fname = datetime.today().strftime('%Y-%m-%d')

@@ -90,6 +90,7 @@ class Trainer():
         self.annot_mtimes = []
         self.msg_dir = None
         self.epochs_without_progress = 0
+        self.buffer = {}
         # approx 30 minutes
         self.max_epochs_without_progress = 60
         # These can be trigged by data sent from client
@@ -245,25 +246,25 @@ class Trainer():
                    defined_tiles) in enumerate(train_loader):
 
             self.check_for_instructions()
+
+            self.buffer.append((torch.clone(photo_tiles),
+                                torch.clone(foreground_tiles),
+                                torch.clone(defined_tiles)))
+
             photo_tiles = photo_tiles.cuda()
             foreground_tiles = foreground_tiles.cuda()
             defined_tiles = defined_tiles.cuda()
-            self.optimizer.zero_grad()
-            outputs = self.model(photo_tiles)
-            softmaxed = softmax(outputs, 1)
-            # just the foreground probability.
-            foreground_probs = softmaxed[:, 1, :]
-            # remove any of the predictions for which we don't have ground truth
-            # Set outputs to 0 where annotation undefined so that
-            # The network can predict whatever it wants without any penalty.
-            outputs[:, 0] *= defined_tiles
-            outputs[:, 1] *= defined_tiles
-            loss = criterion(outputs, foreground_tiles)
-            loss.backward()
-            self.optimizer.step()
-            foreground_probs *= defined_tiles
-            predicted = foreground_probs > 0.5
 
+            predicted = self.train_step(photo_tiles, defined_tiles, foreground_tiles)
+
+            self.buffer = self.buffer[-128:] # keep last 128
+            item = random.choice(self.buffer)
+            photo_tiles = torch.clone(item[0]).cuda()
+            foreground_tiles = torch.clone(item[1]).cuda()
+            defined_tiles = torch.clone(item[2]).cuda()
+
+            self.train_step(photo_tiles, defined_tiles, foreground_tiles)
+            
             # we only want to calculate metrics on the
             # part of the predictions for which annotations are defined
             # so remove all predictions and foreground labels where
@@ -280,6 +281,7 @@ class Trainer():
             fns += torch.sum((foregrounds_list == 1) * (preds_list == 0)).cpu().numpy()
             defined_total += torch.sum(defined_list > 0).cpu().numpy()
             loss_sum += loss.item() # float
+
             sys.stdout.write(f"Training {(step+1) * self.bs}/"
                              f"{len(train_loader.dataset)} "
                              f" loss={round(loss.item(), 3)} \r")
@@ -294,6 +296,25 @@ class Trainer():
         before_val_time = time.time()
         self.validation()
         print('epoch validation duration', time.time() - before_val_time)
+
+
+    def train_step(self, photo_tiles, defined_tiles, foreground_tiles)
+        self.optimizer.zero_grad()
+        outputs = self.model(photo_tiles)
+        softmaxed = softmax(outputs, 1)
+        # just the foreground probability.
+        foreground_probs = softmaxed[:, 1, :]
+        # remove any of the predictions for which we don't have ground truth
+        # Set outputs to 0 where annotation undefined so that
+        # The network can predict whatever it wants without any penalty.
+        outputs[:, 0] *= defined_tiles
+        outputs[:, 1] *= defined_tiles
+        loss = criterion(outputs, foreground_tiles)
+        loss.backward()
+        self.optimizer.step()
+        foreground_probs *= defined_tiles
+        predicted = foreground_probs > 0.5
+        return predicted
 
     def log_metrics(self, name, metrics):
         fname = datetime.today().strftime('%Y-%m-%d')

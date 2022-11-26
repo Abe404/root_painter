@@ -98,9 +98,9 @@ class TrainDataset(Dataset):
         self.augmentor = UNetTransformer()
 
     def __len__(self):
-        # use at least 612 but when dataset gets bigger start to expand
+        # use at least 306 but when dataset gets bigger start to expand
         # to prevent validation from taking all the time (relatively)
-        return max(612, len(ls(self.train_annot_dir)) * 2)
+        return max(306, len(ls(self.train_annot_dir)) * 2)
 
     def __getitem__(self, _):
         image, annot, fname = load_train_image_and_annot(self.dataset_dir,

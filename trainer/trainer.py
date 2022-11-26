@@ -298,7 +298,7 @@ class Trainer():
         print('epoch validation duration', time.time() - before_val_time)
 
 
-    def train_step(self, photo_tiles, defined_tiles, foreground_tiles)
+    def train_step(self, photo_tiles, defined_tiles, foreground_tiles):
         self.optimizer.zero_grad()
         outputs = self.model(photo_tiles)
         softmaxed = softmax(outputs, 1)

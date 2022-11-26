@@ -45,6 +45,9 @@ def normalize_tile(tile):
     assert np.max(tile) <= 1, f"tile max {np.max(tile)}"
     return tile
 
+im_cache = {}
+annot_cache = {}
+
 def load_train_image_and_annot(dataset_dir, train_annot_dir):
     max_attempts = 60
     attempts = 0
@@ -74,9 +77,22 @@ def load_train_image_and_annot(dataset_dir, train_annot_dir):
             # so use glob to get it
             image_path = glob.glob(image_path_part + '.*')[0]
             latest_im_path = image_path
-            image = load_image(image_path)
+
+            if image_path in im_cache:
+                image = im_cache[image_path]
+                print('load im from cache')
+            else:
+                image = load_image(image_path)
+                im_cache[image_path] = image
+
             latest_annot_path = annot_path
-            annot = imread(annot_path).astype(bool)
+        
+            if annot_path in annot_cache:
+                annot = annot_cache[annot_path]
+                print('load annot from cache')
+            else:
+                annot = imread(annot_path).astype(bool)
+                annot_cache[annot_path] = annot
             assert np.sum(annot) > 0
             assert image.shape[2] == 3 # should be RGB
             # also return fname for debugging purposes.

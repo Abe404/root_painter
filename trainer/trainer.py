@@ -90,7 +90,7 @@ class Trainer():
         self.annot_mtimes = []
         self.msg_dir = None
         self.epochs_without_progress = 0
-        self.buffer = {}
+        self.buffer = []
         # approx 30 minutes
         self.max_epochs_without_progress = 60
         # These can be trigged by data sent from client

@@ -45,7 +45,6 @@ def normalize_tile(tile):
     assert np.max(tile) <= 1, f"tile max {np.max(tile)}"
     return tile
 
-
 def load_train_image_and_annot(dataset_dir, train_annot_dir):
     max_attempts = 60
     attempts = 0
@@ -56,15 +55,15 @@ def load_train_image_and_annot(dataset_dir, train_annot_dir):
     while attempts < max_attempts:
         attempts += 1
         # file systems are unpredictable.
-        # We may have problems reading the file.
+        # We may have problems reading the file.
         # try-catch to avoid this.
-        # (just try again)
+        # (just try again)
         try:
             # set to None each time.
             latest_annot_path = None
             latest_im_path = None
 
-            # This might take ages, profile and optimize
+            # This might take ages, profile and optimize
             fnames = ls(train_annot_dir)
             fnames = [a for a in fnames if is_photo(a)]
             fname = random.sample(fnames, 1)[0]
@@ -75,16 +74,17 @@ def load_train_image_and_annot(dataset_dir, train_annot_dir):
             # so use glob to get it
             image_path = glob.glob(image_path_part + '.*')[0]
             latest_im_path = image_path
+            image = load_image(image_path)
             latest_annot_path = annot_path
             annot = imread(annot_path).astype(bool)
             assert np.sum(annot) > 0
-            assert image.shape[2] == 3 # should be RGB
+            assert image.shape[2] == 3 # should be RGB
             # also return fname for debugging purposes.
             return image, annot, fname
         except Exception as e:
             latest_error = e
-            # This could be due to an empty annotation saved by the user.
-            # Which happens rarely due to deleting all labels in an 
+            # This could be due to an empty annotation saved by the user.
+            # Which happens rarely due to deleting all labels in an 
             # existing annotation and is not a problem.
             # give it some time and try again.
             time.sleep(0.1)

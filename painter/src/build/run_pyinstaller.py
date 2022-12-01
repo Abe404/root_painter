@@ -89,16 +89,16 @@ run_args = [
     # I dont actually use the spec file yet, so put the auto-generated one in dist to avoid cluttering the repo
     '--specpath', 'dist', 
 
+]
+
+if platform == 'darwin':
     # Windows and Mac OS X: do not provide a console window for standard i/o.
     # On Mac OS this also triggers building a Mac OS .app bundle. On Windows
     # this option is automatically set if the first script is a ‘.pyw’ file.
     # This option is ignored on *NIX systems.
-    #'--windowed',
-]
-
-# dont add this arg for mac. For some reason the pkg file wasn't produced when using it.
-if platform != 'darwin':
-    #-c, --console, --nowindowed
+    run_args.append('--windowed')
+else:
+    # -c, --console, --nowindowed
     # Open a console window for standard i/o (default). On Windows this option
     # has no effect if the first script is a ‘.pyw’ file.
     # NOTE: console brought back in for debugging purposes.

@@ -179,12 +179,18 @@ class Thread(QtCore.QThread):
             self.progress_change.emit(i+1, len(self.fnames))
             # cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
             cache_key = get_cache_key(self.seg_dir, self.annot_dir, fname)
+            metrics = None
             if cache_key in cache_dict:
                 metrics = cache_dict[cache_key]
-            else:
+
+            # also recompute is metrics is None (even if found in cache) as None could indicate 
+            # that the segmentation was previously missing when metrics was last computed. 
+            # but segmentation may now be available so we still need to ignore this cached result and 
+            # recompute metrics, just incase the segmentation now exists.
+            if metrics is None:
                 metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
                 cache_dict[cache_key] = metrics
-
+    
             if metrics: 
                 all_metrics.append(metrics)
                 all_fnames.append(fname)

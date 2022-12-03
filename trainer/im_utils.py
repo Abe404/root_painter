@@ -146,13 +146,13 @@ def add_salt_pepper(image, intensity):
     if len(image.shape) == 2 or image.shape[-1] == 1:
         white = 1
         black = 0
-    num = np.ceil(intensity * image.size).astype(np.int)
+    num = np.ceil(intensity * image.size).astype(int)
     x_coords = np.floor(np.random.rand(num) * image.shape[1])
-    x_coords = x_coords.astype(np.int)
-    y_coords = np.floor(np.random.rand(num) * image.shape[0]).astype(np.int)
+    x_coords = x_coords.astype(int)
+    y_coords = np.floor(np.random.rand(num) * image.shape[0]).astype(int)
     image[x_coords, y_coords] = white
-    x_coords = np.floor(np.random.rand(num) * image.shape[1]).astype(np.int)
-    y_coords = np.floor(np.random.rand(num) * image.shape[0]).astype(np.int)
+    x_coords = np.floor(np.random.rand(num) * image.shape[1]).astype(int)
+    y_coords = np.floor(np.random.rand(num) * image.shape[0]).astype(int)
     image[y_coords, x_coords] = black
     return image
 

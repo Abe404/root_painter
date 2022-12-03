@@ -1,3 +1,4 @@
+from sys import platform
 import PyInstaller.__main__
 
 
@@ -53,8 +54,7 @@ shutil.copyfile(os.path.join('src', 'main', 'icons', icon_fname),
 
 # pyinstaller command line argument documentation is available from:
 # https://pyinstaller.org/en/stable/usage.html
-
-PyInstaller.__main__.run([
+run_args = [
     # --noconfirm: don't ask user to confirm when deleting existing files in dist folder.
     '--noconfirm',
 
@@ -89,27 +89,32 @@ PyInstaller.__main__.run([
     # I dont actually use the spec file yet, so put the auto-generated one in dist to avoid cluttering the repo
     '--specpath', 'dist', 
 
+]
+
+if platform == 'darwin':
     # Windows and Mac OS X: do not provide a console window for standard i/o.
     # On Mac OS this also triggers building a Mac OS .app bundle. On Windows
     # this option is automatically set if the first script is a ‘.pyw’ file.
     # This option is ignored on *NIX systems.
-    #'--windowed',
-    
-    #-c, --console, --nowindowed
+    run_args.append('--windowed')
+else:
+    # -c, --console, --nowindowed
     # Open a console window for standard i/o (default). On Windows this option
     # has no effect if the first script is a ‘.pyw’ file.
     # NOTE: console brought back in for debugging purposes.
-    '--console',
+    run_args.append('--console') # added for windows only
 
-    # Mac OS .app bundle identifier is used as the default unique program name
-    # for code signing purposes. The usual form is a hierarchical name in reverse DNS
-    # notation. For example: com.mycompany.department.appname (default: first
-    # script’s basename)
-    '--osx-bundle-identifier', 'com.rootpainter',
+# Mac OS .app bundle identifier is used as the default unique program name
+# for code signing purposes. The usual form is a hierarchical name in reverse DNS
+# notation. For example: com.mycompany.department.appname (default: first
+# script’s basename)
+run_args.append('--osx-bundle-identifier')
+run_args.append('com.rootpainter')
 
-    # scriptname: Name of scriptfile to be processed.
-    os.path.join('src', 'main', 'python', 'main.py')
-])
+# scriptname: Name of scriptfile to be processed.
+run_args.append(os.path.join('src', 'main', 'python', 'main.py'))
+
+PyInstaller.__main__.run(run_args)
 
 # Useful when debugging to see what these folders look like.
 print('list cwd', os.listdir(os.getcwd()))

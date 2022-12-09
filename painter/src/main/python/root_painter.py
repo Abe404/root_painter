@@ -58,6 +58,7 @@ import im_utils
 from instructions import send_instruction
 from plot_seg_metrics import MetricsPlot, ExtractMetricsWidget
 from im_viewer import ContextViewer
+from random_split import RandomSplitWidget
 use_plugin("pil")
 
 Image.MAX_IMAGE_PIXELS = None
@@ -463,6 +464,17 @@ class RootPainter(QtWidgets.QMainWindow):
         mask_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Mask images', self)
         mask_btn.triggered.connect(self.show_mask_images)
         extras_menu.addAction(mask_btn)
+
+        def show_random_split():
+            self.random_split_widget = RandomSplitWidget()
+            self.random_split_widget.show()
+
+        random_split_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                'Create random split',
+                                 self)
+        random_split_btn.triggered.connect(show_random_split)
+        extras_menu.addAction(random_split_btn)
+
 
         def view_metric_csv():
             # select a csv file and then show it in the plots

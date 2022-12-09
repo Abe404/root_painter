@@ -739,7 +739,11 @@ class AboutWindow(QtWidgets.QWidget):
         <a href="https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387"> https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387 </a>
         <br />
         <br />
+<<<<<<< HEAD
         Version: 0.2.20: Multiclass edition.
+=======
+        Version: 0.2.22
+>>>>>>> master
         <br />
         <br />
         Copyright (C) Abraham George Smith

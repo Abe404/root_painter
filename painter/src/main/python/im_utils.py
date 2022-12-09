@@ -67,6 +67,19 @@ def load_image(photo_path):
     return photo
 
 
+def save_masked_image(seg_dir, image_dir, output_dir, fname):
+    """ useful for using segmentations to remove irrelvant information in an image
+        as part of a pre-processing stage """
+    seg = imread(os.path.join(seg_dir, fname))
+    # use alpha channel if rgba
+    if len(seg.shape) > 2:
+        seg = seg[:, :, 2]
+    im_path = os.path.join(image_dir, os.path.splitext(fname)[0]) + '.*'
+    glob_results = glob.glob(im_path)
+    im = imread(glob_results[0])
+    im[seg==0] = 0 # make background black.
+    imsave(os.path.join(output_dir, os.path.splitext(fname)[0] + '.jpg'), im, quality=95)
+
 def gen_composite(annot_dir, photo_dir, comp_dir, fname, ext='.jpg'):
     """ for review.
     Output the pngs with the annotation overlaid next to it.

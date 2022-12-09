@@ -1,3 +1,4 @@
+
 """
 Copyright (C) 2020 Abraham George Smith
 
@@ -13,7 +14,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
+print('Initialising RootPainter')
 #pylint: disable=I1101,C0111,W0201,R0903,E0611,R0902,R0914,W0703
 import sys
 import os

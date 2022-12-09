@@ -45,6 +45,7 @@ from extract_count import ExtractCountWidget
 from extract_regions import ExtractRegionsWidget
 from extract_length import ExtractLengthWidget
 from extract_comp import ExtractCompWidget
+from mask_images import MaskImWidget
 from convert_seg import ConvertSegWidget, convert_seg_to_rve, convert_seg_to_annot
 from graphics_scene import GraphicsScene
 from graphics_view import CustomGraphicsView
@@ -57,6 +58,7 @@ import im_utils
 from instructions import send_instruction
 from plot_seg_metrics import MetricsPlot, ExtractMetricsWidget
 from im_viewer import ContextViewer
+from random_split import RandomSplitWidget
 use_plugin("pil")
 
 Image.MAX_IMAGE_PIXELS = None
@@ -153,6 +155,8 @@ class RootPainter(QtWidgets.QMainWindow):
         # extract json
         with open(proj_file_path, 'r') as json_file:
             settings = json.load(json_file)
+        
+
             self.dataset_dir = self.sync_dir / 'datasets' / PurePath(settings['dataset'])
 
             self.proj_location = self.sync_dir / PurePath(settings['location'])
@@ -488,6 +492,9 @@ class RootPainter(QtWidgets.QMainWindow):
             self.sync_dir = Path(json.load(open(settings_path, 'r'))['sync_dir'])
             self.assign_sync_directory(self.sync_dir)
 
+    def show_mask_images(self):
+        self.mask_im_widget = MaskImWidget()
+        self.mask_im_widget.show()
 
     def add_extras_menu(self, menu_bar, project_open=False):
         extras_menu = menu_bar.addMenu('Extras')
@@ -512,6 +519,21 @@ class RootPainter(QtWidgets.QMainWindow):
                                                  self)
         specify_sync_dir_btn.triggered.connect(self.specify_sync_directory)
         extras_menu.addAction(specify_sync_dir_btn)
+
+
+        mask_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Mask images', self)
+        mask_btn.triggered.connect(self.show_mask_images)
+        extras_menu.addAction(mask_btn)
+
+        def show_random_split():
+            self.random_split_widget = RandomSplitWidget()
+            self.random_split_widget.show()
+
+        random_split_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                'Create random split',
+                                 self)
+        random_split_btn.triggered.connect(show_random_split)
+        extras_menu.addAction(random_split_btn)
 
 
         def view_metric_csv():
@@ -565,10 +587,6 @@ class RootPainter(QtWidgets.QMainWindow):
                 self.extract_metrics_widget.show()
             metrics_csv_btn.triggered.connect(open_metric_export)
             extras_menu.addAction(metrics_csv_btn)
-
-
-
-
 
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
             def update_dataset_after_check():

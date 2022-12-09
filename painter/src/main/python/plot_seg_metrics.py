@@ -87,7 +87,10 @@ def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
         "f1": f1,
         # how many actually manually annotated.
         "annot_fg": int(fg_labels),
-        "annot_bg": int(bg_labels)
+        "annot_bg": int(bg_labels),
+        "area_true": int(np.sum(y_true)),
+        "area_pred": int(np.sum(y_pred)),
+        "area_error": int(np.sum(y_pred)) - int(np.sum(y_true))
     }
 
 
@@ -179,12 +182,18 @@ class Thread(QtCore.QThread):
             self.progress_change.emit(i+1, len(self.fnames))
             # cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
             cache_key = get_cache_key(self.seg_dir, self.annot_dir, fname)
+            metrics = None
             if cache_key in cache_dict:
                 metrics = cache_dict[cache_key]
-            else:
+
+            # also recompute is metrics is None (even if found in cache) as None could indicate 
+            # that the segmentation was previously missing when metrics was last computed. 
+            # but segmentation may now be available so we still need to ignore this cached result and 
+            # recompute metrics, just incase the segmentation now exists.
+            if metrics is None:
                 metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
                 cache_dict[cache_key] = metrics
-
+    
             if metrics: 
                 all_metrics.append(metrics)
                 all_fnames.append(fname)
@@ -427,11 +436,14 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
     def add_metrics_dropdown(self):
         keys = ["f1", "accuracy", "tn","fp", "fn", "tp", 
                 "precision", "recall",
-                "annot_fg", "annot_bg"]
+                "annot_fg", "annot_bg", "area_true", "area_pred", "area_error"]
         display_names = ["Dice", "Accuracy", "True Negatives",
                          "False Positives", "False Negatives",
                          "True Positives", "Precision", "Recall",
-                         "Foreground Annotation", "Background Annotation"]
+                         "Foreground Annotation", "Background Annotation", 
+                         "Corrected Area",
+                         "Predicted Area",
+                         "Predicted - Corrected Area"]
         self.metric_combo = QtWidgets.QComboBox()
         for d in display_names:
             self.metric_combo.addItem(d)

@@ -169,8 +169,15 @@ class Thread(QtCore.QThread):
             # cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
             cache_key = get_cache_key(self.seg_dir, self.annot_dir, fname)
             metrics = None
-            if cache_key in cache_dict:
+            if cache_key in cache_dict: 
                 metrics = cache_dict[cache_key]
+                # ignore cached metric if it does not include area error.
+                # This is because the cached metric is from an older version of RootPainter
+                # and we now need to recompute the metrics to include area error
+                if metrics and 'area_error' not in metrics:
+                    metrics = None
+
+
 
             # also recompute is metrics is None (even if found in cache) as None could indicate 
             # that the segmentation was previously missing when metrics was last computed. 
@@ -199,7 +206,7 @@ class Thread(QtCore.QThread):
         
         with open(cache_dict_path, 'wb') as cache_file:
             pickle.dump(cache_dict, cache_file) 
-        print('time to get metrics =', time.time() - start)
+        print('Seconds to get metrics: ', round(time.time() - start, 2))
         self.done.emit(json.dumps([all_fnames, all_metrics]))
 
 

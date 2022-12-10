@@ -96,21 +96,7 @@ def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
 
 def get_cache_key(seg_dir, annot_dir, fname):
     fname = os.path.splitext(fname)[0] + '.png'
-    #seg_path = os.path.join(seg_dir, fname)
-    #if not os.path.isfile(seg_path):
-    #    return None # no segmentation means no metrics, meaning no cache key
-
-    #annot_path = os.path.join(annot_dir, 'train', fname)
-    #if not os.path.isfile(annot_path):
-    #    annot_path = os.path.join(annot_dir, 'val', fname)
-    #if os.path.isfile(annot_path):
-    #    annot_mtime = os.path.getmtime(annot_path)
-    #else:
-    #    annot_mtime = 0
-    #seg_mtime = os.path.getmtime(seg_path)
-    #cache_key = f'{fname}.{annot_mtime}.{seg_mtime}.pkl'
-    cache_key = fname
-    return cache_key
+    return fname
 
 def compute_seg_metrics(seg_dir, annot_dir, fname):
     

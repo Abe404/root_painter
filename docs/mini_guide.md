@@ -1,6 +1,6 @@
 ### A concise guide to using RootPainter
 
-This is a short guide to help users remember the key steps to obtaining measurements using RootPainter. 
+This is a short guide to help users remember the key steps to obtaining measurements using RootPainter.  See [main page](https://github.com/Abe404/root_painter) for additional documentation including links to videos and a colab notebook.
 
 Note: RootPainter works on maybe other objects and not just roots and soil. Modify instructions accordingly.
 

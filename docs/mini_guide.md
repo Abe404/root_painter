@@ -2,7 +2,7 @@
 
 This is a short guide to help users remember the key steps to obtaining measurements using RootPainter.  See [main page](https://github.com/Abe404/root_painter) for additional documentation including links to videos and a colab notebook.
 
-Note: RootPainter works on maybe other objects and not just roots and soil. Modify instructions accordingly.
+Note: RootPainter is primarily used for root semgentation but works for many other objects. Modify instructions accordingly.
 
 1. Open RootPainter and select 'Create training dataset'. Create a training dataset using 1000 images with a target size of 900 and 1 tile per image.
 2. Create a new project referencing the new training dataset as the source dataset.

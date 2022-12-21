@@ -1,6 +1,6 @@
 ### A concise guide to using RootPainter
 
-This is a short guide to help users remember the key steps to obtaining measurements using RootPainter.  See [main page](https://github.com/Abe404/root_painter) for additional documentation including links to videos and a colab notebook.
+This is a short guide to help users remember the key steps to obtain measurements using RootPainter.  See [main page](https://github.com/Abe404/root_painter) for additional documentation including links to videos and a colab notebook.
 
 Note: RootPainter is primarily used for root semgentation but works for many other objects. Modify instructions accordingly.
 

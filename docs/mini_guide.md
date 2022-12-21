@@ -15,7 +15,7 @@ Note: RootPainter is primarily used for root segmentation but works for many oth
 9. After a while (30 images) check the metrics plot. This is available from the extras menu. Show the metrics plot to track progress. Metrics of interest are:
     - Dice (harmonized mean of precision and recall)
     - Recall (the number of root pixels predicted to be root as ratio of total root pixels in the image
-    - Precision (number of predicted pixels that were actually rooted out of total predicted pixels)
+    - Precision (number of predicted pixels that were actually root out of total predicted root pixels)
     - Accuracy (% of image predicted correctly)
     - False positives (number of soil pixels predicted as root).
     - False negatives (number of root pixels predicted as soil).

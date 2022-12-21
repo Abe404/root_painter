@@ -4,7 +4,7 @@ This is a short guide to help users remember the key steps to obtain measurement
 
 Note: RootPainter is primarily used for root segmentation but works for many other objects. Modify instructions accordingly.
 
-1. Open RootPainter and select 'Create training dataset'. Create a training dataset using 1000 images with a target size of 900 and 1 tile per image.
+1. Open RootPainter and select 'Create training dataset'. Create a training dataset using 1000 images with a target size of 750 and 1 tile per image.
 2. Create a new project referencing the new training dataset as the source dataset.
 3. Annotate 2 images that contain both roots and soil. Don’t annotate more than (roughly estimated) 10x more soil than roots. Don’t annotate images that don’t contain roots.
 4. After 2 images are annotated click start training (from network menu) to start the network training on your annotations and annotated images.

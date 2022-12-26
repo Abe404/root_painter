@@ -217,7 +217,7 @@ def save_then_move(out_path, seg_alpha):
     """
     fname = os.path.basename(out_path)
     temp_path = os.path.join(os.path.dirname(out_path), '.tmp.' + fname)
-    imsave(temp_path, seg_alpha)
+    imsave(temp_path, seg_alpha, check_contrast=False)
 
     attempts = 0
     max_attempts = 50

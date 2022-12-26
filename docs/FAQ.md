@@ -28,7 +28,9 @@ running both client and server together, inspect the console output for the serv
 
 
   > execute_instruction segment
+  
   > ensemble segment CHNCXR_0068_0.jpg, dur 0.2
+  
   > Seconds to segment 1 images:  0.237
 
 Note: Sometimes due to slow sync time it will appear after a delay, so wait a couple of minutes just to be sure there isn’t some delay in sync.

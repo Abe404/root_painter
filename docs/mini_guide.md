@@ -4,7 +4,7 @@ This is a short guide to help users remember the key steps to obtain measurement
 
 Note: RootPainter is primarily used for root segmentation but works for many other objects. Modify instructions accordingly.
 
-1. Open RootPainter and select 'Create training dataset'. Create a training dataset using 1000 images with a target size of 750 and 1 tile per image.
+1. Open RootPainter and select 'Create training dataset'. Create a training dataset using 1000 images with a target size of 750 pixels and 1 tile per image.
 2. Create a new project referencing the new training dataset as the source dataset.
 3. Annotate 2 images that contain both roots and soil. Don’t annotate more than (roughly estimated) 10x more soil than roots. Don’t annotate images that don’t contain roots.
 4. After 2 images are annotated click start training (from network menu) to start the network training on your annotations and annotated images.
@@ -12,7 +12,7 @@ Note: RootPainter is primarily used for root segmentation but works for many oth
     - Note: if using colab or a slow server, I suggest to annotate 12-18 initial clear examples instead of 6. (A general rule is that you should not switch to corrective annotation until your model is approximately predicting the object of interest. There is not much point in correcting random noise).
 7. When 6 images are annotated (clear examples, including both root and soil), then on image 7 switch to corrective annotation. Inspect the model prediction (segmentation) for the image and assign foreground and background annotation to all of the errors in each image. Corrections don’t need to be 100% perfect in terms of capturing absolutely every incorrect pixel but aim to avoid annotating foreground on the soil and background on the root as these annotatoins errors are particularly problematic.
 8. Continue to annotate correctively, annotating the errors in each image. If root is missing from the segmentation, annotate the root or missing region of the root in red. If soil/background is predicted as root then annotate this region in green. Use a big brush to annotate the background because it is quicker. Use a small brush to annotate the roots to avoid annotating roots on the soil.
-9. If you are using colab or another slow server or have a slow connection to your GPU server, you may wish to segment some images in advance of viewing them to speed up the annotation process. To enable this select 'pre-sement' from the options menu and input a value greater than 0. I suggest starting 1 and gradually insteasing as you start to annotate faster, evantually you may wish to increase this to a value between 5-10 to avoid spending too much time waiting for segmentations to correct.
+9. If you are using colab or another slow server or have a slow connection to your GPU server, you may wish to segment some images in advance of viewing them to speed up the annotation process. To enable this select 'pre-segment' from the options menu and input a value greater than 0. I suggest starting 1 and gradually increasing as you start to annotate faster, eventually you may wish to increase this to a value between 5-10 to avoid spending too much time waiting for segmentations to correct.
 10. After a while (30 images) check the metrics plot. This is available from the extras menu. Show the metrics plot to track progress. Metrics of interest include:
     - Dice - harmonized mean of precision and recall.
     - Recall - the number of root pixels predicted to be root as ratio of total root pixels in the image.
@@ -29,7 +29,8 @@ Note: RootPainter is primarily used for root segmentation but works for many oth
 16. To inspect final segmentation output (not the segmentation generated during the interactive training process but the segmentation generated from the original images using the segment folder option) use the ‘generate composite’ functionality. This is useful for generating figures to use in presentations and in manuscripts. 
 17. To communicate that your model was accurate you can use both composites of random images and the metrics plot. The metrics plot can be right-clicked giving an export option. You may export to various formats including a PNG that can be inserted into manuscript (supplementary material etc).
 18. If you generate the composites or extract measurements and then decide later that you want to further train the model to get even better or more accurate results then you should reopen the project and annotate more images (correcting the errors on new images) whilst training. Then you should repeat steps 7-15. But give the output segmentation and results files new names, assuming a new more accurate model has been generated.
-19. Note: RootPainter displays a message stating X epochs out of 60 (or similar) when it is training. You don’t have to wait until 60 epochs without progress to use the model trained, this is optional and may only be marginally beneficial.
+19. If you decide you wish to include more images in your training dataset, then you must add these images to the existing dataset folder and then run 'extend dataset' from the extras menu with the project open.
+20. Note: RootPainter displays a message stating X epochs out of 60 (or similar) when it is training. You don’t have to wait until 60 epochs without progress to use the model trained, this is optional and may only be marginally beneficial.
 
 
 

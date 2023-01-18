@@ -547,7 +547,7 @@ class Trainer():
             if npy:
                 # a numpy array containing output for all classes.
                 x = threading.Thread(target=save_then_move,
-                                     args=(out_path, np.array(seg_maps), npy))
+                                     args=(out_paths[0], np.array(seg_maps), npy))
                 x.start()
             else: 
                 # The segmentation for each class is saved in seperate file

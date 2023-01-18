@@ -39,7 +39,7 @@ class SegmentWatchThread(QtCore.QThread):
     def run(self):
         while True:
             done_fnames = file_utils.ls(self.segment_dir)
-            done_fnames = [f for f in done_fnames if is_image(f)]
+            done_fnames = [f for f in done_fnames if is_image(f) or f.endswith('.npz')]
             count = len(done_fnames)
             if count >= self.total_images:
                 self.done.emit()

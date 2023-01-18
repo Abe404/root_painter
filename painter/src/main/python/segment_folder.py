@@ -46,7 +46,7 @@ class SegmentWatchThread(QtCore.QThread):
                 # each output file, so track progress this way.
                 if os.path.isdir(first_path):
                     done_fnames = file_utils.ls(first_path)
-                done_fnames = [f for f in done_fnames if is_image(f)]
+                done_fnames = [f for f in done_fnames if is_image(f) or f.endswith('.npz')]
             count = len(done_fnames)
             if count >= self.total_images:
                 self.done.emit()
@@ -92,7 +92,8 @@ class SegmentFolderWidget(QtWidgets.QWidget):
             "model_paths": selected_models,
             "dataset_dir": input_dir,
             "seg_dir": output_dir,
-            "file_names": all_fnames
+            "file_names": all_fnames,
+            "format": self.format_dropdown.currentText()
         }
         send_instruction('segment', content, self.instruction_dir, self.sync_dir)
         self.progress_widget = SegmentProgressWidget()
@@ -134,6 +135,15 @@ class SegmentFolderWidget(QtWidgets.QWidget):
         specify_model_btn.clicked.connect(self.select_model)
         layout.addWidget(specify_model_btn)
 
+        format_label = QtWidgets.QLabel()
+        format_label.setText("Segmentation Format: RootPainter Default")
+        layout.addWidget(format_label)
+        self.format_label = format_label
+        self.format_dropdown = QtWidgets.QComboBox()
+        self.format_dropdown.addItems(['RootPainter Default (.png)', 'RhizoVision Explorer (.png)', 'Numpy Compressed (.npz)'])
+        self.format_dropdown.currentIndexChanged.connect(self.format_selection_change)
+        layout.addWidget(self.format_dropdown)
+
         info_label = QtWidgets.QLabel()
         info_label.setText("Input directory, output directory and model"
                            " must be specified to segment folder.")
@@ -147,6 +157,8 @@ class SegmentFolderWidget(QtWidgets.QWidget):
         submit_btn.setEnabled(False)
         self.submit_btn = submit_btn
 
+    def format_selection_change(self, _):
+        self.format_label.setText("Segmentation Format: " + self.format_dropdown.currentText())
 
     def validate(self):
         if not self.input_dir:
@@ -189,6 +201,7 @@ class SegmentFolderWidget(QtWidgets.QWidget):
             self.validate()
         self.output_dialog.fileSelected.connect(output_selected)
         self.output_dialog.open()
+
 
 
     def select_model(self):

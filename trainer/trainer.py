@@ -134,8 +134,8 @@ class Trainer():
         """ get paths relative to local machine """
         new_config = {}
         for k, v in old_config.items():
-            if k == 'file_names':
-                # names dont need a path appending
+            if k == 'file_names' or k == 'format':
+                # names and format specified dont need a path appending
                 new_config[k] = v
             elif k == 'classes':
                 # classes dont need a path appending
@@ -175,6 +175,7 @@ class Trainer():
                 with open(fpath, 'r') as json_file:
                     contents = json_file.read()
                     config = self.fix_config_paths(json.loads(contents))
+                    print('config', config)
                     getattr(self, name)(config)
             except Exception as e:
                 print('Exception parsing instruction', e, traceback.format_exc())
@@ -428,6 +429,10 @@ class Trainer():
         if 'classes' in segment_config:
             classes = segment_config['classes']
 
+        format_str = 'RootPainter Default (.png)'
+        if 'format' in segment_config:
+            format_str = segment_config['format']
+        
         if "file_names" in segment_config:
             fnames = segment_config['file_names']
         else:
@@ -463,12 +468,12 @@ class Trainer():
         start = time.time()
         for fname in fnames:
             self.segment_file(in_dir, seg_dir, fname,
-                              model_paths, classes,
+                              model_paths, format_str, classes,
                               sync_save=len(fnames) == 1)
         duration = time.time() - start
         print(f'Seconds to segment {len(fnames)} images: ', round(duration, 3))
-
-    def segment_file(self, in_dir, seg_dir, fname, model_paths, classes, sync_save):
+        
+    def segment_file(self, in_dir, seg_dir, fname, model_paths, format_str, classes, sync_save):
         fpath = os.path.join(in_dir, fname)
     
         # When the client navigates through images, there is a risk that 
@@ -498,22 +503,32 @@ class Trainer():
             stack = traceback.format_exc()
             print('excpetion writing mesage', e, stack)
 
-        # Segmentations are always saved as PNG.
-        out_paths = []
-        if len(classes) > 1:
-            for c in classes:
-                out_dir = os.path.join(seg_dir, c)
-                if not os.path.isdir(out_dir):
-                    print('creating segmentation directory', out_dir)
-                    os.makedirs(out_dir)
-                out_paths.append(os.path.join(out_dir, os.path.splitext(fname)[0] + '.png'))
 
-        else:
-            out_paths.append(os.path.join(seg_dir, os.path.splitext(fname)[0] + '.png'))
+
+        npy = False
+        out_paths = []
+
+        # if using numpy we put all annotation maps in one matrix.
+        if format_str == 'Numpy Compressed (.npz)':
+            # segmentation output is a binary map.
+            npy = True
+            out_paths = [os.path.join(seg_dir, os.path.splitext(fname)[0] + '.npz')]
+        else: 
+            # if PNG then a seperate PNG for each class
+            if len(classes) > 1:
+                for c in classes:
+                    out_dir = os.path.join(seg_dir, c)
+                    if not os.path.isdir(out_dir):
+                        print('creating segmentation directory', out_dir)
+                        os.makedirs(out_dir)
+                    out_paths.append(os.path.join(out_dir, os.path.splitext(fname)[0] + '.png'))
+            else:
+                out_paths.append(os.path.join(seg_dir, os.path.splitext(fname)[0] + '.png'))
 
         if all([os.path.isfile(out_path) for out_path in out_paths]):
             print('Skip because found existing segmentation files for image')
             return
+
         if not os.path.isfile(fpath):
             print('Cannot segment as missing file', fpath)
         else:
@@ -528,25 +543,43 @@ class Trainer():
             seg_maps = ensemble_segment(model_paths, photo, self.bs,
                                         self.in_w, self.out_w, classes)
             print(f'ensemble segment {fname}, dur', round(time.time() - seg_start, 2))
+            
+            if npy:
+                # a numpy array containing output for all classes.
+                x = threading.Thread(target=save_then_move,
+                                     args=(out_path, np.array(seg_maps), npy))
+                x.start()
+            else: 
+                # The segmentation for each class is saved in seperate file
+                for seg_out, out_path in zip(seg_maps, out_paths):
+                    # catch warnings as low contrast is ok here.
+                    with warnings.catch_warnings():
 
-            # The segmentation for each class is saved in seperate file
-            for segmented, out_path in zip(seg_maps, out_paths):
-                # catch warnings as low contrast is ok here.
-                with warnings.catch_warnings():
-                    # create a version with alpha channel
-                    warnings.simplefilter("ignore")
-                    seg_alpha = np.zeros((segmented.shape[0], segmented.shape[1], 4))
-                    seg_alpha[segmented > 0] = [0, 1.0, 1.0, 0.7]
-                    # Conver to uint8 to save as png without warning
-                    seg_alpha = (seg_alpha * 255).astype(np.uint8)
+                        # create a version with alpha channel
+                        warnings.simplefilter("ignore")
+                        seg_alpha = np.zeros((segmented.shape[0], segmented.shape[1], 4))
+                        seg_alpha[segmented > 0] = [0, 1.0, 1.0, 0.7]
+                        # Conver to uint8 to save as png without warning
+                        seg_alpha = (seg_alpha * 255).astype(np.uint8)
 
-                    if sync_save:
-                        # other wise do sync because we don't want to delete the segment
-                        # instruction too early.
-                        save_then_move(out_path, seg_alpha)
-                    else:
-                        # TODO find a cleaner way to do this.
-                        # if more than one file then optimize speed over stability.
-                        x = threading.Thread(target=save_then_move,
-                                             args=(out_path, seg_alpha))
-                        x.start()
+                        if format_str == 'RhizoVision Explorer (.png)':
+                            # RVE needs segmentation in black and white
+                            # Load RootPainter blue channel and invert.
+                            seg_out = (seg_out == 0)
+                        else:
+                            # default output is PNG with alpha channel
+                            seg_alpha = np.zeros((seg_out.shape[0], seg_out.shape[1], 4))
+                            seg_alpha[seg_out > 0] = [0, 1.0, 1.0, 0.7]
+                            # Conver to uint8 to save as png without warning
+                            seg_out = (seg_alpha * 255).astype(np.uint8)
+
+                        if sync_save:
+                            # other wise do sync because we don't want to delete the segment
+                            # instruction too early.
+                            save_then_move(out_path, seg_out, npy)
+                        else:
+                            # TODO find a cleaner way to do this.
+                            # if more than one file then optimize speed over stability.
+                            x = threading.Thread(target=save_then_move,
+                                                 args=(out_path, seg_out, npy))
+                            x.start()

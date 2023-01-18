@@ -42,10 +42,9 @@ class ContextViewer(QtWidgets.QWidget):
         lowest_diff = 1000*1000
         lowest_diff_x = 0
         lowest_diff_y = 0
-
-        while x < self.full_im_np.shape[1]:
+        while (x+w) < self.full_im_np.shape[1]:
             y = 0
-            while y < self.full_im_np.shape[0]:
+            while (y+h) < self.full_im_np.shape[0]:
                 im_patch = self.full_im_np[y:y+h, x:x+w]
                 im_patch = rgb2gray(im_patch)
                 im_patch -= np.min(im_patch)

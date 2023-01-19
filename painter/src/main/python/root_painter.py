@@ -249,8 +249,9 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def update_image(self):
         # Will also update self.im_width and self.im_height
-        assert os.path.isfile(self.image_path), f"Cannot find file {self.image_path}"
-        
+        if not os.path.isfile(self.image_path):
+            QtWidgets.QMessageBox.about(self, 'Error', f"Cannot find file {self.image_path}")
+            raise Exception(f"Cannot find file {self.image_path}")
 
         # There's a problem with this function, as some images are loaded in the wrong orientation.
         image_pixmap = im_utils.fpath_to_pixmap(self.image_path)

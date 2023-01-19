@@ -136,51 +136,83 @@ class RootPainter(QtWidgets.QMainWindow):
                                             'segmentation project (.seg_proj) file')
             self.init_missing_project_ui()
 
+
+    def confirm_dataset_exists_or_respecify(self, specified_dataset_dir, proj_file_path):
+        if os.path.isdir(specified_dataset_dir):
+            return specified_dataset_dir
+        else:
+            # if the dataset directory does not exist on disk
+            # then ask them to specify it.
+            msg = QtWidgets.QMessageBox()
+            output = (f"Dataset directory {specified_dataset_dir} was not found. "
+                      f"Please specify the location of the dataset for this project.")
+            msg.setText(output)
+            msg.exec_()
+            dir_path = QtWidgets.QFileDialog.getExistingDirectory()
+            if not dir_path:
+                exit()
+
+            dataset_abs_path = os.path.abspath(dir_path)
+            datasets_abs_path = os.path.abspath(os.path.join(self.sync_dir, 'datasets'))
+            # remove the sync_dir/datasets part from the initial part of the dataset path.
+            # as the server will prepend the 'datasets' directory 
+            # when searching for the dataset.
+            dataset_rel_path = os.path.relpath(dataset_abs_path, datasets_abs_path)
+
+            # update the project file to have the newly specified dataset location.
+            with open(proj_file_path, 'r') as json_file:
+                proj_info = json.load(json_file)
+            proj_info['dataset'] = dataset_rel_path
+            with open(proj_file_path, 'w') as json_file:
+                json.dump(proj_info, json_file, indent=4)
+            return dataset_abs_path
+
     def open_project(self, proj_file_path):
         # extract json
         with open(proj_file_path, 'r') as json_file:
             settings = json.load(json_file)
-        
+        specified_dataset_dir = self.sync_dir / 'datasets' / PurePath(settings['dataset'])
+        # if dataset doesn't exist on the file system get another from the user
+        confirmed_dataset_dir = self.confirm_dataset_exists_or_respecify(
+            specified_dataset_dir, proj_file_path)
+        self.dataset_dir = confirmed_dataset_dir
+        self.proj_location = self.sync_dir / PurePath(settings['location'])
+        self.image_fnames = settings['file_names']
+        self.seg_dir = self.proj_location / 'segmentations'
+        self.log_dir = self.proj_location / 'logs'
+        self.train_annot_dir = self.proj_location / 'annotations' / 'train'
+        self.val_annot_dir = self.proj_location / 'annotations' / 'val'
 
-            self.dataset_dir = self.sync_dir / 'datasets' / PurePath(settings['dataset'])
+        self.model_dir = self.proj_location / 'models'
 
-            self.proj_location = self.sync_dir / PurePath(settings['location'])
-            self.image_fnames = settings['file_names']
-            self.seg_dir = self.proj_location / 'segmentations'
-            self.log_dir = self.proj_location / 'logs'
-            self.train_annot_dir = self.proj_location / 'annotations' / 'train'
-            self.val_annot_dir = self.proj_location / 'annotations' / 'val'
+        self.message_dir = self.proj_location / 'messages'
 
-            self.model_dir = self.proj_location / 'models'
+        self.proj_file_path = proj_file_path
 
-            self.message_dir = self.proj_location / 'messages'
+        # If there are any annotations which have already been saved
+        # then go through the annotations in the order specified
+        # by self.image_fnames
+        # and set fname (current image) to be the last image with annotation
+        last_with_annot = last_fname_with_annotations(self.image_fnames,
+                                                      self.train_annot_dir,
+                                                      self.val_annot_dir)
+        if last_with_annot:
+            fname = last_with_annot
+        else:
+            fname = self.image_fnames[0]
 
-            self.proj_file_path = proj_file_path
+        # manual override for the image to show
+        if 'image_index' in settings:
+            fname = self.image_fnames[settings['image_index']]
 
-            # If there are any annotations which have already been saved
-            # then go through the annotations in the order specified
-            # by self.image_fnames
-            # and set fname (current image) to be the last image with annotation
-            last_with_annot = last_fname_with_annotations(self.image_fnames,
-                                                          self.train_annot_dir,
-                                                          self.val_annot_dir)
-            if last_with_annot:
-                fname = last_with_annot
-            else:
-                fname = self.image_fnames[0]
-
-            # manual override for the image to show
-            if 'image_index' in settings:
-                fname = self.image_fnames[settings['image_index']]
-
-            # set first image from project to be current image
-            self.image_path = os.path.join(self.dataset_dir, fname)
-            self.update_window_title()
-            self.seg_path = os.path.join(self.seg_dir, fname)
-            self.annot_path = get_annot_path(fname, self.train_annot_dir,
-                                             self.val_annot_dir)
-            self.init_active_project_ui()
-            self.track_changes()
+        # set first image from project to be current image
+        self.image_path = os.path.join(self.dataset_dir, fname)
+        self.update_window_title()
+        self.seg_path = os.path.join(self.seg_dir, fname)
+        self.annot_path = get_annot_path(fname, self.train_annot_dir,
+                                         self.val_annot_dir)
+        self.init_active_project_ui()
+        self.track_changes()
 
 
     def update_file(self, fpath):
@@ -218,6 +250,7 @@ class RootPainter(QtWidgets.QMainWindow):
     def update_image(self):
         # Will also update self.im_width and self.im_height
         assert os.path.isfile(self.image_path), f"Cannot find file {self.image_path}"
+        
 
         # There's a problem with this function, as some images are loaded in the wrong orientation.
         image_pixmap = im_utils.fpath_to_pixmap(self.image_path)

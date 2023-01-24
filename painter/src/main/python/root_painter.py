@@ -1106,7 +1106,7 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def show_brush_size_edit(self):
          new_size, ok = QtWidgets.QInputDialog.getInt(self, "",
-                 "Bursh size can also be altered by holding shift and moving the cursor. \n \n \n Select brush size", self.scene.brush_size, 1, 300, 1)
+                 "Brush size can also be altered by holding shift and moving the cursor. \n \n \n Select brush size", self.scene.brush_size, 1, 300)
          if ok:
              self.scene.brush_size = new_size
              self.update_cursor()

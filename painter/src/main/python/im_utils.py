@@ -36,6 +36,21 @@ def is_image(fname):
     return any(fname.lower().endswith(ext) for ext in extensions)
 
 
+def all_image_paths_in_dir(dir_path):
+    root_dir = os.path.abspath(dir_path)
+    all_paths = glob.iglob(root_dir + '/**/*', recursive=True)
+    image_paths = []
+    for p in all_paths:
+        name = os.path.basename(p)
+        if name[0] != '.':
+            ext = os.path.splitext(name)[1].lower()
+            if ext in ['.png', '.jpg', '.jpeg', '.tif', '.tiff']:
+                image_paths.append(p)
+    return image_paths
+
+
+
+
 def fpath_to_pixmap(fpath):
     """ Load image from fpath and convert to a PyQt5 pixmap object """
     np_im = load_image(fpath)
@@ -86,11 +101,12 @@ def save_masked_image(seg_dir, image_dir, output_dir, fname):
     imsave(os.path.join(output_dir, os.path.splitext(fname)[0] + '.jpg'), im, quality=95)
 
 
-def save_corrected_segmentation(annot_dir, seg_dir, output_dir, fname):
+def save_corrected_segmentation(annot_fpath, seg_dir, output_dir):
     """assign the annotations (corrections) to the segmentations. This is useful
        to obtain more accurate (corrected) segmentations."""
+    fname = os.path.basename(annot_fpath)
     seg = img_as_float(imread(os.path.join(seg_dir, fname)))
-    annot = img_as_float(imread(os.path.join(annot_dir, fname)))
+    annot = img_as_float(imread(annot_fpath))
     fg = annot[:, :, 0]
     bg = annot[:, :, 1]
     seg[bg > 0] = [0,0,0,0]

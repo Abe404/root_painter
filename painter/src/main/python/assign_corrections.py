@@ -18,9 +18,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # pylint: disable=I1101,C0111,W0201,R0903,E0611, R0902, R0914
 import os
 
-from im_utils import save_corrected_segmentation
+from im_utils import save_corrected_segmentation, all_image_paths_in_dir
 from progress_widget import BaseProgressWidget
 from PyQt5 import QtCore, QtWidgets
+import traceback
 
 
 class Thread(QtCore.QThread):
@@ -34,16 +35,19 @@ class Thread(QtCore.QThread):
         self.out_dir = out_dir
 
     def run(self):
-        annot_fnames = os.listdir(str(self.annot_dir))
-        annot_fnames = [f for f in annot_fnames if os.path.splitext(f)[1] == ".png"]
-        for i, f in enumerate(annot_fnames):
-            self.progress_change.emit(i + 1, len(annot_fnames))
-            if os.path.isfile(
-                os.path.join(self.annot_dir, os.path.splitext(f)[0] + ".png")
-            ):
-                save_corrected_segmentation(
-                    self.annot_dir, self.seg_dir, self.out_dir, f
-                )
+        annot_fpaths = all_image_paths_in_dir(self.annot_dir)
+        annot_fpaths = [f for f in annot_fpaths if os.path.splitext(f)[1] == ".png"]
+        for i, f in enumerate(annot_fpaths):
+            self.progress_change.emit(i + 1, len(annot_fpaths))
+            if os.path.isfile(f):
+                try:
+                    save_corrected_segmentation(
+                        f, self.seg_dir, self.out_dir,
+                    )
+                except Exception as e:
+                    print('Exception handling', f)
+                    print(e)
+                    traceback.print_exc()
         self.done.emit()
 
 
@@ -56,9 +60,9 @@ class ProgressWidget(BaseProgressWidget):
         self.seg_dir = seg_dir
         self.out_dir = out_dir
         self.thread = Thread(annot_dir, seg_dir, out_dir)
-        annot_fnames = os.listdir(str(self.annot_dir))
-        annot_fnames = [f for f in annot_fnames if os.path.splitext(f)[1] == ".png"]
-        self.progress_bar.setMaximum(len(annot_fnames))
+        annot_fpaths = all_image_paths_in_dir(self.annot_dir)
+        annot_fpaths = [f for f in annot_fpaths if os.path.splitext(f)[1] == ".png"]
+        self.progress_bar.setMaximum(len(annot_fpaths))
         self.thread.progress_change.connect(self.onCountChanged)
         self.thread.done.connect(self.done)
         self.thread.start()

@@ -46,6 +46,7 @@ from extract_regions import ExtractRegionsWidget
 from extract_length import ExtractLengthWidget
 from extract_comp import ExtractCompWidget
 from mask_images import MaskImWidget
+from assign_corrections import AssignCorrectionsWidget
 from convert_seg import ConvertSegWidget, convert_seg_to_rve, convert_seg_to_annot
 from graphics_scene import GraphicsScene
 from graphics_view import CustomGraphicsView
@@ -470,6 +471,10 @@ class RootPainter(QtWidgets.QMainWindow):
         self.mask_im_widget = MaskImWidget()
         self.mask_im_widget.show()
 
+    def show_assign_corrections(self):
+        self.assign_corrections_widget = AssignCorrectionsWidget()
+        self.assign_corrections_widget.show()
+
     def add_extras_menu(self, menu_bar, project_open=False):
         extras_menu = menu_bar.addMenu('Extras')
         comp_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extract composites', self)
@@ -498,6 +503,10 @@ class RootPainter(QtWidgets.QMainWindow):
         mask_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Mask images', self)
         mask_btn.triggered.connect(self.show_mask_images)
         extras_menu.addAction(mask_btn)
+
+        assign_corrections_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Assign Corrections', self)
+        assign_corrections_btn.triggered.connect(self.show_assign_corrections)
+        extras_menu.addAction(assign_corrections_btn)
 
         def show_random_split():
             self.random_split_widget = RandomSplitWidget()

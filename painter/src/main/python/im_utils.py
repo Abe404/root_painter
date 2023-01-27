@@ -25,6 +25,7 @@ from PyQt5 import QtGui
 from skimage import color
 from skimage.io import imread, imsave
 from skimage import img_as_ubyte
+from skimage import img_as_float
 from skimage.transform import resize
 from skimage.color import rgb2gray
 import qimage2ndarray
@@ -83,6 +84,19 @@ def save_masked_image(seg_dir, image_dir, output_dir, fname):
     im = imread(glob_results[0])
     im[seg==0] = 0 # make background black.
     imsave(os.path.join(output_dir, os.path.splitext(fname)[0] + '.jpg'), im, quality=95)
+
+
+def save_corrected_segmentation(annot_dir, seg_dir, output_dir, fname):
+    """assign the annotations (corrections) to the segmentations. This is useful
+       to obtain more accurate (corrected) segmentations."""
+    seg = img_as_float(imread(os.path.join(seg_dir, fname)))
+    annot = img_as_float(imread(os.path.join(annot_dir, fname)))
+    fg = annot[:, :, 0]
+    bg = annot[:, :, 1]
+    seg[bg > 0] = [0,0,0,0]
+    seg[fg > 0] = [0, 1.0, 1.0, 0.7]
+    imsave(os.path.join(output_dir, fname), seg)
+
 
 def gen_composite(annot_dir, photo_dir, comp_dir, fname, ext='.jpg'):
     """ for review.

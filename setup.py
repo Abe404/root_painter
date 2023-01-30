@@ -9,7 +9,7 @@ setup(
   name = 'root_painter_trainer',
   package_dir = {'root_painter_trainer': 'trainer'},
   packages = ['root_painter_trainer'],
-  version = '0.2.24.0',
+  version = '0.2.25.0',
   license = 'GPL-2.0', 
   description = 'Trainer (server component) for RootPainter',
   long_description=long_description,
@@ -27,7 +27,7 @@ setup(
     "scipy==1.9.1",
     "Pillow==9.3.0",
     "imagecodecs==2021.8.26",
-    "torch==1.12.1",
+    "torch==1.13.1",
     "torchvision==0.13.1"
   ],
   classifiers=[

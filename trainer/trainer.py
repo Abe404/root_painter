@@ -119,8 +119,8 @@ class Trainer():
         """ get paths relative to local machine """
         new_config = {}
         for k, v in old_config.items():
-            if k == 'file_names':
-                # names dont need a path appending
+            if k == 'file_names' or k == 'format':
+                # names and format specified dont need a path appending
                 new_config[k] = v
             elif isinstance(v, list):
                 # if its a list fix each string in the list.
@@ -156,9 +156,11 @@ class Trainer():
                 with open(fpath, 'r') as json_file:
                     contents = json_file.read()
                     config = self.fix_config_paths(json.loads(contents))
+                    print('config', config)
                     getattr(self, name)(config)
             except Exception as e:
                 print('Exception parsing instruction', e)
+                print(f'{traceback.format_exc()}')
                 self.log(f'Exception parsing instruction,{e},{traceback.format_exc()}')
                 return False
         else:
@@ -379,6 +381,10 @@ class Trainer():
         """
         in_dir = segment_config['dataset_dir']
         seg_dir = segment_config['seg_dir']
+        format_str = 'RootPainter Default (.png)'
+        if 'format' in segment_config:
+            format_str = segment_config['format']
+        
         if "file_names" in segment_config:
             fnames = segment_config['file_names']
         else:
@@ -399,11 +405,11 @@ class Trainer():
         start = time.time()
         for fname in fnames:
             self.segment_file(in_dir, seg_dir, fname,
-                              model_paths, sync_save=len(fnames) == 1)
+                              model_paths, format_str, sync_save=len(fnames) == 1)
         duration = time.time() - start
         print(f'Seconds to segment {len(fnames)} images: ', round(duration, 3))
         
-    def segment_file(self, in_dir, seg_dir, fname, model_paths, sync_save):
+    def segment_file(self, in_dir, seg_dir, fname, model_paths, format_str, sync_save):
         fpath = os.path.join(in_dir, fname)
 
         # When the client navigates through images, there is a risk that 
@@ -432,8 +438,16 @@ class Trainer():
             stack = traceback.format_exc()
             print('excpetion writing mesage', e, stack)
 
-        # Segmentations are always saved as PNG.
-        out_path = os.path.join(seg_dir, os.path.splitext(fname)[0] + '.png')
+
+
+        npy = False
+        if format_str == 'Numpy Compressed (.npz)':
+            # segmentation output is a binary map.
+            npy = True
+            out_path = os.path.join(seg_dir, os.path.splitext(fname)[0] + '.npz')
+        else:
+            out_path = os.path.join(seg_dir, os.path.splitext(fname)[0] + '.png')
+
         if os.path.isfile(out_path):
             print('Skip because found existing segmentation file')
             return
@@ -448,25 +462,36 @@ class Trainer():
                 print('Exception loading', fpath, e)
                 return
             seg_start = time.time()
-            segmented = ensemble_segment(model_paths, photo, self.bs,
+            seg_out = ensemble_segment(model_paths, photo, self.bs,
                                          self.in_w, self.out_w)
             print(f'ensemble segment {fname}, dur', round(time.time() - seg_start, 2))
             # catch warnings as low contrast is ok here.
             with warnings.catch_warnings():
+            
                 # create a version with alpha channel
                 warnings.simplefilter("ignore")
-                seg_alpha = np.zeros((segmented.shape[0], segmented.shape[1], 4))
-                seg_alpha[segmented > 0] = [0, 1.0, 1.0, 0.7]
-                # Conver to uint8 to save as png without warning
-                seg_alpha  = (seg_alpha * 255).astype(np.uint8)
+
+                if format_str == 'RhizoVision Explorer (.png)':
+                    # RVE needs segmentation in black and white
+                    # Load RootPainter blue channel and invert.
+                    seg_out = (seg_out == 0)
+                elif npy:
+                    seg_out = seg_out.astype(bool)
+                else:
+                    # default output is PNG with alpha channel
+                    seg_alpha = np.zeros((seg_out.shape[0], seg_out.shape[1], 4))
+                    seg_alpha[seg_out > 0] = [0, 1.0, 1.0, 0.7]
+                    # Conver to uint8 to save as png without warning
+                    seg_out  = (seg_alpha * 255).astype(np.uint8)
+
 
                 if sync_save:
                     # other wise do sync because we don't want to delete the segment
                     # instruction too early.
-                    save_then_move(out_path, seg_alpha)
+                    save_then_move(out_path, seg_out, npy)
                 else:
                     # TODO find a cleaner way to do this.
                     # if more than one file then optimize speed over stability.
                     x = threading.Thread(target=save_then_move,
-                                         args=(out_path, seg_alpha))
+                                         args=(out_path, seg_out, npy))
                     x.start()

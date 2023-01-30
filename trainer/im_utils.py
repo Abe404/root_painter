@@ -206,7 +206,7 @@ def tiles_from_coords(image, coords, tile_shape):
         tiles.append(tile)
     return tiles
 
-def save_then_move(out_path, seg_alpha):
+def save_then_move(out_path, seg_output, npy=False):
     """ need to save as a tmp file first (.tmp.fname) and
         then rename after saving.
         this is because scripts are monitoring the segmentation folder
@@ -217,7 +217,12 @@ def save_then_move(out_path, seg_alpha):
     """
     fname = os.path.basename(out_path)
     temp_path = os.path.join(os.path.dirname(out_path), '.tmp.' + fname)
-    imsave(temp_path, seg_alpha)
+
+    if npy:
+        # numpy can be easier than PNG to work with in some scripts.
+        np.savez_compressed(temp_path, seg=seg_output)
+    else:
+        imsave(temp_path, seg_output, check_contrast=False)
 
     attempts = 0
     max_attempts = 50

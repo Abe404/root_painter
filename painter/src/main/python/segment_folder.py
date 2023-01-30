@@ -133,7 +133,9 @@ class SegmentFolderWidget(QtWidgets.QWidget):
         layout.addWidget(format_label)
         self.format_label = format_label
         self.format_dropdown = QtWidgets.QComboBox()
-        self.format_dropdown.addItems(['RootPainter Default (.png)', 'RhizoVision Explorer (.png)', 'Numpy Compressed (.npz)'])
+        self.format_dropdown.addItems(['RootPainter Default (.png)', 'RhizoVision Explorer (.png)'])
+        # nobody needs numpy yet
+        # self.format_dropdown.addItems(['RootPainter Default (.png)', 'RhizoVision Explorer (.png)', 'Numpy Compressed (.npz)'])
         self.format_dropdown.currentIndexChanged.connect(self.format_selection_change)
         layout.addWidget(self.format_dropdown)
 

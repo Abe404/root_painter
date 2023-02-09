@@ -156,7 +156,6 @@ class Trainer():
                 with open(fpath, 'r') as json_file:
                     contents = json_file.read()
                     config = self.fix_config_paths(json.loads(contents))
-                    print('config', config)
                     getattr(self, name)(config)
             except Exception as e:
                 print('Exception parsing instruction', e)

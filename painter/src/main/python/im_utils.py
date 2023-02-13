@@ -96,10 +96,10 @@ def save_masked_image(seg_dir, image_dir, output_dir, fname):
         seg = seg[:, :, 2]
     im_path = os.path.join(image_dir, os.path.splitext(fname)[0]) + '.*'
     glob_results = glob.glob(im_path)
-    im = imread(glob_results[0])
-    im[seg==0] = 0 # make background black.
-    imsave(os.path.join(output_dir, os.path.splitext(fname)[0] + '.jpg'), im, quality=95)
-
+    if glob_results:
+        im = imread(glob_results[0])
+        im[seg==0] = 0 # make background black.
+        imsave(os.path.join(output_dir, os.path.splitext(fname)[0] + '.jpg'), im, quality=95)
 
 def save_corrected_segmentation(annot_fpath, seg_dir, output_dir):
     """assign the annotations (corrections) to the segmentations. This is useful

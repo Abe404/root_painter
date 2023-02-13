@@ -20,6 +20,7 @@ from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from im_utils import save_masked_image
 from progress_widget import BaseProgressWidget
+from file_utils import ls
 
 class Thread(QtCore.QThread):
     progress_change = QtCore.pyqtSignal(int, int)
@@ -32,7 +33,7 @@ class Thread(QtCore.QThread):
         self.out_dir = out_dir
 
     def run(self):
-        seg_fnames = os.listdir(str(self.seg_dir))
+        seg_fnames = ls(self.seg_dir) # list without hidden files
         seg_fnames = [f for f in seg_fnames if os.path.splitext(f)[1] == '.png']
         for i, f in enumerate(seg_fnames):
             self.progress_change.emit(i+1, len(seg_fnames))

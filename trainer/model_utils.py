@@ -30,6 +30,13 @@ from unet import UNetGNRes
 from metrics import get_metrics
 from file_utils import ls
 
+def get_device():
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device('cuda')
+
+device = get_device()
+
 def get_latest_model_paths(model_dir, k):
     fnames = ls(model_dir)
     fnames = sorted(fnames)[-k:]
@@ -39,12 +46,12 @@ def get_latest_model_paths(model_dir, k):
 def load_model(model_path):
     model = UNetGNRes()
     try:
-        model.load_state_dict(torch.load(model_path))
+        model.load_state_dict(torch.load(model_path, device))
         model = torch.nn.DataParallel(model)
     except:
         model = torch.nn.DataParallel(model)
-        model.load_state_dict(torch.load(model_path))
-    model.cuda()
+        model.load_state_dict(torch.load(model_path, device))
+    model.to(device)
     return model
 
 def create_first_model_with_random_weights(model_dir):
@@ -56,7 +63,7 @@ def create_first_model_with_random_weights(model_dir):
     model = torch.nn.DataParallel(model)
     model_path = os.path.join(model_dir, model_name)
     torch.save(model.state_dict(), model_path)
-    model.cuda()
+    model.to(device)
     return model
 
 
@@ -195,8 +202,15 @@ def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
                 tile_idx += 1
                 tiles_to_process.append(tile)
         tiles_for_gpu = torch.from_numpy(np.array(tiles_to_process))
-        tiles_for_gpu.cuda()
         tiles_for_gpu = tiles_for_gpu.float()
+        # FIXME: Ran into a roadblock here.
+        #        MPS does not support Float64, attempted to convert to Float32
+        #        but get further issue with type mismatch:
+        #           `Input type (torch.FloatTensor) and weight type (MPSFloatType) should be the same`
+        #        Tried to change how the tensor is converted to float, but we weren't able to pin the
+        #        problem down.
+
+        tiles_for_gpu.to(device)
         batches.append(tiles_for_gpu)
 
     output_tiles = []

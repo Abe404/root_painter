@@ -40,6 +40,7 @@ from datasets import TrainDataset
 from metrics import get_metrics, get_metrics_str, get_metric_csv_row
 from model_utils import ensemble_segment
 from model_utils import create_first_model_with_random_weights
+from model_utils import get_device
 import model_utils
 from model_utils import save_if_better
 
@@ -47,6 +48,8 @@ from im_utils import is_photo, load_image, save_then_move
 from file_utils import ls
 from startup import startup_setup, ensure_required_folders_exist
 from unet import get_valid_patch_sizes
+
+device = get_device()
 
 class Trainer():
 
@@ -79,9 +82,21 @@ class Trainer():
         total_mem = 0
         self.num_workers=min(multiprocessing.cpu_count(), max_workers)
         print(self.num_workers, 'workers assigned for data loader')
+
         print('GPU Available', torch.cuda.is_available())
+        print("Device Count:", torch.cuda.device_count())
         for i in range(torch.cuda.device_count()):
             total_mem += torch.cuda.get_device_properties(i).total_memory
+
+
+        print('MPS Available', torch.backends.mps.is_available())
+        # MPS only has one device.
+        # There is no obvious way of getting memory for MPS
+        # FIXME: setting arbitrary amount of memory.
+        if torch.backends.mps.is_available():
+            total_mem = 8_589_934_592
+
+
         self.bs = total_mem // mem_per_item
         self.bs = min(12, self.bs)
         print('Batch size', self.bs)
@@ -246,9 +261,9 @@ class Trainer():
                    defined_tiles) in enumerate(train_loader):
 
             self.check_for_instructions()
-            photo_tiles = photo_tiles.cuda()
-            foreground_tiles = foreground_tiles.cuda()
-            defined_tiles = defined_tiles.cuda()
+            photo_tiles = photo_tiles.to(device)
+            foreground_tiles = foreground_tiles.to(device)
+            defined_tiles = defined_tiles.to(device)
             self.optimizer.zero_grad()
             outputs = self.model(photo_tiles)
             softmaxed = softmax(outputs, 1)

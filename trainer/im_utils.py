@@ -72,7 +72,13 @@ def load_train_image_and_annot(dataset_dir, train_annot_dir):
                                            os.path.splitext(fname)[0])
             # it's possible the image has a different extenstion
             # so use glob to get it
+            
+            # Use glob.escape to allow arbitrary strings in file paths,
+            # including [ and ]  
+            # For related bug See https://github.com/Abe404/root_painter/issues/87
+            image_path_part = glob.escape(image_path_part)
             image_path = glob.glob(image_path_part + '.*')[0]
+            
             latest_im_path = image_path
             image = load_image(image_path)
             latest_annot_path = annot_path

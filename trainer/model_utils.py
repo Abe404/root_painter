@@ -104,6 +104,12 @@ def get_val_metrics(cnn, val_annot_dir, dataset_dir, in_w, out_w, bs):
         foreground = annot[:, :, 0].astype(bool).astype(int)
         background = annot[:, :, 1].astype(bool).astype(int)
         image_path_part = os.path.join(dataset_dir, os.path.splitext(fname)[0])
+
+        # Use glob.escape to allow arbitrary strings in file paths,
+        # including [ and ]  
+        # For related bug See https://github.com/Abe404/root_painter/issues/87
+        image_path_part = glob.escape(image_path_part)
+
         image_path = glob.glob(image_path_part + '.*')[0]
         image = im_utils.load_image(image_path)
         image, pad_settings = im_utils.pad_to_min(image, min_w=572, min_h=572)

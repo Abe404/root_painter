@@ -2,6 +2,8 @@
 
 Described in the paper "RootPainter: Deep Learning Segmentation of Biological Images with Corrective Annotation"
 
+![RootPainter Interface](https://user-images.githubusercontent.com/376295/224013411-cb44c7c2-5c72-4819-98a3-6c0ab8b9ea4d.png)
+
 Published peer-reviewed paper available in the New Phytologist at:
 [https://doi.org/10.1111/nph.18387](https://doi.org/10.1111/nph.18387)
 

@@ -16,6 +16,25 @@ I suspect this is hardware specific. If you have slow hardware (such as google c
 
 RootPainter provides an interactive-machine-learning experience where what you see is what you get. Meaning the segmentations you see in the interface are an accurate representation of the models accuracy on the data you wish to process. It is OK to stop training and the model for segmentation at any time, ideally once you are happy with what you see in terms of segmentation quality. The decisions of when to stop annotation/interactive-training may also be informed by the corrective-metrics plot which is available from the extras menu. 
 
+
+#### Question - How do I decide when the model is good enough?
+
+My personal recommendation is to use the metrics plot that is available from the extras menu. When you annotate images in the RootPainter interface, if you annotate all the error (or approximately all the error) in each image then you have a measure of the model performance/generalisation to new data.
+
+The metrics plot is created by computing the difference between the initial segmentation provided by RootPainter and the segmentation with the corrections assigned. This difference gives us a measure of error for each image annotated correctively.
+
+The metrics plot allows you to compute the error in terms of accuracy, dice, precision, recall, area etc. 
+
+In the RootPainter paper we [have examples](https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387#nph18387-fig-0010) of some corrective-metrics plots for each of the datasets investigated 
+
+You can see from the first two rows in the [linked figure](https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387#nph18387-fig-0010) (labelled a) that the dice goes above 0.8 for the roots datasets. If you are also training a model for root segmentation and the running mean of your corrective dice as computed using RootPainter's integrated metrics plot is above 0.8 then you could report this (and perhaps include the plot itself in the supplementary material) as a measurement that shows your model is accurate. Exporting the plot as an image is possible by right clicking on it.
+
+The plot relies on you correcting all the error in each image. If you skip a large part of the error in each image (don't annotate it correctively) then I would not say that the corrective-metrics are an accurate measure of error.
+
+The other indicator is qualitative. You should in general have some idea that the model is doing the job from looking at the segmentations in the interface. Reporting these qualitative results in your paper is best done using the 'extract composites' feature available from the extras menu. These composites are image files that show the segmentation in combination with the input image and can be used as figures in presentations, your paper or supplement.
+
+Knowing exactly how accurate a model needs to be for your specific research question is currently out of the scope of the RootPainter software. This depends on the size of the effect you are measuring, the number of samples and the variance present in your dataset. It may be that a dice or accuracy of just 0.4 (for example) may be enough for your research question and object of interest. The metrics provided in the corrective-metrics plot may be expanded on [upon request](https://github.com/Abe404/root_painter/issues/new). The area metric, which allow you to see if a model is over- or underestimating your structure of interest based on your corrections was added recently.
+
 #### Question - Why is the segmentation not loading?
 
 #### Answer:

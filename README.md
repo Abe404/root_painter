@@ -1,19 +1,17 @@
 ## RootPainter
 
-Described in the paper "RootPainter: Deep Learning Segmentation of Biological Images with Corrective Annotation"
+RootPainter is a GUI-based software tool for the rapid training of deep neural networks for use in biological image analysis. 
+RootPainter uses a client-server architecture, allowing users with a typical laptop to utilise a GPU on a more computationally powerful server.  
+
+A detailed description is available in the paper published in the New Phytologist  [RootPainter: Deep Learning Segmentation of Biological Images with Corrective Annotation](https://doi.org/10.1111/nph.18387)
 
 ![RootPainter Interface](https://user-images.githubusercontent.com/376295/224013411-cb44c7c2-5c72-4819-98a3-6c0ab8b9ea4d.png)
 
-Published peer-reviewed paper available in the New Phytologist at:
-[https://doi.org/10.1111/nph.18387](https://doi.org/10.1111/nph.18387)
-
 To see a list of work using (or citing) the RootPainter paper, please see the [google scholar page](https://scholar.google.com/scholar?cites=12740268016453642124)
 
-BioRxiv Pre-print available at:
+A BioRxiv Pre-print (earlier version of the paper) is available at:
 [https://www.biorxiv.org/content/10.1101/2020.04.16.044461v2](https://www.biorxiv.org/content/10.1101/2020.04.16.044461v2)
 
-RootPainter is a GUI-based software tool for the rapid training of deep neural networks for use in biological image analysis. 
-RootPainter uses a client-server architecture, allowing users with a typical laptop to utilise a GPU on a more computationally powerful server.   
 
 ### Getting started quickly
 

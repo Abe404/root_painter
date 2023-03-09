@@ -7,7 +7,7 @@ I wanted to skip back to the first few images I've used to show the annotation a
 With the project open, go to the extras menu and view metrics plot. Then click on the image point in the metrics plot and it will take you to the corresponding image in the viewer.
 
 #### Question -  Should I let training finish?
-Should let the training go on until it reaches 60 epochs out of 60 with no progress? Does it become more robust by doing this?
+Should I let the training go on until it reaches 60 epochs out of 60 with no progress? Does it become more robust by doing this?
 
 #### Answer:
 We experimented with this in the original study. See [Figure 8](https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387#nph18387-fig-0008). In short, we found that letting the model train to completion can provide some marginal benefits in some cases.

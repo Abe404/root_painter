@@ -2,7 +2,7 @@
 
 
 ##### Table of contents
-  * [Question - How do I skip to earlier images?](#question----How-do-I-skip-to-images?)
+  * [Question - How do I skip to earlier images?](#question---how-do-i-skip-to-images)
   * [Question - Should I let training finish?](#question----should-i-let-training-finish)
   * [Question - How do I decide when the model is good enough?](#question---how-do-i-decide-when-the-model-is-good-enough)
   * [Question - Why is the segmentation not loading?](#question---why-is-the-segmentation-not-loading)

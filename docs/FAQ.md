@@ -2,14 +2,14 @@
 
 
 ##### Table of contents
-  * [Question - [Skipping to images](https://github.com/Abe404/root_painter/issues/59)](#question----skipping-to-images--https---githubcom-abe404-root-painter-issues-59-)
-  * [Question -  Should I let training finish?](#question----should-i-let-training-finish-)
+  * [Question - How do I skip to earlier images?](#question----skipping-to-images--https---githubcom-abe404-root-painter-issues-59-)
+  * [Question - Should I let training finish?](#question----should-i-let-training-finish-)
   * [Question - How do I decide when the model is good enough?](#question---how-do-i-decide-when-the-model-is-good-enough-)
   * [Question - Why is the segmentation not loading?](#question---why-is-the-segmentation-not-loading-)
  
 
 
-#### Question - [Skipping to images](https://github.com/Abe404/root_painter/issues/59)
+#### Question - [How do I skip to earlier images?](https://github.com/Abe404/root_painter/issues/59)
 I wanted to skip back to the first few images I've used to show the annotation approach/progress. Is there any easier way to do it than pressing back and waiting for each image to load?
 
 #### Answer:

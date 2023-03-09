@@ -17,7 +17,13 @@ RootPainter uses a client-server architecture, allowing users with a typical lap
 
  I suggest the [colab tutorial](https://colab.research.google.com/drive/104narYAvTBt-X4QEDrBSOZm_DRaAKHtA?usp=sharing).
  
- A  shorter [mini guide](https://github.com/Abe404/root_painter/blob/master/docs/mini_guide.md) is available including more concise instruction, that could be used as reference. I suggest the paper, videos and then colab tutorial to get an idea of how the software interface could be used and then this mini guide for reference to help remember each of the key steps to get from raw data to final measurements.
+ A  shorter [mini guide](https://github.com/Abe404/root_painter/blob/master/docs/mini_guide.md) is available including more concise instruction, that could be used as reference. I suggest the paper, videos and then colab tutorial to get an idea of how the software interface could be used and then this mini guide for reference to help remember each of the key steps to get from raw data to final measurements. 
+ 
+ 
+ 
+ ### Questions and Problems
+ 
+The [FAQ](https://github.com/Abe404/root_painter/blob/master/docs/FAQ.md) may  be worth checking before reaching out with any questions you have. If you do have a question you can either email me or post in the [discussions](https://github.com/Abe404/root_painter/discussions). If you have an issue/ have identified a problem with the software then you can [post an issue](https://github.com/Abe404/root_painter/issues).
  
 ### Videos
 A video demonstrating how to train and use a model is available to [download](https://nph.onlinelibrary.wiley.com/action/downloadSupplement?doi=10.1111%2Fnph.18387&file=nph18387-sup-0002-VideoS1.mp4)
@@ -57,5 +63,5 @@ RootPainter will then create some folders inside ~/root_painter_sync.
 The server should print the automatically selected batch size, which should be greater than 0. It will then start watching for instructions from the client.
 
 You should now be able to see the folders created by RootPainter (datasets, instructions and projects) inside ~/Desktop/root_painter_sync on your local machine 
-See [lung tutorial](docs/cxr_lung_tutorial.md) for an example of how to use RootPainter to train a model.
+See [lung tutorial](docs/cxr_lung_tutorial.md) for an example of how to use RootPainter to train a model. I now actually suggest following the [colab tutorial](https://colab.research.google.com/drive/104narYAvTBt-X4QEDrBSOZm_DRaAKHtA?usp=sharing) instructions but using your local setup instead of the colab server, as these are easier to follow than the lung tutorial.
 

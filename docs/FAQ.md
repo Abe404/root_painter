@@ -1,4 +1,4 @@
-### Frequently asked questions (at least once)
+### Frequently asked questions
 
 #### Question - [Skipping to images](https://github.com/Abe404/root_painter/issues/59)
 I wanted to skip back to the first few images I've used to show the annotation approach/progress. Is there any easier way to do it than pressing back and waiting for each image to load?

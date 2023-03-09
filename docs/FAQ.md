@@ -1,5 +1,14 @@
 ### Frequently asked questions
 
+
+##### Table of contents
+  * [Question - [Skipping to images](https://github.com/Abe404/root_painter/issues/59)](#question----skipping-to-images--https---githubcom-abe404-root-painter-issues-59-)
+  * [Question -  Should I let training finish?](#question----should-i-let-training-finish-)
+  * [Question - How do I decide when the model is good enough?](#question---how-do-i-decide-when-the-model-is-good-enough-)
+  * [Question - Why is the segmentation not loading?](#question---why-is-the-segmentation-not-loading-)
+ 
+
+
 #### Question - [Skipping to images](https://github.com/Abe404/root_painter/issues/59)
 I wanted to skip back to the first few images I've used to show the annotation approach/progress. Is there any easier way to do it than pressing back and waiting for each image to load?
 
@@ -18,6 +27,8 @@ RootPainter provides an interactive-machine-learning experience where what you s
 
 
 #### Question - How do I decide when the model is good enough?
+
+#### Answer
 
 My personal recommendation is to use the metrics plot that is available from the extras menu. When you annotate images in the RootPainter interface, if you annotate all the error (or approximately all the error) in each image then you have a measure of the model performance/generalisation to new data.
 

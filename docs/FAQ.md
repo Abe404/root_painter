@@ -12,9 +12,9 @@ Should I let the training go on until it reaches 60 epochs out of 60 with no pro
 #### Answer:
 We experimented with this in the original study. See [Figure 8](https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387#nph18387-fig-0008). In short, we found that letting the model train to completion can provide some marginal benefits in some cases.
 
-I suspect this is hardware specific. If you have slow hardware (such as google colab) then it's more likely that the hardware is a bottleneck and it's training time (rather than amount of annotation) that is the main bottleneck preventing performance improvements. In this case letting the model train for a bit longer may provide more benefits.
+I suspect this is hardware specific. If you have slow hardware (such as google colab) then it's more likely that the hardware is a bottleneck and it is training time (rather than amount of annotation) that is the main bottleneck preventing performance improvements. In this case letting the model train for a bit longer may provide more benefits.
 
-RootPainter provides an interactive-machine-learning experience where what you see is what you get. Meaning the segmentations you see in the interface are an accurate representation of the models accuracy. It is OK to stop training and use it for segmentation once you are happy with what you see in terms of segmentation quality. The decisions of when to stop annotation/interactive-training may also be informed by the corrective-metrics plot which is available from the extras menu. 
+RootPainter provides an interactive-machine-learning experience where what you see is what you get. Meaning the segmentations you see in the interface are an accurate representation of the models accuracy on the data you wish to process. It is OK to stop training and the model for segmentation at any time, ideally once you are happy with what you see in terms of segmentation quality. The decisions of when to stop annotation/interactive-training may also be informed by the corrective-metrics plot which is available from the extras menu. 
 
 #### Question - Why is the segmentation not loading?
 

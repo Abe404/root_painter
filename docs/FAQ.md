@@ -10,7 +10,7 @@ With the project open, go to the extras menu and view metrics plot. Then click o
 Should let the training go on until it reaches 60 epochs out of 60 with no progress? Does it become more robust by doing this?
 
 #### Answer:
-We experimented with this in the original study. See (Figure 8)[https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387#nph18387-fig-0008]. In short, we found that letting the model train to completion can provide some marginal benefits in some cases.
+We experimented with this in the original study. See [Figure 8](https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387#nph18387-fig-0008). In short, we found that letting the model train to completion can provide some marginal benefits in some cases.
 
 I suspect this is hardware specific. If you have slow hardware (such as google colab) then it's more likely that the hardware is a bottleneck and it's training time (rather than amount of annotation) that is the main bottleneck preventing performance improvements. In this case letting the model train for a bit longer may provide more benefits.
 

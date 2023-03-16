@@ -6,7 +6,7 @@
   * [Question - Should I let training finish?](#question----should-i-let-training-finish)
   * [Question - How do I decide when the model is good enough?](#question---how-do-i-decide-when-the-model-is-good-enough)
   * [Question - Why is the segmentation not loading?](#question---why-is-the-segmentation-not-loading)
-  * [Question - I tried running the client from source on ubuntu and got an error related to the Qt platform plugin "xcb"](#question---on-ubuntu-i-get-an error-related-to-xcb)
+  * [Question - On ubuntu I get an error related to xcb](#question---on-ubuntu-i-get-an error-related-to-xcb)
   * [Question - How can I use RootPainter for a multiclass segmentation task?](#question---how-can-i-use-rootpainter-for-a-multiclass-segmentation-task)
 
 <!---

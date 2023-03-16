@@ -80,3 +80,23 @@ Note: Sometimes due to slow sync time it will appear after a delay, so wait a co
 
 Hopefully, even if it doesn’t solve the problem, these instructions will help you get more information that will help us figure out what is going wrong. If you think you have found a bug in the software then feel free to report an issue (https://github.com/Abe404/root_painter/issues) 
 
+
+
+#### Question - I tried running the client from source on ubuntu and got an error related to the Qt platform plugin "xcb"
+The error message is as follows:
+```
+qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
+This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
+
+Available platform plugins are: eglfs, linuxfb, minimal, minimalegl, offscreen, vnc, wayland-egl, wayland, wayland-xcomposite-egl, wayland-xcomposite-glx, webgl, xcb.
+```
+#### Answer
+
+As outlined in this [forum discussion answer](https://forum.qt.io/topic/93247/qt-qpa-plugin-could-not-load-the-qt-platform-plugin-xcb-in-even-though-it-was-found/20?_=1678962734314&lang=en-GB) installing libxcb-xinerama0 appears to fix the problem. Which can be done with the following command:
+
+```
+sudo apt-get install libxcb-xinerama0
+```
+
+
+

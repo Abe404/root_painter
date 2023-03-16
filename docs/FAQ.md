@@ -99,4 +99,20 @@ sudo apt-get install libxcb-xinerama0
 ```
 
 
+#### Question - How can I use RootPainter for a multiclass segmentation task? 
+
+#### Answer 
+
+It's possible to train a binary single class model for each of your classes. A more experimental (developer friendly) multiclass version of RootPainter is also availale in the branch named 'multiclass'. When more testing has been done, I will make it available in a more user-friendly client installer.
+
+A [colab notebook](https://colab.research.google.com/drive/1n1Iku3FwoLI0ImLTRQmMGawRyUU4YEJN) is available that runs the multiclass version of RootPainter.
+Classes can be specified when creating a project. Each class that is specified implicity has it's own background, thus a backround class does not need to be explicitly specified. Foreground and background annotation should be assigned correctively for each class for each image.
+
+The multiclass client can be ran from source by using git to clone the repo and swith to the multiclass branch.
+```
+git clone --single-branch --branch multiclass https://github.com/Abe404/root_painter.git
+```
+
+
+
 

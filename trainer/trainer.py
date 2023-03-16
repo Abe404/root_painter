@@ -557,8 +557,8 @@ class Trainer():
 
                         # create a version with alpha channel
                         warnings.simplefilter("ignore")
-                        seg_alpha = np.zeros((segmented.shape[0], segmented.shape[1], 4))
-                        seg_alpha[segmented > 0] = [0, 1.0, 1.0, 0.7]
+                        seg_alpha = np.zeros((seg_out.shape[0], seg_out.shape[1], 4))
+                        seg_alpha[seg_out > 0] = [0, 1.0, 1.0, 0.7]
                         # Conver to uint8 to save as png without warning
                         seg_alpha = (seg_alpha * 255).astype(np.uint8)
 

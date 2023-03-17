@@ -119,6 +119,6 @@ git clone --single-branch --branch multiclass https://github.com/Abe404/root_pai
 
 #### Question - I already have a trained model. Do I still need a GPU for segmentation?
 
-Yes, a GPU is required for both training and segmentation. Other functionality, such as generating composites, converting segmentations for Rhizivision explorer and extracting measurements does not require the GPU and can be computed using the client only.
+Yes, a GPU is required for both training and segmentation. Other functionality, such as generating composites, converting segmentations for Rhizivision explorer and extracting measurements does not require a powerful GPU and can be computed using the client only.
 
 

@@ -14,13 +14,10 @@
 -->
 
 
-
-
-
 #### Question - [How do I skip to images?](https://github.com/Abe404/root_painter/issues/59)
-I wanted to skip back to the first few images I've used to show the annotation approach/progress. Is there any easier way to do it than pressing back and waiting for each image to load?
 
-#### Answer:
+If you want to skip back to the first few images to show the annotation approach/progress. There is an easier way to do it than pressing back and waiting for each image to load.
+
 With the project open, go to the extras menu and view metrics plot. Then click on the image point in the metrics plot and it will take you to the corresponding image in the viewer.
 
 #### Question -  Should I let training finish?
@@ -36,7 +33,6 @@ RootPainter provides an interactive-machine-learning experience where what you s
 
 #### Question - How do I decide when the model is good enough?
 
-#### Answer
 
 My personal recommendation is to use the metrics plot that is available from the extras menu. When you annotate images in the RootPainter interface, if you annotate all the error (or approximately all the error) in each image then you have a measure of the model performance/generalisation to new data.
 
@@ -91,14 +87,14 @@ Hopefully, even if it doesn’t solve the problem, these instructions will help 
 
 
 #### Question - On ubuntu I get an error related to xcb
-The error message is as follows:
+
+The error message may be similar to the following:
 ```
 qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
 This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
 
 Available platform plugins are: eglfs, linuxfb, minimal, minimalegl, offscreen, vnc, wayland-egl, wayland, wayland-xcomposite-egl, wayland-xcomposite-glx, webgl, xcb.
 ```
-#### Answer
 
 As outlined in this [forum discussion answer](https://forum.qt.io/topic/93247/qt-qpa-plugin-could-not-load-the-qt-platform-plugin-xcb-in-even-though-it-was-found/20?_=1678962734314&lang=en-GB) installing libxcb-xinerama0 appears to fix the problem. Which can be done with the following command:
 
@@ -108,8 +104,6 @@ sudo apt-get install libxcb-xinerama0
 
 
 #### Question - How can I use RootPainter for a multiclass segmentation task? 
-
-#### Answer 
 
 It's possible to train a binary single class model for each of your classes. A more experimental (developer friendly) multiclass version of RootPainter is also availale in the branch named 'multiclass'. When more testing has been done, I will make it available in a more user-friendly client installer.
 
@@ -122,5 +116,8 @@ git clone --single-branch --branch multiclass https://github.com/Abe404/root_pai
 ```
 
 
+#### Question - I already have a trained model. Do I still require a GPU for image segmentation?
+
+Yes, a GPU is required for both training and segmentation. Other functionality, such as generating composites, converting segmentations for Rhizivision explorer and extracting measurements does not require the GPU and can be computed using the client only.
 
 

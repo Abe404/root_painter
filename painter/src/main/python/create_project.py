@@ -172,7 +172,8 @@ class CreateProjectWidget(QtWidgets.QWidget):
 
 
     def select_photo_dir(self):
-        self.photo_dialog = QtWidgets.QFileDialog(self)
+        self.photo_dialog = QtWidgets.QFileDialog(self, directory=os.path.join(self.sync_dir, 'datasets'))
+
         self.photo_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
         def output_selected():
             self.selected_dir = self.photo_dialog.selectedFiles()[0]

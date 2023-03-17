@@ -22,9 +22,9 @@ If you want to skip back to the first few images it is possible to do this with 
 With the project open, go to the extras menu and click on view metrics plot. Then click on the image point in the metrics plot and it will take you to the corresponding image in the viewer.
 
 #### Question -  Should I let training finish?
-Should I let the training go on until it reaches 60 epochs out of 60 with no progress? Does it become more robust by doing this?
 
-#### Answer:
+I you stop annotating and let the training continue it will eventually reach 60 epochs out of 60 with no progress. It may not be easy for you to do this with your hardware (colab, for example, has some time contraints). You may be wondering if leaving training to finish is essential and if it makes the model more robust.
+
 We experimented with this in the original study. See [Figure 8](https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387#nph18387-fig-0008). In short, we found that letting the model train to completion can provide some marginal benefits in some cases.
 
 I suspect this is hardware specific. If you have slow hardware (such as google colab) then it's more likely that the hardware is a bottleneck and it is training time (rather than amount of annotation) that is the main bottleneck preventing performance improvements. In this case letting the model train for a bit longer may provide more benefits.

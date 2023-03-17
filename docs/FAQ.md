@@ -17,9 +17,9 @@
 
 #### Question - [How do I skip to images?](https://github.com/Abe404/root_painter/issues/59)
 
-If you want to skip back to the first few images to show the annotation approach/progress. There is an easier way to do it than pressing back and waiting for each image to load.
+If you want to skip back to the first few images it is possible to do this with the back/previous button but for large projects this can take a while as you will need to wait for each image to load. A more efficient method is possible using the metrics plot.
 
-With the project open, go to the extras menu and view metrics plot. Then click on the image point in the metrics plot and it will take you to the corresponding image in the viewer.
+With the project open, go to the extras menu and click on view metrics plot. Then click on the image point in the metrics plot and it will take you to the corresponding image in the viewer.
 
 #### Question -  Should I let training finish?
 Should I let the training go on until it reaches 60 epochs out of 60 with no progress? Does it become more robust by doing this?

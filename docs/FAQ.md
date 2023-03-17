@@ -23,7 +23,7 @@ With the project open, go to the extras menu and click on view metrics plot. The
 
 #### Question -  Should I let training finish?
 
-If you stop annotating and let the training continue it will eventually reach 60 epochs out of 60 with no progress. It may not be easy for you to do this with your hardware (colab, for example, has some time contraints). You may be wondering if leaving training to finish is essential and if it makes the model more robust.
+If you stop annotating and let  training continue it will eventually reach 60 epochs out of 60 with no progress. It may not be easy for you to do this with your hardware (the free version of colab, for example, has time contraints). You may be wondering if leaving training to finish is essential and if it makes the model more robust.
 
 We experimented with this in the original study. See [Figure 8](https://nph.onlinelibrary.wiley.com/doi/full/10.1111/nph.18387#nph18387-fig-0008). In short, we found that letting the model train to completion can provide some marginal benefits in some cases.
 

@@ -8,7 +8,7 @@
   * [Question - Why is the segmentation not loading?](#question---why-is-the-segmentation-not-loading)
   * [Question - On ubuntu I get an error related to xcb](#question---on-ubuntu-i-get-an-error-related-to-xcb)
   * [Question - How can I use RootPainter for a multiclass segmentation task?](#question---how-can-i-use-rootpainter-for-a-multiclass-segmentation-task)
-  * [Question - I already have a trained model. Do I still need a GPU for segmentation?](#question--i-already-have-a-trained-model.-do-i-still-need-a-GPU-for-segmentation?)
+  * [Question - I already have a trained model. Do I still need a GPU for segmentation?](#question--i-already-have-a-trained-model-do-i-still-need-a-GPU-for-segmentation?)
 
 <!---
 <small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>

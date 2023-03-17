@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # too many public methods
 
 import sys
+import subprocess
 import os
 from pathlib import PurePath, Path
 import json
@@ -450,6 +451,14 @@ class RootPainter(QtWidgets.QMainWindow):
         self.setWindowTitle("RootPainter")
         self.resize(layout.sizeHint())
 
+    def open_sync_directory(self):
+        if sys.platform == "darwin": # Mac/OSX
+            subprocess.call(['open', self.sync_dir])
+        elif sys.platform == 'win32': # Windows
+            os.startfile(self.sync_dir)
+        else: # assume linux/ubuntu
+            subprocess.call(['xdg-open', self.sync_dir])
+
     def specify_sync_directory(self):
         """ User may choose to update the sync directory.
             This may happen if they initially specified the wrong
@@ -499,6 +508,11 @@ class RootPainter(QtWidgets.QMainWindow):
         specify_sync_dir_btn.triggered.connect(self.specify_sync_directory)
         extras_menu.addAction(specify_sync_dir_btn)
 
+        open_sync_dir_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                 'Open sync directory',
+                                                 self)
+        open_sync_dir_btn.triggered.connect(self.open_sync_directory)
+        extras_menu.addAction(open_sync_dir_btn)
 
         mask_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Mask images', self)
         mask_btn.triggered.connect(self.show_mask_images)

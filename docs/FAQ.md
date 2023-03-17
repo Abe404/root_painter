@@ -8,6 +8,7 @@
   * [Question - Why is the segmentation not loading?](#question---why-is-the-segmentation-not-loading)
   * [Question - On ubuntu I get an error related to xcb](#question---on-ubuntu-i-get-an-error-related-to-xcb)
   * [Question - How can I use RootPainter for a multiclass segmentation task?](#question---how-can-i-use-rootpainter-for-a-multiclass-segmentation-task)
+  * [Question - I already have a trained model. Do I still need a GPU for segmentation?](#question--i-already-have-a-trained-model.-do-i-still-need-a-GPU-for-segmentation?)
 
 <!---
 <small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
@@ -116,7 +117,7 @@ git clone --single-branch --branch multiclass https://github.com/Abe404/root_pai
 ```
 
 
-#### Question - I already have a trained model. Do I still require a GPU for image segmentation?
+#### Question - I already have a trained model. Do I still need a GPU for segmentation?
 
 Yes, a GPU is required for both training and segmentation. Other functionality, such as generating composites, converting segmentations for Rhizivision explorer and extracting measurements does not require the GPU and can be computed using the client only.
 

@@ -162,6 +162,12 @@ def get_val_metrics(cnn, val_annot_dirs, dataset_dir,
 
         # Prediction should include channels for each class.
         image_path_part = os.path.join(dataset_dir, os.path.splitext(fname)[0])
+
+        # Use glob.escape to allow arbitrary strings in file paths,
+        # including [ and ]  
+        # For related bug See https://github.com/Abe404/root_painter/issues/87
+        image_path_part = glob.escape(image_path_part)
+
         image_path = glob.glob(image_path_part + '.*')[0]
         image_paths.append(image_path)
         

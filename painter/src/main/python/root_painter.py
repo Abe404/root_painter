@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # too many public methods
 
 import sys
+import subprocess
 import os
 from pathlib import PurePath, Path
 import json
@@ -45,6 +46,8 @@ from extract_count import ExtractCountWidget
 from extract_regions import ExtractRegionsWidget
 from extract_length import ExtractLengthWidget
 from extract_comp import ExtractCompWidget
+from mask_images import MaskImWidget
+from assign_corrections import AssignCorrectionsWidget
 from convert_seg import ConvertSegWidget, convert_seg_to_rve, convert_seg_to_annot
 from graphics_scene import GraphicsScene
 from graphics_view import CustomGraphicsView
@@ -57,6 +60,7 @@ import im_utils
 from instructions import send_instruction
 from plot_seg_metrics import MetricsPlot, ExtractMetricsWidget
 from im_viewer import ContextViewer
+from random_split import RandomSplitWidget
 use_plugin("pil")
 
 Image.MAX_IMAGE_PIXELS = None
@@ -149,68 +153,97 @@ class RootPainter(QtWidgets.QMainWindow):
         else:
             return self.proj_location / 'annotations' / 'val'
 
+    def confirm_dataset_exists_or_respecify(self, specified_dataset_dir, proj_file_path):
+        if os.path.isdir(specified_dataset_dir):
+            return specified_dataset_dir
+        else:
+            # if the dataset directory does not exist on disk
+            # then ask them to specify it.
+            msg = QtWidgets.QMessageBox()
+            output = (f"Dataset directory {specified_dataset_dir} was not found. "
+                      f"Please specify the location of the dataset for this project.")
+            msg.setText(output)
+            msg.exec_()
+            dir_path = QtWidgets.QFileDialog.getExistingDirectory()
+            if not dir_path:
+                exit()
+
+            dataset_abs_path = os.path.abspath(dir_path)
+            datasets_abs_path = os.path.abspath(os.path.join(self.sync_dir, 'datasets'))
+            # remove the sync_dir/datasets part from the initial part of the dataset path.
+            # as the server will prepend the 'datasets' directory 
+            # when searching for the dataset.
+            dataset_rel_path = os.path.relpath(dataset_abs_path, datasets_abs_path)
+
+            # update the project file to have the newly specified dataset location.
+            with open(proj_file_path, 'r') as json_file:
+                proj_info = json.load(json_file)
+            proj_info['dataset'] = dataset_rel_path
+            with open(proj_file_path, 'w') as json_file:
+                json.dump(proj_info, json_file, indent=4)
+            return dataset_abs_path
+
     def open_project(self, proj_file_path):
         # extract json
         with open(proj_file_path, 'r') as json_file:
             settings = json.load(json_file)
-            self.dataset_dir = self.sync_dir / 'datasets' / PurePath(settings['dataset'])
+        specified_dataset_dir = self.sync_dir / 'datasets' / PurePath(settings['dataset'])
+        # if dataset doesn't exist on the file system get another from the user
+        confirmed_dataset_dir = self.confirm_dataset_exists_or_respecify(
+            specified_dataset_dir, proj_file_path)
+        self.dataset_dir = confirmed_dataset_dir
+        self.proj_location = self.sync_dir / PurePath(settings['location'])
+        self.image_fnames = settings['file_names']
+        self.seg_dir = self.proj_location / 'segmentations'
+        self.log_dir = self.proj_location / 'logs'
+        self.train_annot_dir = self.proj_location / 'annotations' / 'train'
+        self.val_annot_dir = self.proj_location / 'annotations' / 'val'
 
-            self.proj_location = self.sync_dir / PurePath(settings['location'])
-            self.image_fnames = settings['file_names']
-            self.seg_dir = self.proj_location / 'segmentations'
-            self.log_dir = self.proj_location / 'logs'
+        train_annot_dirs = []
+        val_annot_dirs = []
 
-            train_annot_dirs = []
-            val_annot_dirs = []
+        # if going with a single class or old style settings
+        # then use old style project structure with single train and val
+        # folder, without the class name being specified
+        if "classes" in settings and len(settings['classes']) > 1:
+            # if more than one class is present then create train and val folders for each class
+            self.classes = settings['classes']
+            self.cur_class = self.classes[0]
+            for c in self.classes:
+                train_annot_dirs.append(self.proj_location / 'annotations' / c / 'train')
+                val_annot_dirs.append(self.proj_location / 'annotations' / c / 'val')
+            self.train_annot_dirs = train_annot_dirs
+            self.val_annot_dirs = val_annot_dirs
+        else:         
+            self.classes = ['annotations'] # default class for single class project.
+            self.cur_class = self.classes[0]
+            self.train_annot_dirs = [self.proj_location / 'annotations' / 'train']
+            self.val_annot_dirs = [self.proj_location / 'annotations' / 'val']
+        
+        self.model_dir = self.proj_location / 'models'
+        self.message_dir = self.proj_location / 'messages'
 
-            # if going with a single class or old style settings
-            # then use old style project structure with single train and val
-            # folder, without the class name being specified
-            if "classes" in settings and len(settings['classes']) > 1:
-                # if more than one class is present then create train and val folders for each class
-                self.classes = settings['classes']
-                self.cur_class = self.classes[0]
-                for c in self.classes:
-                    train_annot_dirs.append(self.proj_location / 'annotations' / c / 'train')
-                    val_annot_dirs.append(self.proj_location / 'annotations' / c / 'val')
-                self.train_annot_dirs = train_annot_dirs
-                self.val_annot_dirs = val_annot_dirs
-            else:         
-                self.classes = ['annotations'] # default class for single class project.
-                self.cur_class = self.classes[0]
-                self.train_annot_dirs = [self.proj_location / 'annotations' / 'train']
-                self.val_annot_dirs = [self.proj_location / 'annotations' / 'val']
-            
-            self.model_dir = self.proj_location / 'models'
+        self.proj_file_path = proj_file_path
+        # If there are any annotations which have already been saved
+        # then go through the annotations in the order specified
+        # by self.image_fnames
+        # and set fname (current image) to be the last image with annotation
+        last_with_annot = last_fname_with_annotations(self.image_fnames,
+                                                      self.train_annot_dirs,
+                                                      self.val_annot_dirs)
+        if last_with_annot:
+            fname = last_with_annot
+        else:
+            fname = self.image_fnames[0]
 
-            self.message_dir = self.proj_location / 'messages'
-
-            self.proj_file_path = proj_file_path
-
-            # If there are any annotations which have already been saved
-            # then go through the annotations in the order specified
-            # by self.image_fnames
-            # and set fname (current image) to be the last image with annotation
-            last_with_annot = last_fname_with_annotations(self.image_fnames,
-                                                          self.train_annot_dirs,
-                                                          self.val_annot_dirs)
-            if last_with_annot:
-                fname = last_with_annot
-            else:
-                fname = self.image_fnames[0]
-
-            # manual override for the image to show
-            if 'image_index' in settings:
-                fname = self.image_fnames[settings['image_index']]
-
-            # set first image from project to be current image
-            self.image_path = os.path.join(self.dataset_dir, fname)
-            self.update_window_title()
-            
-            self.annot_path = get_annot_path(fname, self.get_train_annot_dir(),
-                                             self.get_val_annot_dir())
-            self.init_active_project_ui()
-            self.track_changes()
+        # set first image from project to be current image
+        self.image_path = os.path.join(self.dataset_dir, fname)
+        self.update_window_title()
+        self.seg_path = os.path.join(self.seg_dir, fname)
+        self.annot_path = get_annot_path(fname, self.train_annot_dir,
+                                         self.val_annot_dir)
+        self.init_active_project_ui()
+        self.track_changes()
 
 
     def update_class(self, class_name):
@@ -273,7 +306,9 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def update_image(self):
         # Will also update self.im_width and self.im_height
-        assert os.path.isfile(self.image_path), f"Cannot find file {self.image_path}"
+        if not os.path.isfile(self.image_path):
+            QtWidgets.QMessageBox.about(self, 'Error', f"Cannot find file {self.image_path}")
+            raise Exception(f"Cannot find file {self.image_path}")
 
         # There's a problem with this function, as some images are loaded in the wrong orientation.
         image_pixmap = im_utils.fpath_to_pixmap(self.image_path)
@@ -471,6 +506,14 @@ class RootPainter(QtWidgets.QMainWindow):
         self.setWindowTitle("RootPainter")
         self.resize(layout.sizeHint())
 
+    def open_sync_directory(self):
+        if sys.platform == "darwin": # Mac/OSX
+            subprocess.call(['open', self.sync_dir])
+        elif sys.platform == 'win32': # Windows
+            os.startfile(self.sync_dir)
+        else: # assume linux/ubuntu
+            subprocess.call(['xdg-open', self.sync_dir])
+
     def specify_sync_directory(self):
         """ User may choose to update the sync directory.
             This may happen if they initially specified the wrong
@@ -488,6 +531,13 @@ class RootPainter(QtWidgets.QMainWindow):
             self.sync_dir = Path(json.load(open(settings_path, 'r'))['sync_dir'])
             self.assign_sync_directory(self.sync_dir)
 
+    def show_mask_images(self):
+        self.mask_im_widget = MaskImWidget()
+        self.mask_im_widget.show()
+
+    def show_assign_corrections(self):
+        self.assign_corrections_widget = AssignCorrectionsWidget()
+        self.assign_corrections_widget.show()
 
     def add_extras_menu(self, menu_bar, project_open=False):
         extras_menu = menu_bar.addMenu('Extras')
@@ -512,6 +562,30 @@ class RootPainter(QtWidgets.QMainWindow):
                                                  self)
         specify_sync_dir_btn.triggered.connect(self.specify_sync_directory)
         extras_menu.addAction(specify_sync_dir_btn)
+
+        open_sync_dir_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                 'Open sync directory',
+                                                 self)
+        open_sync_dir_btn.triggered.connect(self.open_sync_directory)
+        extras_menu.addAction(open_sync_dir_btn)
+
+        mask_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Mask images', self)
+        mask_btn.triggered.connect(self.show_mask_images)
+        extras_menu.addAction(mask_btn)
+
+        assign_corrections_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Assign Corrections', self)
+        assign_corrections_btn.triggered.connect(self.show_assign_corrections)
+        extras_menu.addAction(assign_corrections_btn)
+
+        def show_random_split():
+            self.random_split_widget = RandomSplitWidget()
+            self.random_split_widget.show()
+
+        random_split_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                'Create random split',
+                                 self)
+        random_split_btn.triggered.connect(show_random_split)
+        extras_menu.addAction(random_split_btn)
 
 
         def view_metric_csv():
@@ -566,10 +640,6 @@ class RootPainter(QtWidgets.QMainWindow):
             metrics_csv_btn.triggered.connect(open_metric_export)
             extras_menu.addAction(metrics_csv_btn)
 
-
-
-
-
             extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
             def update_dataset_after_check():
                 was_extended, file_names = check_extend_dataset(self,
@@ -582,6 +652,7 @@ class RootPainter(QtWidgets.QMainWindow):
                     self.nav.update_nav_label()
             extend_dataset_btn.triggered.connect(update_dataset_after_check)
             extras_menu.addAction(extend_dataset_btn)
+    
 
     def add_about_menu(self, menu_bar):
         about_menu = menu_bar.addMenu('About')
@@ -1106,7 +1177,9 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def show_brush_size_edit(self):
          new_size, ok = QtWidgets.QInputDialog.getInt(self, "",
-                 "Brush size can also be altered by holding shift and moving the cursor. \n \n \n Select brush size", self.scene.brush_size, 1, 300)
+            "Brush size can also be altered by holding shift "
+            "and moving the cursor. \n \n \n Select brush size",
+            self.scene.brush_size, 1, 300, 1)
          if ok:
              self.scene.brush_size = new_size
              self.update_cursor()

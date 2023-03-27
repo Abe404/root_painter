@@ -25,6 +25,7 @@ from PyQt5 import QtGui
 from skimage import color
 from skimage.io import imread, imsave
 from skimage import img_as_ubyte
+from skimage import img_as_float
 from skimage.transform import resize
 from skimage.color import rgb2gray
 import qimage2ndarray
@@ -35,9 +36,28 @@ def is_image(fname):
     return any(fname.lower().endswith(ext) for ext in extensions)
 
 
+def all_image_paths_in_dir(dir_path):
+    root_dir = os.path.abspath(dir_path)
+    all_paths = glob.iglob(root_dir + '/**/*', recursive=True)
+    image_paths = []
+    for p in all_paths:
+        name = os.path.basename(p)
+        if name[0] != '.':
+            ext = os.path.splitext(name)[1].lower()
+            if ext in ['.png', '.jpg', '.jpeg', '.tif', '.tiff']:
+                image_paths.append(p)
+    return image_paths
+
+
+
+
 def fpath_to_pixmap(fpath):
     """ Load image from fpath and convert to a PyQt5 pixmap object """
     np_im = load_image(fpath)
+    # some (png) images were float64 and appeared very 
+    # dark after conversion to pixmap.
+    # convert to int8 to fix.
+    np_im = img_as_ubyte(np_im) 
     q_image = qimage2ndarray.array2qimage(np_im)
     return QtGui.QPixmap.fromImage(q_image)
 
@@ -65,6 +85,33 @@ def load_image(photo_path):
     if len(photo.shape) == 2:
         photo = color.gray2rgb(photo)
     return photo
+
+
+def save_masked_image(seg_dir, image_dir, output_dir, fname):
+    """ useful for using segmentations to remove irrelvant information in an image
+        as part of a pre-processing stage """
+    seg = imread(os.path.join(seg_dir, fname))
+    # use alpha channel if rgba
+    if len(seg.shape) > 2:
+        seg = seg[:, :, 2]
+    im_path = os.path.join(image_dir, os.path.splitext(fname)[0]) + '.*'
+    glob_results = glob.glob(im_path)
+    if glob_results:
+        im = imread(glob_results[0])
+        im[seg==0] = 0 # make background black.
+        imsave(os.path.join(output_dir, os.path.splitext(fname)[0] + '.jpg'), im, quality=95)
+
+def save_corrected_segmentation(annot_fpath, seg_dir, output_dir):
+    """assign the annotations (corrections) to the segmentations. This is useful
+       to obtain more accurate (corrected) segmentations."""
+    fname = os.path.basename(annot_fpath)
+    seg = img_as_float(imread(os.path.join(seg_dir, fname)))
+    annot = img_as_float(imread(annot_fpath))
+    fg = annot[:, :, 0]
+    bg = annot[:, :, 1]
+    seg[bg > 0] = [0,0,0,0]
+    seg[fg > 0] = [0, 1.0, 1.0, 0.7]
+    imsave(os.path.join(output_dir, fname), seg)
 
 
 def gen_composite(annot_dir, photo_dir, comp_dir, fname, ext='.jpg'):

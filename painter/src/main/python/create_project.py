@@ -166,7 +166,8 @@ class CreateProjectWidget(QtWidgets.QWidget):
 
 
     def select_photo_dir(self):
-        self.photo_dialog = QtWidgets.QFileDialog(self)
+        self.photo_dialog = QtWidgets.QFileDialog(self, directory=os.path.join(self.sync_dir, 'datasets'))
+
         self.photo_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
         def output_selected():
             self.selected_dir = self.photo_dialog.selectedFiles()[0]
@@ -198,7 +199,14 @@ class CreateProjectWidget(QtWidgets.QWidget):
             message = ("When creating a project the selected dataset must be in "
                        "the datasets folder. The selected dataset is "
                        f"{dataset_path} and the datasets folder is "
-                       f"{datasets_dir}.")
+                       f"{datasets_dir}.\n\n"
+                       "Your sync directory is currently specified as "
+                       f"{self.sync_dir}. Your active datasets and projects must"
+                       " be located in this folder."
+                       " If you would like to modify your local sync directory"
+                       " then this can be done using the 'Specify sync directory'"
+                       " option availble from the extras menu in the RootPainter GUI.")
+        
             QtWidgets.QMessageBox.about(self, 'Project Creation Error', message)
             return
 
@@ -236,8 +244,6 @@ class CreateProjectWidget(QtWidgets.QWidget):
                             'models' / model_name)
             original_model_file = self.selected_model
 
-
-        dataset = os.path.basename(dataset_path)
         # get files in random order for training.
         all_fnames = file_utils.ls(dataset_path)
         # images only
@@ -245,11 +251,18 @@ class CreateProjectWidget(QtWidgets.QWidget):
 
         all_fnames = sorted(all_fnames)
         random.shuffle(all_fnames)
+       
+
+        dataset_abs_path = os.path.abspath(dataset_path)
+        datasets_abs_path = os.path.abspath(os.path.join(self.sync_dir, 'datasets'))
+        # remove the sync_dir/datasets part from the initial part of the dataset path.
+        # as the server will prepend the 'datasets' directory when searching for the dataset.
+        dataset_rel_path = os.path.relpath(dataset_abs_path, datasets_abs_path)
 
         # create project file.
         project_info = {
             'name': project_name,
-            'dataset': dataset,
+            'dataset': str(PurePosixPath(dataset_rel_path)),
             'original_model_file': original_model_file,
             'location': str(PurePosixPath(project_location))
         }

@@ -1,5 +1,4 @@
 """
-Copyright (C) 2020 Abraham George Smith
 Copyright (C) 2022 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
@@ -17,62 +16,42 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #pylint: disable=I1101,C0111,W0201,R0903,E0611, R0902, R0914
 import os
-import numpy as np
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
+from im_utils import save_masked_image
 from progress_widget import BaseProgressWidget
-from skimage.io import imread, imsave
-from skimage import img_as_ubyte, img_as_float
+from file_utils import ls
 
-class ConvertThread(QtCore.QThread):
+class Thread(QtCore.QThread):
     progress_change = QtCore.pyqtSignal(int, int)
     done = QtCore.pyqtSignal()
 
-    def __init__(self, conversion_function, seg_dir, out_dir):
+    def __init__(self, seg_dir, im_dir, out_dir):
         super().__init__()
         self.seg_dir = seg_dir
+        self.im_dir = im_dir
         self.out_dir = out_dir
-        self.conversion_function = conversion_function
 
     def run(self):
-        seg_fnames = os.listdir(str(self.seg_dir))
+        seg_fnames = ls(self.seg_dir) # list without hidden files
         seg_fnames = [f for f in seg_fnames if os.path.splitext(f)[1] == '.png']
         for i, f in enumerate(seg_fnames):
             self.progress_change.emit(i+1, len(seg_fnames))
             if os.path.isfile(os.path.join(self.seg_dir, os.path.splitext(f)[0] + '.png')):
-                # Load RootPainter seg blue channel and invert.
-                seg = imread(os.path.join(self.seg_dir, f))
-                converted_seg = self.conversion_function(seg)
-                imsave(os.path.join(self.out_dir, f),
-                       converted_seg, check_contrast=False)
+                save_masked_image(self.seg_dir, self.im_dir, self.out_dir, f)
         self.done.emit()
 
 
-def convert_seg_to_rve(seg):
-    # Load RootPainter blue channel and invert.
-    rve_seg = (seg[:, :, 2] == 0)
-    return img_as_ubyte(rve_seg)
-
-def convert_seg_to_annot(seg):
-    """ segmention blue channel is foreground annotation
-        everything else is background annotation """
-    annot = np.zeros((seg.shape[0], seg.shape[1], 4))
-    seg_fg = seg[:, :, 2] # assume blue is foreground prediction
-    seg_fg = img_as_float(seg_fg)
-    annot[:, :, 0] = (seg_fg >= 0.5) 
-    annot[:, :, 1] = (seg_fg < 0.5) # bg channel
-    annot[:, :, 3] = np.ones(seg_fg.shape) 
-    return img_as_ubyte(annot)
-
-class ConvertProgressWidget(BaseProgressWidget):
+class ProgressWidget(BaseProgressWidget):
 
     def __init__(self):
-        super().__init__('Converting Segmentations')
+        super().__init__('Generating masked images')
 
-    def run(self, convert_function, seg_dir, out_dir):
+    def run(self, seg_dir, im_dir, out_dir):
         self.seg_dir = seg_dir
+        self.im_dir = im_dir
         self.out_dir = out_dir
-        self.thread = ConvertThread(convert_function, seg_dir, out_dir)
+        self.thread = Thread(seg_dir, im_dir, out_dir)
         seg_fnames = os.listdir(str(self.seg_dir))
         seg_fnames = [f for f in seg_fnames if os.path.splitext(f)[1] == '.png']
         self.progress_bar.setMaximum(len(seg_fnames))
@@ -81,32 +60,31 @@ class ConvertProgressWidget(BaseProgressWidget):
         self.thread.start()
 
     def done(self):
-        QtWidgets.QMessageBox.about(self, 'Segmentations Converted',
-                                    f'Converting segmentations from {self.seg_dir} '
-                                    f'to {self.out_dir} '
+        QtWidgets.QMessageBox.about(self, 'Masked images generated',
+                                    f'Extracting masked images from {self.seg_dir} '
+                                    f'and {self.im_dir} to {self.out_dir} '
                                     'is complete.')
         self.close()
 
 
-class ConvertSegWidget(QtWidgets.QWidget):
+class MaskImWidget(QtWidgets.QWidget):
     submit = QtCore.pyqtSignal()
 
-    def __init__(self, convert_function, output_type):
+    def __init__(self):
         super().__init__()
         self.seg_dir = None
+        self.im_dir = None
         self.out_dir = None
-        self.convert_function = convert_function
-        self.output_type_name = output_type
         self.initUI()
 
     def initUI(self):
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
-        self.setWindowTitle(f"Convert Segmentations to {self.output_type_name}")
+        self.setWindowTitle("Extract Masked Images")
 
         # Add specify seg directory button
         seg_dir_label = QtWidgets.QLabel()
-        seg_dir_label.setText("Segmentation directory: Not yet specified")
+        seg_dir_label.setText("Segmentation (mask) directory: Not yet specified")
         layout.addWidget(seg_dir_label)
         self.seg_dir_label = seg_dir_label
 
@@ -114,7 +92,17 @@ class ConvertSegWidget(QtWidgets.QWidget):
         specify_seg_btn.clicked.connect(self.select_seg_dir)
         layout.addWidget(specify_seg_btn)
 
-        # Add specify comp directory button
+        # Add specify photo directory button
+        im_dir_label = QtWidgets.QLabel()
+        im_dir_label.setText("Image directory: Not yet specified")
+        layout.addWidget(im_dir_label)
+        self.im_dir_label = im_dir_label
+
+        specify_im_dir_btn = QtWidgets.QPushButton('Specify image directory')
+        specify_im_dir_btn.clicked.connect(self.select_im_dir)
+        layout.addWidget(specify_im_dir_btn)
+
+        # Add specify output directory button
         out_dir_label = QtWidgets.QLabel()
         out_dir_label.setText("Output directory: Not yet specified")
         layout.addWidget(out_dir_label)
@@ -126,33 +114,39 @@ class ConvertSegWidget(QtWidgets.QWidget):
 
 
         info_label = QtWidgets.QLabel()
-        info_label.setText("Segmentation directory and output directory"
-                           " must be specified.")
+        info_label.setText("Segmentation directory, image and output directory"
+                           "must be specified.")
         layout.addWidget(info_label)
         self.info_label = info_label
 
-        submit_btn = QtWidgets.QPushButton('Convert Segmentations')
-        submit_btn.clicked.connect(self.convert_segmentations)
+        submit_btn = QtWidgets.QPushButton('Extract masked images')
+        submit_btn.clicked.connect(self.extract)
         layout.addWidget(submit_btn)
         submit_btn.setEnabled(False)
         self.submit_btn = submit_btn
 
-    def convert_segmentations(self):
-        self.progress_widget = ConvertProgressWidget()
-        self.progress_widget.run(self.convert_function, self.seg_dir, self.out_dir)
+    def extract(self):
+        self.progress_widget = ProgressWidget()
+        self.progress_widget.run(self.seg_dir, self.im_dir, self.out_dir)
         self.progress_widget.show()
         self.close()
 
     def validate(self):
         if not self.seg_dir:
             self.info_label.setText("Segmentation directory must be "
-                                    "specified to convert files.")
+                                    "specified.")
+            self.submit_btn.setEnabled(False)
+            return
+
+        if not self.im_dir:
+            self.info_label.setText("Image directory must be "
+                                    "specified.")
             self.submit_btn.setEnabled(False)
             return
 
         if not self.out_dir:
             self.info_label.setText("Output directory must be "
-                                    "specified to convert files.")
+                                    "specified.")
             self.submit_btn.setEnabled(False)
             return
 
@@ -169,12 +163,23 @@ class ConvertSegWidget(QtWidgets.QWidget):
         self.input_dialog.fileSelected.connect(input_selected)
         self.input_dialog.open()
 
+    def select_im_dir(self):
+        self.input_dialog = QtWidgets.QFileDialog(self)
+        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+
+        def input_selected():
+            self.im_dir = self.input_dialog.selectedFiles()[0]
+            self.im_dir_label.setText('Image directory: ' + self.im_dir)
+            self.validate()
+        self.input_dialog.fileSelected.connect(input_selected)
+        self.input_dialog.open()
+
     def select_out_dir(self):
         self.input_dialog = QtWidgets.QFileDialog(self)
         self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
         def input_selected():
             self.out_dir = self.input_dialog.selectedFiles()[0]
-            self.out_dir_label.setText('Output directory: ' + self.out_dir)
+            self.out_dir_label.setText('Masked image directory: ' + self.out_dir)
             self.validate()
         self.input_dialog.fileSelected.connect(input_selected)
         self.input_dialog.open()

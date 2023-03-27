@@ -39,19 +39,6 @@ from progress_widget import BaseProgressWidget
 from name_edit_widget import NameEditWidget
 import im_utils
 
-def all_image_paths_in_dir(dir_path):
-    root_dir = os.path.abspath(dir_path)
-    all_paths = glob.iglob(root_dir + '/**/*', recursive=True)
-    image_paths = []
-    for p in all_paths:
-        name = os.path.basename(p)
-        if name[0] != '.':
-            ext = os.path.splitext(name)[1].lower()
-            if ext in ['.png', '.jpg', '.jpeg', '.tif', '.tiff']:
-                image_paths.append(p)
-    return image_paths
-
-
 def get_dupes(a):
     seen = {}
     dupes = []
@@ -391,7 +378,7 @@ class CreateDatasetWidget(QtWidgets.QWidget):
         def output_selected():
             self.source_dir = self.image_dialog.selectedFiles()[0]
             self.directory_label.setText('Image directory: ' + self.source_dir)
-            self.image_paths = all_image_paths_in_dir(self.source_dir)
+            self.image_paths = im_utils.all_image_paths_in_dir(self.source_dir)
             self.validate()
 
         self.image_dialog.fileSelected.connect(output_selected)

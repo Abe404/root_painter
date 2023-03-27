@@ -119,7 +119,14 @@ def load_train_image_and_annots(dataset_dir, train_annot_dirs):
             # so use glob to get it
             image_path_part = os.path.join(dataset_dir,
                                            os.path.splitext(fname)[0])
+            
+            # Use glob.escape to allow arbitrary strings in file paths,
+            # including [ and ]  
+            # For related bug See https://github.com/Abe404/root_painter/issues/87
+            image_path_part = glob.escape(image_path_part)
+
             image_path = glob.glob(image_path_part + '.*')[0]
+            
             latest_im_path = image_path
             image = load_image(image_path)
             latest_annot_path = annot_path
@@ -195,13 +202,13 @@ def add_salt_pepper(image, intensity):
     if len(image.shape) == 2 or image.shape[-1] == 1:
         white = 1
         black = 0
-    num = np.ceil(intensity * image.size).astype(np.int)
+    num = np.ceil(intensity * image.size).astype(int)
     x_coords = np.floor(np.random.rand(num) * image.shape[1])
-    x_coords = x_coords.astype(np.int)
-    y_coords = np.floor(np.random.rand(num) * image.shape[0]).astype(np.int)
+    x_coords = x_coords.astype(int)
+    y_coords = np.floor(np.random.rand(num) * image.shape[0]).astype(int)
     image[x_coords, y_coords] = white
-    x_coords = np.floor(np.random.rand(num) * image.shape[1]).astype(np.int)
-    y_coords = np.floor(np.random.rand(num) * image.shape[0]).astype(np.int)
+    x_coords = np.floor(np.random.rand(num) * image.shape[1]).astype(int)
+    y_coords = np.floor(np.random.rand(num) * image.shape[0]).astype(int)
     image[y_coords, x_coords] = black
     return image
 
@@ -256,7 +263,7 @@ def tiles_from_coords(image, coords, tile_shape):
     return tiles
 
 
-def save_then_move(out_path, seg_alpha):
+def save_then_move(out_path, seg_output, npy=False):
     """ need to save as a tmp file first (.tmp.fname) and
         then rename after saving.
         this is because scripts are monitoring the segmentation folder
@@ -267,9 +274,27 @@ def save_then_move(out_path, seg_alpha):
     """
     fname = os.path.basename(out_path)
     temp_path = os.path.join(os.path.dirname(out_path), '.tmp.' + fname)
-    imsave(temp_path, seg_alpha)
-    shutil.copy(temp_path, out_path)
-    os.remove(temp_path)
+
+    if npy:
+        # numpy can be easier than PNG to work with in some scripts.
+        np.savez_compressed(temp_path, seg=seg_output)
+    else:
+        imsave(temp_path, seg_output, check_contrast=False)
+
+    attempts = 0
+    max_attempts = 50
+    # we found on google colab that writing a file doesn't mean
+    # that it will immediately exist. so we will retry 50 times in case
+    # it takes some time (5 seconds).
+    while attempts < max_attempts:
+        attempts += 1
+        if os.path.isfile(temp_path):
+            shutil.copy(temp_path, out_path)
+            os.remove(temp_path)
+            return
+        time.sleep(0.1)
+    raise Exception(f'Could not find image at {temp_path} '
+                    f'after trying {max_attempts} times')
 
 
 def load_image(photo_path):

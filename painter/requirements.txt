@@ -1,11 +1,11 @@
 PyQt5==5.15.7
 numpy==1.22.1
-setuptools==60.5.0
+setuptools==65.5.1
 natsort==8.0.2
 scikit-image==0.19.1
 PyWavelets==1.2.0
-Pillow==9.0.1
-scipy==1.7.3
+Pillow==9.3.0
+scipy==1.9.3
 imagecodecs==2021.11.20
 matplotlib==3.5.2
 pyqtgraph==0.12.4

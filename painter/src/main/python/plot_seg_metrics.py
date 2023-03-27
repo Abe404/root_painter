@@ -87,27 +87,16 @@ def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
         "f1": f1,
         # how many actually manually annotated.
         "annot_fg": int(fg_labels),
-        "annot_bg": int(bg_labels)
+        "annot_bg": int(bg_labels),
+        "area_true": int(np.sum(y_true)),
+        "area_pred": int(np.sum(y_pred)),
+        "area_error": int(np.sum(y_pred)) - int(np.sum(y_true))
     }
 
 
 def get_cache_key(seg_dir, annot_dir, fname):
     fname = os.path.splitext(fname)[0] + '.png'
-    #seg_path = os.path.join(seg_dir, fname)
-    #if not os.path.isfile(seg_path):
-    #    return None # no segmentation means no metrics, meaning no cache key
-
-    #annot_path = os.path.join(annot_dir, 'train', fname)
-    #if not os.path.isfile(annot_path):
-    #    annot_path = os.path.join(annot_dir, 'val', fname)
-    #if os.path.isfile(annot_path):
-    #    annot_mtime = os.path.getmtime(annot_path)
-    #else:
-    #    annot_mtime = 0
-    #seg_mtime = os.path.getmtime(seg_path)
-    #cache_key = f'{fname}.{annot_mtime}.{seg_mtime}.pkl'
-    cache_key = fname
-    return cache_key
+    return fname
 
 def compute_seg_metrics(seg_dir, annot_dir, fname):
     
@@ -179,12 +168,25 @@ class Thread(QtCore.QThread):
             self.progress_change.emit(i+1, len(self.fnames))
             # cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
             cache_key = get_cache_key(self.seg_dir, self.annot_dir, fname)
-            if cache_key in cache_dict:
+            metrics = None
+            if cache_key in cache_dict: 
                 metrics = cache_dict[cache_key]
-            else:
+                # ignore cached metric if it does not include area error.
+                # This is because the cached metric is from an older version of RootPainter
+                # and we now need to recompute the metrics to include area error
+                if metrics and 'area_error' not in metrics:
+                    metrics = None
+
+
+
+            # also recompute is metrics is None (even if found in cache) as None could indicate 
+            # that the segmentation was previously missing when metrics was last computed. 
+            # but segmentation may now be available so we still need to ignore this cached result and 
+            # recompute metrics, just incase the segmentation now exists.
+            if metrics is None:
                 metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
                 cache_dict[cache_key] = metrics
-
+    
             if metrics: 
                 all_metrics.append(metrics)
                 all_fnames.append(fname)
@@ -204,7 +206,7 @@ class Thread(QtCore.QThread):
         
         with open(cache_dict_path, 'wb') as cache_file:
             pickle.dump(cache_dict, cache_file) 
-        print('time to get metrics =', time.time() - start)
+        print('Seconds to get metrics: ', round(time.time() - start, 2))
         self.done.emit(json.dumps([all_fnames, all_metrics]))
 
 
@@ -427,11 +429,14 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
     def add_metrics_dropdown(self):
         keys = ["f1", "accuracy", "tn","fp", "fn", "tp", 
                 "precision", "recall",
-                "annot_fg", "annot_bg"]
+                "annot_fg", "annot_bg", "area_true", "area_pred", "area_error"]
         display_names = ["Dice", "Accuracy", "True Negatives",
                          "False Positives", "False Negatives",
                          "True Positives", "Precision", "Recall",
-                         "Foreground Annotation", "Background Annotation"]
+                         "Foreground Annotation", "Background Annotation", 
+                         "Corrected Area",
+                         "Predicted Area",
+                         "Predicted - Corrected Area"]
         self.metric_combo = QtWidgets.QComboBox()
         for d in display_names:
             self.metric_combo.addItem(d)

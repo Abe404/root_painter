@@ -652,7 +652,6 @@ class RootPainter(QtWidgets.QMainWindow):
                     self.nav.update_nav_label()
             extend_dataset_btn.triggered.connect(update_dataset_after_check)
             extras_menu.addAction(extend_dataset_btn)
-    
 
     def add_about_menu(self, menu_bar):
         about_menu = menu_bar.addMenu('About')

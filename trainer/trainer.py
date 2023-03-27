@@ -466,11 +466,9 @@ class Trainer():
             self.segment_file(in_dir, seg_dir, fname,
                               model_paths, format_str, classes,
                               sync_save=len(fnames) == 1)
-
         duration = time.time() - start
         print(f'Seconds to segment {len(fnames)} images: ', round(duration, 3))
         
-
     def segment_file(self, in_dir, seg_dir, fname, model_paths, format_str, classes, sync_save):
         fpath = os.path.join(in_dir, fname)
     
@@ -518,15 +516,27 @@ class Trainer():
             print('Skip because found existing segmentation files for image')
 
         npy = False
+        out_paths = []
+
+        # if using numpy we put all annotation maps in one matrix.
         if format_str == 'Numpy Compressed (.npz)':
             # segmentation output is a binary map.
             npy = True
-            out_path = os.path.join(seg_dir, os.path.splitext(fname)[0] + '.npz')
-        else:
-            out_path = os.path.join(seg_dir, os.path.splitext(fname)[0] + '.png')
+            out_paths = [os.path.join(seg_dir, os.path.splitext(fname)[0] + '.npz')]
+        else: 
+            # if PNG then a seperate PNG for each class
+            if len(classes) > 1:
+                for c in classes:
+                    out_dir = os.path.join(seg_dir, c)
+                    if not os.path.isdir(out_dir):
+                        print('creating segmentation directory', out_dir)
+                        os.makedirs(out_dir)
+                    out_paths.append(os.path.join(out_dir, os.path.splitext(fname)[0] + '.png'))
+            else:
+                out_paths.append(os.path.join(seg_dir, os.path.splitext(fname)[0] + '.png'))
 
-        if os.path.isfile(out_path):
-            print('Skip because found existing segmentation file')
+        if all([os.path.isfile(out_path) for out_path in out_paths]):
+            print('Skip because found existing segmentation files for image')
             return
 
         if not os.path.isfile(fpath):
@@ -551,8 +561,6 @@ class Trainer():
                 with warnings.catch_warnings():
                     # create a version with alpha channel
                     warnings.simplefilter("ignore")
-
-
 
                     if format_str == 'RhizoVision Explorer (.png)':
                         # RVE needs segmentation in black and white

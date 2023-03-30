@@ -247,6 +247,9 @@ def save_then_move(out_path, seg_output, npy=False):
 
 def load_image(photo_path):
     photo = Image.open(photo_path)
+    # Convert to RGB before converting to NumPy due to bug in Pillow
+    # https://github.com/Abe404/root_painter/issues/94
+    photo = photo.convert("RGB")
     photo = ImageOps.exif_transpose(photo)
     photo = np.array(photo)
 
@@ -262,4 +265,5 @@ def load_image(photo_path):
     # TODO: train directly on B/W instead of doing this conversion.
     if len(photo.shape) == 2:
         photo = color.gray2rgb(photo)
+
     return photo

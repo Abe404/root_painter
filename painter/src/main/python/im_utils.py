@@ -49,8 +49,6 @@ def all_image_paths_in_dir(dir_path):
     return image_paths
 
 
-
-
 def fpath_to_pixmap(fpath):
     """ Load image from fpath and convert to a PyQt5 pixmap object """
     np_im = load_image(fpath)
@@ -62,8 +60,12 @@ def fpath_to_pixmap(fpath):
     return QtGui.QPixmap.fromImage(q_image)
 
 def load_image(photo_path):
-    #photo = imread(photo_path)
     photo = Image.open(photo_path)
+
+    # Convert to RGB before converting to NumPy due to bug in Pillow
+    # https://github.com/Abe404/root_painter/issues/94
+    photo = photo.convert("RGB") 
+
     photo = ImageOps.exif_transpose(photo)
     photo = np.array(photo)
     # sometimes photo is a list where first element is the photo

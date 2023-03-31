@@ -239,6 +239,8 @@ class RootPainter(QtWidgets.QMainWindow):
                                          self.val_annot_dir)
         self.update_image()
 
+        self.update_context_viewer()
+
         self.scene.history = []
         self.scene.redo_list = []
 
@@ -247,6 +249,21 @@ class RootPainter(QtWidgets.QMainWindow):
 
         self.segment_current_image()
         self.update_window_title()
+
+
+    def update_context_viewer(self):
+        if hasattr(self, 'original_images'):
+            fname = os.path.splitext(self.png_fname)[0]
+            tile_num_str = fname.split('_')[-1]
+            fname = fname[:len(fname) - len('_' + tile_num_str)]
+
+            original_fname = None
+            for fname_with_ext in self.original_images:
+                if os.path.splitext(fname_with_ext)[0] == fname:
+                    original_fname = fname_with_ext
+                    break 
+            original_fpath = os.path.join(self.original_image_dir, original_fname)
+            self.context_viewer.update(original_fpath, self.graphics_view.image)
 
 
     def update_image(self):
@@ -863,13 +880,9 @@ class RootPainter(QtWidgets.QMainWindow):
         show_image_context_btn.setShortcut('Ctrl+C')
 
         def show_image_context():
-            fname = os.path.splitext(self.png_fname)[0]
-            tile_num_str = fname.split('_')[-1]
-            fname = fname[:len(fname) - len('_' + tile_num_str)]
             proj_settings = json.load(open(self.proj_file_path))
-
             if 'original_image_dir' in proj_settings:
-                original_image_dir = proj_settings['original_image_dir']
+                self.original_image_dir = proj_settings['original_image_dir']
             else:
                 # if the project doesn't yet have the path for the original
                 # images then ask the user for it.
@@ -878,28 +891,21 @@ class RootPainter(QtWidgets.QMainWindow):
                          "Please specify the original image directory.")
                 msg.setText(output)
                 msg.exec_()
-                original_image_dir = QtWidgets.QFileDialog.getExistingDirectory()
+                self.original_image_dir = QtWidgets.QFileDialog.getExistingDirectory()
                 if not original_image_dir:
                     return
                 else:
-                    proj_settings['original_image_dir'] = original_image_dir
+                    proj_settings['original_image_dir'] = self.original_image_dir
                     with open(self.proj_file_path, 'w') as file:
                         json.dump(proj_settings, file, indent=4)
 
-            original_images = os.listdir(original_image_dir)
-            original_fname = None
-            for fname_with_ext in original_images:
-                if os.path.splitext(fname_with_ext)[0] == fname:
-                    original_fname = fname_with_ext
-                    break 
-            original_fpath = os.path.join(original_image_dir, original_fname)
-            self.context_viewer = ContextViewer(original_fpath, self.graphics_view.image)
+            self.original_images = os.listdir(self.original_image_dir)
+            self.context_viewer = ContextViewer()
             self.context_viewer.show()
+            self.update_context_viewer()
 
         show_image_context_btn.triggered.connect(show_image_context)
-        print('view menu add action')
         view_menu.addAction(show_image_context_btn)
-
 
         def zoom_in():
             self.graphics_view.zoom *= 1.1

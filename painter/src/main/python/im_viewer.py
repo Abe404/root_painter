@@ -14,7 +14,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import sys
 import os
 from PyQt5 import QtWidgets
 from PyQt5 import QtGui
@@ -26,12 +25,30 @@ import qimage2ndarray
 
 class ContextViewer(QtWidgets.QWidget):
 
-    def __init__(self, fpath, patch):
+    def __init__(self):
         super().__init__()
+        self.initUI()
+
+    def update(self, fpath, patch):
+        self.orig_pixmap = QtGui.QPixmap(fpath)
+        self.full_im_np = np.array(qimage2ndarray.rgb_view(self.orig_pixmap.toImage()))
+        self.label.setPixmap(self.orig_pixmap)
         self.title = 'Original Image: ' + os.path.basename(fpath)
+        self.setWindowTitle(self.title)
+
+
+        # only run this code the first time the viewer is opened.
+        if not hasattr(self, 'target_height'):
+            # find suitable viewing size for current screen
+            screen_size = QtWidgets.QApplication.primaryScreen().size()
+            screen_width = screen_size.width()
+            target_width = screen_width // 2
+            self.target_height = (target_width / self.orig_pixmap.width()) * self.orig_pixmap.height()
+            self.setGeometry(self.x(), self.y(), round(target_width), round(self.target_height))
+
+        
         self.fpath = fpath 
         self.patch_np = np.array(qimage2ndarray.rgb_view(patch.toImage()))
-        self.initUI()
         y = 0
         x = 0
         w = self.patch_np.shape[1]
@@ -62,7 +79,6 @@ class ContextViewer(QtWidgets.QWidget):
                 y += h
             x += w
 
-
         for p in [self.pixmap, self.orig_pixmap]:
             painter= QtGui.QPainter(p)
             pen = QtGui.QPen(QtCore.Qt.red)
@@ -71,29 +87,16 @@ class ContextViewer(QtWidgets.QWidget):
             painter.drawRect(3+lowest_diff_x, lowest_diff_y, w, h)
             painter.end()
             self.resizeEvent(None)
-                       
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, _event):
         size = self.size()
         width = size.width()
         height = size.height()
-        self.pixmap = self.orig_pixmap.scaled(width, height, QtCore.Qt.KeepAspectRatio)
-        self.label.setPixmap(self.pixmap)
-        self.label.resize(self.pixmap.width(), self.pixmap.height())
+        if hasattr(self, 'orig_pixmap'):
+            self.pixmap = self.orig_pixmap.scaled(width, height, QtCore.Qt.KeepAspectRatio)
+            self.label.setPixmap(self.pixmap)
+            self.label.resize(self.pixmap.width(), self.pixmap.height())
     
     def initUI(self):
-        self.setWindowTitle(self.title)
         self.label = QtWidgets.QLabel(self)
-        self.orig_pixmap = QtGui.QPixmap(self.fpath)
-        self.full_im_np = np.array(qimage2ndarray.rgb_view(self.orig_pixmap.toImage()))
-        self.label.setPixmap(self.orig_pixmap)
 
-        screen_size = QtWidgets.QApplication.primaryScreen().size()
-        screen_width = screen_size.width()
-        target_width = screen_width // 2
-        target_height = (target_width / self.orig_pixmap.width()) * self.orig_pixmap.height()
-
-        self.setGeometry(0, 0, round(target_width), round(target_height))
-
-
-        self.show()

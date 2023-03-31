@@ -36,19 +36,24 @@ class ContextViewer(QtWidgets.QWidget):
         x = 0
         w = self.patch_np.shape[1]
         h = self.patch_np.shape[0]
+
         self.patch_np = rgb2gray(self.patch_np)
         self.patch_np -= np.min(self.patch_np)
         self.patch_np = self.patch_np / np.max(self.patch_np)
+
         lowest_diff = 1000*1000
         lowest_diff_x = 0
         lowest_diff_y = 0
-        while (x+w) < self.full_im_np.shape[1]:
+        while (x+w) <= self.full_im_np.shape[1]:
             y = 0
-            while (y+h) < self.full_im_np.shape[0]:
+            while (y+h) <= self.full_im_np.shape[0]:
+
                 im_patch = self.full_im_np[y:y+h, x:x+w]
+
                 im_patch = rgb2gray(im_patch)
                 im_patch -= np.min(im_patch)
                 im_patch = im_patch / np.max(im_patch)
+
                 diff = np.sum(np.abs(im_patch - self.patch_np))
                 if diff < lowest_diff:
                     lowest_diff = diff
@@ -56,6 +61,8 @@ class ContextViewer(QtWidgets.QWidget):
                     lowest_diff_y = y
                 y += h
             x += w
+
+
         for p in [self.pixmap, self.orig_pixmap]:
             painter= QtGui.QPainter(p)
             pen = QtGui.QPen(QtCore.Qt.red)

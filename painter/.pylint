@@ -22,4 +22,5 @@ disable=trailing-whitespace,
 	line-too-long, # i do care about this but errors matter more
     unreachable, # i have some code that cant run due to an exception saying it is disabled.
     consider-using-with,
-    too-many-statements
+    too-many-statements,
+    attribute-defined-outside-init

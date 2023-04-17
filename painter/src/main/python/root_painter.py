@@ -903,7 +903,7 @@ class RootPainter(QtWidgets.QMainWindow):
                 msg.setText(output)
                 msg.exec_()
                 self.original_image_dir = QtWidgets.QFileDialog.getExistingDirectory()
-                if not original_image_dir:
+                if not self.original_image_dir:
                     return
                 else:
                     proj_settings['original_image_dir'] = self.original_image_dir

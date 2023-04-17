@@ -132,6 +132,3 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             painter.end()
         self.last_x = x
         self.last_y = y
-
-
-

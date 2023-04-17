@@ -682,7 +682,7 @@ class RootPainter(QtWidgets.QMainWindow):
         bottom_bar = QtWidgets.QWidget()
         bottom_bar_layout = QtWidgets.QHBoxLayout()
         # left, top, right, bottom
-        bottom_bar_layout.setContentsMargins(20, 0, 20, 20)
+        bottom_bar_layout.setContentsMargins(20, 0, 15, 10)
         bottom_bar_layout.setSpacing(0)
         bottom_bar.setLayout(bottom_bar_layout)
 
@@ -709,20 +709,35 @@ class RootPainter(QtWidgets.QMainWindow):
         self.nav.image_path = self.image_path
         self.nav.update_nav_label()
 
-        # info label
-        info_container = QtWidgets.QWidget()
-        info_container_layout = QtWidgets.QHBoxLayout()
-        info_container_layout.setAlignment(Qt.AlignCenter)
-        info_label = QtWidgets.QLabel()
-        info_label.setText("")
-        info_container_layout.addWidget(info_label)
+        # messages label
+        info_container_left = QtWidgets.QWidget()
+        info_container_left_layout = QtWidgets.QHBoxLayout()
+        info_container_left_layout.setAlignment(Qt.AlignCenter)
+        messages_label = QtWidgets.QLabel()
+        messages_label.setText("")
+        info_container_left_layout.addWidget(messages_label)
         # left, top, right, bottom
-        info_container_layout.setContentsMargins(0, 0, 0, 0)
-        info_container.setLayout(info_container_layout)
-        self.info_label = info_label
-
-        bottom_bar_r_layout.addWidget(info_container)
+        info_container_left_layout.setContentsMargins(0, 0, 0, 0)
+        info_container_left.setLayout(info_container_left_layout)
+        self.messages_label = messages_label
+        bottom_bar_r_layout.addWidget(info_container_left)
         bottom_bar_r_layout.addWidget(self.nav)
+
+        # brush size label
+        info_container_right = QtWidgets.QWidget()
+        info_container_right_layout = QtWidgets.QHBoxLayout()
+        info_container_right_layout.setAlignment(Qt.AlignRight)
+        info_container_right_layout.setSpacing(0)
+        brush_size_label = QtWidgets.QLabel()
+        brush_size_label.setMinimumWidth(115)
+        info_container_right_layout.addWidget(brush_size_label)
+        # left, top, right, bottom
+        info_container_right.setLayout(info_container_right_layout)
+        self.brush_size_label = brush_size_label
+        self.brush_size_label.setContentsMargins(0, 0, 0, 0)
+        bottom_bar_r_layout.addWidget(info_container_right)
+        bottom_bar_r_layout.setContentsMargins(0, 0, 0, 0)
+        bottom_bar_r_layout.setSpacing(0)
 
         self.add_menu()
 
@@ -745,8 +760,8 @@ class RootPainter(QtWidgets.QMainWindow):
             # check for any messages
             messages = os.listdir(str(self.message_dir))
             for m in messages:
-                if hasattr(self, 'info_label'):
-                    self.info_label.setText(m)
+                if hasattr(self, 'messages_label'):
+                    self.messages_label.setText(m)
                 try:
                     # Added try catch because this error happened (very rarely)
                     # PermissionError: [WinError 32]
@@ -1021,12 +1036,12 @@ class RootPainter(QtWidgets.QMainWindow):
         self.convert_to_annot_widget.show()
 
     def stop_training(self):
-        self.info_label.setText("Stopping training...")
+        self.messages_label.setText("Stopping training...")
         content = {"message_dir": self.message_dir}
         self.send_instruction('stop_training', content)
 
     def start_training(self):
-        self.info_label.setText("Starting training...")
+        self.messages_label.setText("Starting training...")
         content = {
             "model_dir": self.model_dir,
             "dataset_dir": self.dataset_dir,
@@ -1157,6 +1172,8 @@ class RootPainter(QtWidgets.QMainWindow):
         ellipse_h = int(round(brush_w))
 
         
+        self.brush_size_label.setText(f"Brush Size: {round(self.scene.brush_size)}")
+
         painter.drawEllipse(ellipse_x, ellipse_y, ellipse_w, ellipse_h)
         painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 180), 2,
                                   Qt.SolidLine, Qt.FlatCap))

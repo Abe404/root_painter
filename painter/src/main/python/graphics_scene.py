@@ -123,7 +123,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
             # Based on empirical observation
             if self.brush_size % 2 == 0:
-                painter.drawLine(self.last_x+0.5, self.last_y+0.5, x+0.5, y+0.5)
+                painter.drawLine(round(self.last_x+0.5), round(self.last_y+0.5),
+                                 round(x+0.5), round(y+0.5))
             else:
                 painter.drawLine(round(self.last_x), round(self.last_y), round(x), round(y))
 

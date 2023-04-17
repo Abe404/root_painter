@@ -116,6 +116,14 @@ def save_corrected_segmentation(annot_fpath, seg_dir, output_dir):
     imsave(os.path.join(output_dir, fname), seg)
 
 
+def resize_image(im, resize_percent):
+    # assume that image is RGB
+    target_shape = (im.shape[0] * (resize_percent/100),
+                    im.shape[1] * (resize_percent/100), 3)
+    resized_im = resize(im, target_shape)
+    return resized_im
+
+
 def gen_composite(annot_dir, photo_dir, comp_dir, fname, ext='.jpg'):
     """ for review.
     Output the pngs with the annotation overlaid next to it.

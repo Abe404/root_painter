@@ -715,6 +715,8 @@ class RootPainter(QtWidgets.QMainWindow):
         info_container_left_layout.setAlignment(Qt.AlignCenter)
         messages_label = QtWidgets.QLabel()
         messages_label.setText("")
+
+        messages_label.setContentsMargins(0, 2, 0, 3)
         info_container_left_layout.addWidget(messages_label)
         # left, top, right, bottom
         info_container_left_layout.setContentsMargins(0, 0, 0, 0)
@@ -727,7 +729,6 @@ class RootPainter(QtWidgets.QMainWindow):
         info_container_right = QtWidgets.QWidget()
         info_container_right_layout = QtWidgets.QHBoxLayout()
         info_container_right_layout.setAlignment(Qt.AlignRight)
-        info_container_right_layout.setSpacing(0)
         brush_size_label = QtWidgets.QLabel()
         brush_size_label.setMinimumWidth(115)
         info_container_right_layout.addWidget(brush_size_label)
@@ -737,7 +738,6 @@ class RootPainter(QtWidgets.QMainWindow):
         self.brush_size_label.setContentsMargins(0, 0, 0, 0)
         bottom_bar_r_layout.addWidget(info_container_right)
         bottom_bar_r_layout.setContentsMargins(0, 0, 0, 0)
-        bottom_bar_r_layout.setSpacing(0)
 
         self.add_menu()
 

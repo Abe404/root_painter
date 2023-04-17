@@ -61,6 +61,7 @@ from instructions import send_instruction
 from plot_seg_metrics import MetricsPlot, ExtractMetricsWidget
 from im_viewer import ContextViewer
 from random_split import RandomSplitWidget
+from resize_images import ResizeWidget
 use_plugin("pil")
 
 Image.MAX_IMAGE_PIXELS = None
@@ -548,6 +549,16 @@ class RootPainter(QtWidgets.QMainWindow):
                                  self)
         random_split_btn.triggered.connect(show_random_split)
         extras_menu.addAction(random_split_btn)
+
+        def show_resize_images():
+            self.resize_images_widget = ResizeWidget()
+            self.resize_images_widget.show()
+
+        resize_images_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                'Resize images',
+                                 self)
+        resize_images_btn.triggered.connect(show_resize_images)
+        extras_menu.addAction(resize_images_btn)
 
 
         def view_metric_csv():

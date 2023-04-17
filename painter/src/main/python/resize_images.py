@@ -51,7 +51,6 @@ class CreationThread(QtCore.QThread):
 
     def run(self):
         error_messages = []
-        os.makedirs(self.output_dir)
         progress = 0
         for fpath in self.all_image_paths:
             fname = os.path.basename(fpath)

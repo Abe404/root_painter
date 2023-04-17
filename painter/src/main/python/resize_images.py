@@ -60,7 +60,7 @@ class CreationThread(QtCore.QThread):
             resized = im_utils.resize_image(image, self.resize_percent)
             imsave(output_path, resized, quality=95)
             progress += 1
-            self.progress_change.emit(progress, len(self.images))
+            self.progress_change.emit(progress, len(self.all_image_paths))
         self.done.emit(error_messages)
 
 

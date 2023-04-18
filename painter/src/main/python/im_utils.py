@@ -99,7 +99,11 @@ def save_masked_image(seg_dir, image_dir, output_dir, fname):
     im_path = os.path.join(image_dir, os.path.splitext(fname)[0]) + '.*'
     glob_results = glob.glob(im_path)
     if glob_results:
-        im = imread(glob_results[0])
+        im = load_image(glob_results[0])
+        # resize the segmentation to match the image, so smaller segmentations
+        # can be used to mask larger images (for example in localisation stages)
+        if im.shape[:2] != seg.shape[:2]:
+            seg = resize(seg, (im.shape[0], im.shape[1], 3), order=0)
         im[seg==0] = 0 # make background black.
         imsave(os.path.join(output_dir, os.path.splitext(fname)[0] + '.jpg'), im, quality=95)
 

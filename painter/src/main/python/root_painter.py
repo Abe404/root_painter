@@ -580,10 +580,15 @@ class RootPainter(QtWidgets.QMainWindow):
         self.metrics_plot = MetricsPlot()
 
 
-        view_metrics_csv_btn.triggered.connect(view_metric_csv)
-        extras_menu.addAction(view_metrics_csv_btn)
-
-
+        # view_metrics_csv_btn.triggered.connect(view_metric_csv)
+        # This has been disabled because the metrics are getting constantly
+        # expanded (new features) and the code that loads metrics from csv
+        # needs to be udpated to include the new metrics.  I'm going to disable
+        # this functionality for a while and see if anyone notices. If they
+        # notice/complain, then I think it would be worthwhile to update this
+        # functionality and think about how to make it work with both new
+        # (including more metrics) and old metrics CSV files.
+        # extras_menu.addAction(view_metrics_csv_btn)
 
         if project_open:
             metrics_plot_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),

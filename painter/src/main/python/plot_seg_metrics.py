@@ -98,7 +98,7 @@ def get_cache_key(seg_dir, annot_dir, fname):
     fname = os.path.splitext(fname)[0] + '.png'
     return fname
 
-def compute_seg_metrics(seg_dir, annot_dir, fname):
+def compute_seg_metrics(seg_dir, annot_dir, fname, model_dir):
     
     # annot and seg are both PNG
     fname = os.path.splitext(fname)[0] + '.png'
@@ -133,7 +133,29 @@ def compute_seg_metrics(seg_dir, annot_dir, fname):
     corrected_segmentation_metrics = compute_metrics_from_masks(
         seg, corrected, np.sum(foreground > 0), np.sum(background > 0))
 
+    corrected_segmentation_metrics['model_name'] = get_model_name_for_seg(
+        seg_path, model_dir)
+    
     return corrected_segmentation_metrics
+
+
+def get_model_name_for_seg(seg_path, models_dir):
+    # get modified time
+    seg_m_time = os.path.getmtime(seg_path)
+    model_fnames = sorted(os.listdir(models_dir))
+    for i, m in enumerate(model_fnames):
+        model_m_time = int(m.replace('.pkl', '').split('_')[1])
+        # if it's the last model then it must be this one.
+        if i == (len(model_fnames) - 1):
+            return m
+        next_m = model_fnames[i+1]
+        next_model_m_time = int(next_m.replace('.pkl', '').split('_')[1])
+        # if the model is before the seg
+        if model_m_time < seg_m_time:
+            # and the next model is after the seg
+            if next_model_m_time > seg_m_time:
+                # then return the model 
+                return m
 
 
 class Thread(QtCore.QThread):
@@ -145,6 +167,7 @@ class Thread(QtCore.QThread):
         self.proj_dir = proj_dir
         self.seg_dir = os.path.join(proj_dir, 'segmentations')
         self.annot_dir = os.path.join(proj_dir, 'annotations')
+        self.model_dir = os.path.join(proj_dir, 'models')
         self.csv_path = csv_path
         self.fnames = fnames
 
@@ -184,7 +207,8 @@ class Thread(QtCore.QThread):
             # but segmentation may now be available so we still need to ignore this cached result and 
             # recompute metrics, just incase the segmentation now exists.
             if metrics is None:
-                metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
+                metrics = compute_seg_metrics(self.seg_dir, self.annot_dir,
+                                              fname, self.model_dir)
                 cache_dict[cache_key] = metrics
     
             if metrics: 
@@ -315,7 +339,8 @@ class MetricsPlot:
             cache_dict = pickle.load(open(cache_dict_path, 'rb'))
             # cache_key is just the fname for now.
             cache_key = get_cache_key(seg_dir, annot_dir, fname)
-            metrics = compute_seg_metrics(seg_dir, annot_dir, fname)
+            metrics = compute_seg_metrics(seg_dir, annot_dir, fname,
+                                          os.path.join(self.proj_dir, 'models'))
             if metrics:
                 cache_dict[cache_key] = metrics
                 self.plot_window.add_point(fname, metrics)
@@ -348,6 +373,7 @@ class MetricsPlot:
                 "annot_fg": int(annot_fg),
                 "annot_bg": int(annot_bg)
             })
+
         self.plot_window = QtGraphMetricsPlot(
             fnames, metrics_list, rolling_n=30)
         self.plot_window.setWindowTitle(
@@ -401,7 +427,6 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         # we define this to be 6 initially as we assume the user annotated 6 images clearly.
         # so image 7 (index of 6) will be the first correctively annotated.
         self.first_corrective_idx = 6 
-
 
         self.highlight_point = None
         self.show_selected = True
@@ -631,7 +656,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             self.graph_plot.clear()
 
             def hover_tip(x, y, data):
-                return f'{int(x)} {data}  {self.metric_display_name}: {round(y, 4)}'
+                return f'{int(x)} {data}  {self.metric_display_name}: {round(y, 4)} model: {self.get_model_name(int(x)-1)}'
 
             self.scatter = pg.ScatterPlotItem(size=8, symbol='x', clickable=True, hoverable=True,
                                               hoverBrush=pg.mkBrush('grey'), hoverPen=pg.mkPen('grey'),
@@ -651,7 +676,16 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             if self.highlight_point_fname is not None:
                 self.render_highlight_point()
             self.add_events()
-       
+    
+    def get_model_name(self, x):
+        # we want to know which model was used to generate each segmentation.       
+        # x is the index of the segmentation in the list.  
+        if x < len(self.metrics_list):
+            if self.metrics_list[x] and 'model_name' in self.metrics_list[x]:
+                return self.metrics_list[x]['model_name']
+        return ''
+        
+
     def get_corrected_dice(self):
         corrected_dice = []
         for i, m in enumerate(self.metrics_list):

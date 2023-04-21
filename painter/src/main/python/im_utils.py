@@ -26,6 +26,7 @@ from skimage import color
 from skimage.io import imread, imsave
 from skimage import img_as_ubyte
 from skimage import img_as_float
+from skimage import exposure
 from skimage.transform import resize
 from skimage.color import rgb2gray
 import qimage2ndarray
@@ -49,15 +50,36 @@ def all_image_paths_in_dir(dir_path):
     return image_paths
 
 
-def fpath_to_pixmap(fpath):
-    """ Load image from fpath and convert to a PyQt5 pixmap object """
-    np_im = load_image(fpath)
+def np_im_to_pixmap(np_im):
     # some (png) images were float64 and appeared very 
     # dark after conversion to pixmap.
     # convert to int8 to fix.
     np_im = img_as_ubyte(np_im) 
     q_image = qimage2ndarray.array2qimage(np_im)
     return QtGui.QPixmap.fromImage(q_image)
+
+
+def auto_contrast(img, clip_limit=0.02):
+    # Convert the input image to float format
+    img_float = img_as_float(img)
+
+    # if the difference between the min and max values is less than a threshold
+    # Then this image could basically be one continuous colour i.e totally black image
+    # and contrast enhancement gives very unrealistic looking results.
+    # so do not apply.
+    if np.min(img_float) <= np.max(img_float) - 0.1:
+        # Apply contrast-limited adaptive histogram equalization
+        equalized_img = exposure.equalize_adapthist(img_float, clip_limit=clip_limit)
+    else:
+        return img
+
+    # Rescale the output to the range [0, 255]
+    enhanced_img = (equalized_img * 255).astype(np.uint8)
+
+    return enhanced_img
+
+
+
 
 def load_image(photo_path):
     photo = Image.open(photo_path)

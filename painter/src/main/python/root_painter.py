@@ -78,6 +78,8 @@ class RootPainter(QtWidgets.QMainWindow):
 
         self.assign_sync_directory(sync_dir)
         self.tracking = False
+
+        self.contrast_enhance_enabled = False
         self.image_pixmap_holder = None
         self.seg_pixmap_holder = None
         self.annot_pixmap_holder = None
@@ -272,9 +274,19 @@ class RootPainter(QtWidgets.QMainWindow):
         if not os.path.isfile(self.image_path):
             QtWidgets.QMessageBox.about(self, 'Error', f"Cannot find file {self.image_path}")
             raise Exception(f"Cannot find file {self.image_path}")
+        self.np_im = im_utils.load_image(self.image_path)
+        self.show_image_with_contrast_applied()
+
+        
+    def show_image_with_contrast_applied(self):
+        # Show image with contrast enhancement if this option was specified.
+        if self.contrast_enhance_enabled:
+            np_im_to_show = im_utils.auto_contrast(self.np_im)
+        else:
+            np_im_to_show = self.np_im
 
         # There's a problem with this function, as some images are loaded in the wrong orientation.
-        image_pixmap = im_utils.fpath_to_pixmap(self.image_path)
+        image_pixmap = im_utils.np_im_to_pixmap(np_im_to_show)
         im_size = image_pixmap.size()
 
         im_width, im_height = im_size.width(), im_size.height()
@@ -824,14 +836,22 @@ class RootPainter(QtWidgets.QMainWindow):
         redo_action.triggered.connect(self.scene.redo)
 
         options_menu = menu_bar.addMenu("Options")
+
         # pre segment count
         pre_segment_count_action = QtWidgets.QAction(QtGui.QIcon(""), "Pre-Segment", self)
         options_menu.addAction(pre_segment_count_action)
         pre_segment_count_action.triggered.connect(self.open_pre_segment_count_dialog)
 
+        # contrast enhance
+        contrast_enhance_count_action = QtWidgets.QAction(QtGui.QIcon(""), "Contrast enhance", self)
+        options_menu.addAction(contrast_enhance_count_action)
+        contrast_enhance_count_action.triggered.connect(self.open_contrast_enhance_dialog)
+
+        # brush size
         brush_edit_action = QtWidgets.QAction(QtGui.QIcon(""), "Change brush size", self)
         options_menu.addAction(brush_edit_action)
         brush_edit_action.triggered.connect(self.show_brush_size_edit)
+
 
         # change brush colors
         change_foreground_color_action = QtWidgets.QAction(QtGui.QIcon(""),
@@ -1199,6 +1219,27 @@ class RootPainter(QtWidgets.QMainWindow):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
         if not modifiers & QtCore.Qt.ControlModifier:
             self.graphics_view.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+
+
+    def open_contrast_enhance_dialog(self):
+
+        items = ('Disabled', 'Enabled')	
+        item, ok = QtWidgets.QInputDialog.getItem(self, "Select Contrast Enhance",
+                                                      "Select Contrast Enhance",
+                                                      items,
+                                                      int(self.contrast_enhance_enabled), False)
+        if ok:
+            new_value = (item == 'Enabled')
+            if new_value != self.contrast_enhance_enabled:
+                self.contrast_enhance_enabled = new_value
+                self.show_image_with_contrast_applied()
+        # For some reason the events get confused and
+        # scroll+pan gets switched on here.
+        # Check if control key is up to disble it.
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        if not modifiers & QtCore.Qt.ControlModifier:
+            self.graphics_view.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+
 
     def save_annotation(self):
         if self.scene.annot_pixmap:

@@ -121,13 +121,18 @@ def save_masked_image(seg_dir, image_dir, output_dir, fname):
     im_path = os.path.join(image_dir, os.path.splitext(fname)[0]) + '.*'
     glob_results = glob.glob(im_path)
     if glob_results:
-        im = load_image(glob_results[0])
+        im_fpath = glob_results[0]
+        im_fname = os.path.basename(im_fpath)
+        im = Image.open(im_fpath)
+        if im.mode == 'P': # see https://github.com/python-pillow/Pillow/issues/7045
+            im = im.convert("RGBA")
+        im = np.array(im)
         # resize the segmentation to match the image, so smaller segmentations
         # can be used to mask larger images (for example in localisation stages)
         if im.shape[:2] != seg.shape[:2]:
             seg = resize(seg, (im.shape[0], im.shape[1], 3), order=0)
-        im[seg==0] = 0 # make background black.
-        imsave(os.path.join(output_dir, os.path.splitext(fname)[0] + '.jpg'), im, quality=95)
+        im[:][seg[:, :, 2] == 0] = 0 # make background black.
+        imsave(os.path.join(output_dir, im_fname), im, quality=95)
 
 def save_corrected_segmentation(annot_fpath, seg_dir, output_dir):
     """assign the annotations (corrections) to the segmentations. This is useful

@@ -30,6 +30,8 @@ import os
 from pathlib import PurePath, Path
 import json
 from functools import partial
+from datetime import datetime
+import time
 
 from skimage.io import use_plugin
 from PyQt5 import QtWidgets
@@ -91,6 +93,12 @@ class RootPainter(QtWidgets.QMainWindow):
         self.im_width = None
         self.im_height = None
         self.metrics_plot = None
+
+        self.lines_to_log = []
+        self.log_debounce = QtCore.QTimer()
+        self.log_debounce.setInterval(500)
+        self.log_debounce.setSingleShot(True)
+        self.log_debounce.timeout.connect(self.log_debounced)
 
         self.initUI()
 
@@ -220,6 +228,18 @@ class RootPainter(QtWidgets.QMainWindow):
         self.track_changes()
 
 
+    def log_debounced(self):
+        """ write to log file only so often to avoid lag """
+        with open(os.path.join(self.log_dir, 'client.csv'), 'a+') as log_file:
+            while self.lines_to_log:
+                line = self.lines_to_log[0]
+                log_file.write(line)
+                self.lines_to_log = self.lines_to_log[1:]
+
+    def log(self, message):
+        self.lines_to_log.append(f"{datetime.now()},{time.time()},{message}\n")
+        self.log_debounce.start() # write after 1 second
+
     def update_file(self, fpath):
         
         fname = os.path.basename(fpath)
@@ -252,6 +272,7 @@ class RootPainter(QtWidgets.QMainWindow):
 
         self.segment_current_image()
         self.update_window_title()
+        self.log(f'update_file_end,fname:{os.path.basename(fpath)}')
 
 
     def update_context_viewer(self):
@@ -1248,13 +1269,13 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def save_annotation(self):
         if self.scene.annot_pixmap:
+            self.log(f'save_annotation,fname:{self.png_fname}')
             self.annot_path = maybe_save_annotation(self.proj_location,
                                                     self.scene.annot_pixmap,
                                                     self.annot_path,
                                                     self.png_fname,
                                                     self.train_annot_dir,
                                                     self.val_annot_dir)
-
             self.metrics_plot.add_file_metrics(os.path.basename(self.image_path))
 
 

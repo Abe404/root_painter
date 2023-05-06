@@ -24,8 +24,8 @@ def get_annot_duration_s(events, fname):
     fname_events = [e for e in events if e.fname == fname and e.name in [
                     'mouse_press', 'mouse_release']]
     if len(fname_events) < 2: # must have both mouse_press and mouse_release
-        return 0
-
+        return 0, 0
+    click_count = 0
     assert len(fname_events) >= 2, f'at least two fname_events are required, fname_events={fname_events}'
     # fname_events are already filtered by filename
     total_duration = 0
@@ -33,10 +33,15 @@ def get_annot_duration_s(events, fname):
     for e in fname_events[1:]:
         assert e.name != most_recent_event.name
         period_between_events = e.time - most_recent_event.time
+        
+        # if the current event is mouse_up then we count this as a click.
+        if e.name == 'mouse_release':
+            click_count += 1
+        
         if not is_pause(most_recent_event, period_between_events):
             total_duration += period_between_events
         most_recent_event = e
-    return total_duration
+    return total_duration, click_count
 
 
 

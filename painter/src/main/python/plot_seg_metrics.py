@@ -135,7 +135,9 @@ def compute_seg_metrics(seg_dir, annot_dir, fname, model_dir, annot_events=None)
         seg_path, model_dir)
 
     if annot_events:
-        corrected_segmentation_metrics['annot_duration_s'] = get_annot_duration_s(annot_events, fname)
+        annot_duration_s, annot_clicks = get_annot_duration_s(annot_events, fname)
+        corrected_segmentation_metrics['annot_duration_s'] = annot_duration_s
+        corrected_segmentation_metrics['annot_clicks'] = annot_clicks
     
     return corrected_segmentation_metrics
 

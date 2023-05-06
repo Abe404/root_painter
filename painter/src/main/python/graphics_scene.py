@@ -70,10 +70,11 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.drawing = True
             pos = event.scenePos()
             x, y = pos.x(), pos.y()
-            self.parent.log(f'mouse_press,x:{x},y:{y}'
+            self.parent.log(f'mouse_press,'
+                            f'fname:{self.parent.png_fname}'
+                            f',x:{x},y:{y}'
                             f',brush_size:{self.brush_size}'
-                            f',brush_color:{self.brush_color.name()}'
-                            f',fname:{self.parent.png_fname}')
+                            f',brush_color:{self.brush_color.name()}')
             if self.brush_size == 1:
                 circle_x = x
                 circle_y = y
@@ -100,10 +101,11 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
     def mouseReleaseEvent(self, _event):
         if self.drawing:
             self.drawing = False
-            self.parent.log(f'mouse_release,x:{self.last_x},y:{self.last_y}'
+            self.parent.log(f'mouse_release'
+                            f',fname:{self.parent.png_fname}'
+                            f',x:{self.last_x},y:{self.last_y}'
                             f',brush_size:{self.brush_size}'
-                            f',brush_color:{self.brush_color.name()}'
-                            f',fname:{self.parent.png_fname}')
+                            f',brush_color:{self.brush_color.name()}')
             # has to be some limit to history or RAM will run out
             if len(self.history) > 50:
                 self.history = self.history[-50:]

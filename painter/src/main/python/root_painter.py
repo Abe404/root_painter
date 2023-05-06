@@ -58,6 +58,7 @@ from visibility_widget import VisibilityWidget
 from file_utils import last_fname_with_annotations
 from file_utils import get_annot_path
 from file_utils import maybe_save_annotation
+from file_utils import ls # list directory without hidden files.
 import im_utils
 from instructions import send_instruction
 from plot_seg_metrics import MetricsPlot, ExtractMetricsWidget
@@ -796,7 +797,7 @@ class RootPainter(QtWidgets.QMainWindow):
         self.tracking = True
         def check():
             # check for any messages
-            messages = os.listdir(str(self.message_dir))
+            messages = ls(str(self.message_dir))
             for m in messages:
                 if hasattr(self, 'messages_label'):
                     self.messages_label.setText(m)

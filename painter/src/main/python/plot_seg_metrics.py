@@ -460,14 +460,16 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
     def add_metrics_dropdown(self):
         keys = ["f1", "accuracy", "tn","fp", "fn", "tp", 
                 "precision", "recall",
-                "annot_fg", "annot_bg", "area_true", "area_pred", "area_error"]
+                "annot_fg", "annot_bg", "area_true", "area_pred",
+                "area_error", 'annot_duration_s']
         display_names = ["Dice", "Accuracy", "True Negatives",
                          "False Positives", "False Negatives",
                          "True Positives", "Precision", "Recall",
                          "Foreground Annotation", "Background Annotation", 
                          "Corrected Area",
                          "Predicted Area",
-                         "Predicted - Corrected Area"]
+                         "Predicted - Corrected Area",
+                         "Annotation duration (seconds)"]
         self.metric_combo = QtWidgets.QComboBox()
         for d in display_names:
             self.metric_combo.addItem(d)

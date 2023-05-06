@@ -281,9 +281,13 @@ class Trainer():
             fns += torch.sum((foregrounds_list == 1) * (preds_list == 0)).cpu().numpy()
             defined_total += torch.sum(defined_list > 0).cpu().numpy()
             loss_sum += loss.item() # float
-            sys.stdout.write(f"Training {(step+1) * self.bs}/"
-                             f"{len(train_loader.dataset)} "
-                             f" loss={round(loss.item(), 3)} \r")
+
+            # https://github.com/googlecolab/colabtools/issues/166
+            print(f"\rTraining: {(step+1) * self.bs}/"
+                  f"{len(train_loader.dataset)} "
+                  f" loss={round(loss.item(), 3)}",
+                  end='', flush=True)
+
             self.check_for_instructions() # could update training parameter
             if not self.training:
                 return

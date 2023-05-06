@@ -1,6 +1,7 @@
 #pylint: disable=I1101,C0111,W0201,R0903,E0611, R0902, R0914, C0303, C0103
 """
 Copyright (C) 2022 Abraham George Smith
+Copyright (C) 2023 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,16 +21,16 @@ import csv
 import math
 import json
 import time
-from functools import partial
 import pickle
-import matplotlib.pyplot as plt
 import numpy as np
+import random
 import pyqtgraph as pg
 from pyqtgraph.Qt import mkQApp
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from skimage.io import imread
 from progress_widget import BaseProgressWidget
+from interaction_time import events_from_client_log, get_annot_duration_s
 
 
 
@@ -94,11 +95,11 @@ def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
     }
 
 
-def get_cache_key(seg_dir, annot_dir, fname):
+def get_cache_key(fname):
     fname = os.path.splitext(fname)[0] + '.png'
     return fname
 
-def compute_seg_metrics(seg_dir, annot_dir, fname, model_dir):
+def compute_seg_metrics(seg_dir, annot_dir, fname, model_dir, annot_events=None):
     
     # annot and seg are both PNG
     fname = os.path.splitext(fname)[0] + '.png'
@@ -109,11 +110,6 @@ def compute_seg_metrics(seg_dir, annot_dir, fname, model_dir):
     annot_path = os.path.join(annot_dir, 'train', fname)
     if not os.path.isfile(annot_path):
         annot_path = os.path.join(annot_dir, 'val', fname)
-    
-    if os.path.isfile(annot_path):
-        annot_mtime = os.path.getmtime(annot_path)
-    else:
-        annot_mtime = 0
     
     seg = imread(seg_path)
 
@@ -133,8 +129,13 @@ def compute_seg_metrics(seg_dir, annot_dir, fname, model_dir):
     corrected_segmentation_metrics = compute_metrics_from_masks(
         seg, corrected, np.sum(foreground > 0), np.sum(background > 0))
 
+    corrected_segmentation_metrics['seg_time'] = os.path.getmtime(seg_path)
+
     corrected_segmentation_metrics['model_name'] = get_model_name_for_seg(
         seg_path, model_dir)
+
+    if annot_events:
+        corrected_segmentation_metrics['annot_duration_s'] = get_annot_duration_s(annot_events, fname)
     
     return corrected_segmentation_metrics
 
@@ -168,6 +169,7 @@ class Thread(QtCore.QThread):
         self.seg_dir = os.path.join(proj_dir, 'segmentations')
         self.annot_dir = os.path.join(proj_dir, 'annotations')
         self.model_dir = os.path.join(proj_dir, 'models')
+        self.client_log_fpath = os.path.join(self.proj_dir, 'logs', 'client.csv')
         self.csv_path = csv_path
         self.fnames = fnames
 
@@ -181,6 +183,8 @@ class Thread(QtCore.QThread):
             writer = csv.writer(csv_file, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
         start = time.time()
+        # load the annotation events first (and once)
+        annot_events = events_from_client_log(self.client_log_fpath)
         cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
         if os.path.isfile(cache_dict_path):
             cache_dict = pickle.load(open(cache_dict_path, 'rb'))
@@ -189,8 +193,7 @@ class Thread(QtCore.QThread):
         
         for i, fname in enumerate(self.fnames):
             self.progress_change.emit(i+1, len(self.fnames))
-            # cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
-            cache_key = get_cache_key(self.seg_dir, self.annot_dir, fname)
+            cache_key = get_cache_key(fname)
             metrics = None
             if cache_key in cache_dict: 
                 metrics = cache_dict[cache_key]
@@ -200,15 +203,14 @@ class Thread(QtCore.QThread):
                 if metrics and 'area_error' not in metrics:
                     metrics = None
 
-
-
             # also recompute is metrics is None (even if found in cache) as None could indicate 
             # that the segmentation was previously missing when metrics was last computed. 
-            # but segmentation may now be available so we still need to ignore this cached result and 
+            # but segmentation may now be available so we still need 
+            # to ignore this cached result and 
             # recompute metrics, just incase the segmentation now exists.
             if metrics is None:
                 metrics = compute_seg_metrics(self.seg_dir, self.annot_dir,
-                                              fname, self.model_dir)
+                                              fname, self.model_dir, annot_events)
                 cache_dict[cache_key] = metrics
     
             if metrics: 
@@ -334,13 +336,15 @@ class MetricsPlot:
         if self.plot_window is not None:
             seg_dir = os.path.join(self.proj_dir, 'segmentations')
             annot_dir = os.path.join(self.proj_dir, 'annotations')
+            client_log_fpath = os.path.join(self.proj_dir, 'logs', 'client.csv')
 
             cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
             cache_dict = pickle.load(open(cache_dict_path, 'rb'))
-            # cache_key is just the fname for now.
-            cache_key = get_cache_key(seg_dir, annot_dir, fname)
+            cache_key = get_cache_key(fname)
+            annot_events = events_from_client_log(client_log_fpath)
             metrics = compute_seg_metrics(seg_dir, annot_dir, fname,
-                                          os.path.join(self.proj_dir, 'models'))
+                                          os.path.join(self.proj_dir, 'models'),
+                                          annot_events)
             if metrics:
                 cache_dict[cache_key] = metrics
                 self.plot_window.add_point(fname, metrics)
@@ -476,7 +480,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.control_bar_layout.addWidget(self.metric_combo)
 
     def add_events(self):
-        def clicked(obj, points):
+        def clicked(_obj, points):
             # scatter plot
             pos = points[0].pos()
             # pos = points.currentItem.ptsClicked[0].pos() # normal plot
@@ -743,8 +747,9 @@ def hide_weird_options(graph_plot):
     graph_plot.vb.menu.ctrl[1].mouseCheck.hide()
     graph_plot.ctrlMenu = None
 
-if __name__ == '__main__':
-    # a quick test to demo the plot. Useful for testing a debugging.
+
+def demo_plot_test():
+    # a quick test to demo the plot. Useful for testing / debugging.
     app = QtWidgets.QApplication([])
     corrected_dice = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
     fnames = ['1', '2', '3', '4', '5', '6']
@@ -754,18 +759,19 @@ if __name__ == '__main__':
     corrected_dice += [0.7]
     metrics_list = [{'f1': a, 'accuracy': (1-a)/2, 'annot_fg': 100, 'annot_bg': 100} for a in corrected_dice]
     rolling_n = 3
-    selected_image = '7'
     plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n, selected_fname=None)
     plot.show()
-   
-    import random
-    def mouseMoved(evt):
-        pos = evt[0]  ## using signal proxy turns original arguments into a tuple
+
+    def mouseMoved(_evt):
+        # pos = evt[0]  ## using signal proxy turns original arguments into a tuple
         if plot.rolling_n > 30:
             plot.add_point(str(len(plot.metrics_list)),
                            {'f1': random.random(),
                             'annot_fg': 100,
                             'annot_bg': 100})
 
-    proxy = pg.SignalProxy(plot.view.scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)
+    _proxy = pg.SignalProxy(plot.view.scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)
     app.exec_()
+
+if __name__ == '__main__':
+    demo_plot_test()

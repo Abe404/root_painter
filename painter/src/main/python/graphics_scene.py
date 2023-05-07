@@ -63,18 +63,12 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.annot_pixmap_holder.setPixmap(new_state)
             self.annot_pixmap = new_state
 
-
     def mousePressEvent(self, event):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
+        pos = event.scenePos()
+        x, y = pos.x(), pos.y()
         if not modifiers & QtCore.Qt.ControlModifier and self.parent.annot_visible:
             self.drawing = True
-            pos = event.scenePos()
-            x, y = pos.x(), pos.y()
-            self.parent.log(f'mouse_press,'
-                            f'fname:{self.parent.png_fname}'
-                            f',x:{x},y:{y}'
-                            f',brush_size:{self.brush_size}'
-                            f',brush_color:{self.brush_color.name()}')
             if self.brush_size == 1:
                 circle_x = x
                 circle_y = y
@@ -97,20 +91,33 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             painter.end()
             self.last_x = x
             self.last_y = y
+        # log even if not drawing - all interaction is relevant
+        self.parent.log(f'mouse_press,'
+                        f'fname:{self.parent.png_fname}'
+                        f',x:{x},y:{y}'
+                        f',brush_size:{self.brush_size}'
+                        f',brush_color:{self.brush_color.name()}'
+                        f',drawing:{self.drawing}')
 
-    def mouseReleaseEvent(self, _event):
+    def mouseReleaseEvent(self, event):
+        was_drawing = self.drawing
         if self.drawing:
             self.drawing = False
-            self.parent.log(f'mouse_release'
-                            f',fname:{self.parent.png_fname}'
-                            f',x:{self.last_x},y:{self.last_y}'
-                            f',brush_size:{self.brush_size}'
-                            f',brush_color:{self.brush_color.name()}')
             # has to be some limit to history or RAM will run out
             if len(self.history) > 50:
                 self.history = self.history[-50:]
             self.history.append(self.annot_pixmap.copy())
             self.redo_list = []
+
+        pos = event.scenePos()
+        x, y = pos.x(), pos.y()
+        self.parent.log(f'mouse_release'
+                        f',fname:{self.parent.png_fname}'
+                        f',x:{x},y:{y}'
+                        f',brush_size:{self.brush_size}'
+                        f',brush_color:{self.brush_color.name()}'
+                        f',drawing:{was_drawing}')
+
 
     def mouseMoveEvent(self, event):
         modifiers = QtWidgets.QApplication.keyboardModifiers()

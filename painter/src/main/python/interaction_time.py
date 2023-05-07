@@ -9,29 +9,28 @@ class Event:
 
 
 def is_pause(prev_event, period_len_s):
-    # if the previous event is mouse_release
-    if prev_event.name == 'mouse_release':
+    # if the previous event is not mouse_press 
+    # (maybe the user us just taking their time to draw something without lifting the mouse)
+    if prev_event.name != 'mouse_press':
         # and the duration is over 20 seconds
         if period_len_s > 20:
             # then don't include the interaction - we consider this a pause in annotation
             return True
     return False
 
-
-
 def get_annot_duration_s(events, fname):
     # we consider interaction as mouseup and mouse down events
     fname_events = [e for e in events if e.fname == fname and e.name in [
-                    'mouse_press', 'mouse_release']]
+                    'mouse_press', 'mouse_release',
+                    'save_annotation', 'update_file_end']]
+
     if len(fname_events) < 2: # must have both mouse_press and mouse_release
         return 0, 0
     click_count = 0
-    assert len(fname_events) >= 2, f'at least two fname_events are required, fname_events={fname_events}'
     # fname_events are already filtered by filename
     total_duration = 0
     most_recent_event = fname_events[0]
     for e in fname_events[1:]:
-        assert e.name != most_recent_event.name
         period_between_events = e.time - most_recent_event.time
         
         # if the current event is mouse_up then we count this as a click.
@@ -42,8 +41,6 @@ def get_annot_duration_s(events, fname):
             total_duration += period_between_events
         most_recent_event = e
     return total_duration, click_count
-
-
 
 
 def events_from_client_log(client_log_fpath):

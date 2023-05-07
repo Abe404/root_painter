@@ -30,8 +30,8 @@ from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from skimage.io import imread
 from progress_widget import BaseProgressWidget
-from interaction_time import events_from_client_log, get_annot_duration_s
-
+from interaction_time import events_from_client_log 
+from interaction_time import get_annot_duration_s
 
 
 def moving_average(original, w):
@@ -427,6 +427,8 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.rolling_n = rolling_n
         self.selected_metric = 'f1'
         self.metric_display_name = 'Dice'
+
+        self.x_axis_display_name = 'Image'
         self.highlight_point_fname = selected_fname
 
         # index of first correctively annotated image. first image is 0
@@ -450,12 +452,29 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.control_bar.setMinimumWidth(870)
         self.control_bar.setLayout(self.control_bar_layout)
         self.layout.addWidget(self.control_bar)
+        self.add_x_axis_dropbown()
         self.add_metrics_dropdown()
         self.add_average_control()
         self.add_first_corrective_control()
         self.add_selected_point_visbility_control()
         self.add_selected_point_label()
 
+    def add_x_axis_dropbown(self):
+        self.x_combo = QtWidgets.QComboBox()
+       
+        self.x_combo.addItem('Image')
+        self.x_combo.addItem('Annotation duration (m)')
+
+        def selection_changed():
+            self.x_axis_display_name = self.x_combo.currentText()
+            self.graph_plot.setLabel('bottom', self.x_axis_display_name)
+            self.render_data()
+
+        self.x_combo.currentIndexChanged.connect(selection_changed)
+        x_label = QtWidgets.QLabel()
+        x_label.setText("x:")
+        self.control_bar_layout.addWidget(x_label)
+        self.control_bar_layout.addWidget(self.x_combo)
 
     def add_metrics_dropdown(self):
         keys = ["f1", "accuracy", "tn","fp", "fn", "tp", 
@@ -481,6 +500,9 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             self.render_data()
 
         self.metric_combo.currentIndexChanged.connect(selection_changed)
+        y_label = QtWidgets.QLabel()
+        y_label.setText("y:")
+        self.control_bar_layout.addWidget(y_label)
         self.control_bar_layout.addWidget(self.metric_combo)
 
     def add_events(self):
@@ -657,8 +679,17 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
             if hasattr(self, 'message'):
                 self.message.hide()
+            
+            # if we are showing image on the x-axis then x-position is just the image index
+            if self.x_axis_display_name == 'Image':
+                x = list(range(1, len(self.corrected_dice) + 1)) # start from 1 because first image is 1/N
+            elif self.x_axis_display_name == 'Annotation duration (m)':
+                durations_s = [float(m['annot_duration_s']) for m in self.metrics_list]
+                x = list(np.cumsum(durations_s))
+                x = [xi/60 for xi in x] # minutes
+            else:
+                raise Exception(f"Unhandled: {self.x_axis_display_name}")
 
-            x = list(range(1, len(self.corrected_dice) + 1)) # start from 1 because first image is 1/N
             y = self.corrected_dice
             scatter_points = [{'pos': [x, y], 'data': f} for (x, y, f) in zip(x, y, self.fnames)]
             self.graph_plot.clear()
@@ -678,7 +709,6 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
                                  symbol=None, name=f'Average (n={self.rolling_n})')
      
             self.highlight_point = None # cleared now.
-
            
             # highlight point pos is a currently clicked point.
             if self.highlight_point_fname is not None:
@@ -722,7 +752,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         p21.showGrid(x = True, y = True, alpha = 0.4)
         p21.addLegend(offset=(-90, -90),labelTextSize='12pt' )
         p21.setLabel('left', 'Dice')
-        p21.setLabel('bottom', 'Image')
+        p21.setLabel('bottom', self.x_axis_display_name)
         self.graph_plot = p21
         hide_weird_options(self.graph_plot)
         self.view = view # avoid errors with view being deleted

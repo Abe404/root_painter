@@ -802,11 +802,16 @@ class RootPainter(QtWidgets.QMainWindow):
                 if hasattr(self, 'messages_label'):
                     self.messages_label.setText(m)
                 try:
-                    # Added try catch because this error happened (very rarely)
-                    # PermissionError: [WinError 32]
-                    # The process cannot access the file because it is
-                    # being used by another process
-                    os.remove(os.path.join(self.message_dir, m))
+                    fpath = os.path.join(self.message_dir, m)
+                    # added check for it being a file because google drive for desktop on mac sometimes 
+                    # gives a list of files from os.listdir and then those files cannot be seen in either finder
+                    # and os.remove will complain that there is no such file..
+                    if os.path.isfile(fpath):
+                        # Added try catch because this error happened (very rarely)
+                        # PermissionError: [WinError 32]
+                        # The process cannot access the file because it is
+                        # being used by another process
+                        os.remove(fpath)
                 except Exception as e:
                     print('Caught exception when trying to detele msg', e)
             if hasattr(self, 'seg_path') and os.path.isfile(self.seg_path):

@@ -449,9 +449,17 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.control_bar_layout.setContentsMargins(10, 0, 0, 10) # left, top, right, bottom
         self.control_bar.setMaximumHeight(60)
         self.control_bar.setMinimumHeight(60)
-        self.control_bar.setMinimumWidth(870)
+        self.control_bar.setMinimumWidth(930)
         self.control_bar.setLayout(self.control_bar_layout)
         self.layout.addWidget(self.control_bar)
+        
+        self.combo_container = QtWidgets.QWidget()
+        self.control_bar_layout.addWidget(self.combo_container)
+        self.combo_container.setMaximumWidth(290) 
+        self.combo_container_layout = QtWidgets.QHBoxLayout()
+        self.combo_container_layout.setContentsMargins(0, 0, 0, 0) # left, top, right, bottom
+        self.combo_container.setLayout(self.combo_container_layout)
+    
         self.add_x_axis_dropbown()
         self.add_metrics_dropdown()
         self.add_average_control()
@@ -461,7 +469,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
     def add_x_axis_dropbown(self):
         self.x_combo = QtWidgets.QComboBox()
-       
+        self.x_combo.setFixedWidth(130)
         self.x_combo.addItem('Image')
         self.x_combo.addItem('Annotation duration (m)')
 
@@ -473,8 +481,8 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.x_combo.currentIndexChanged.connect(selection_changed)
         x_label = QtWidgets.QLabel()
         x_label.setText("x:")
-        self.control_bar_layout.addWidget(x_label)
-        self.control_bar_layout.addWidget(self.x_combo)
+        self.combo_container_layout.addWidget(x_label)
+        self.combo_container_layout.addWidget(self.x_combo)
 
     def add_metrics_dropdown(self):
         keys = ["f1", "accuracy", "tn","fp", "fn", "tp", 
@@ -490,6 +498,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
                          "Predicted - Corrected Area",
                          "Annotation duration (seconds)"]
         self.metric_combo = QtWidgets.QComboBox()
+        self.metric_combo.setFixedWidth(130)
         for d in display_names:
             self.metric_combo.addItem(d)
 
@@ -502,17 +511,13 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.metric_combo.currentIndexChanged.connect(selection_changed)
         y_label = QtWidgets.QLabel()
         y_label.setText("y:")
-        self.control_bar_layout.addWidget(y_label)
-        self.control_bar_layout.addWidget(self.metric_combo)
+        self.combo_container_layout.addWidget(y_label, QtCore.Qt.AlignLeft)
+        self.combo_container_layout.addWidget(self.metric_combo, QtCore.Qt.AlignLeft)
+
 
     def add_events(self):
         def clicked(_obj, points):
-            # scatter plot
-            pos = points[0].pos()
-            # pos = points.currentItem.ptsClicked[0].pos() # normal plot
-            fname_idx = int(pos.x()) - 1
-            clicked_fname = self.fnames[fname_idx]
-
+            clicked_fname = points[0]._data[7]
             def nav_to_im():
                 # will trigger updating file in the viewer and 
                 # then setting the highlight point.
@@ -625,7 +630,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             idx = self.fnames.index(self.highlight_point_fname)
             y = self.metrics_list[idx][self.selected_metric]
             self.selected_point_label.setText(
-                f"{self.metric_display_name}: {round(y, 4)}")
+                f"Y: {round(y, 4)}")
             self.render_highlight_point()
 
             self.selected_checkbox.show() # only show once a point on the plot is selected.
@@ -639,7 +644,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
                 # dont show the point if the corrected dice is NaN.
                 # This is the case for the clear examples at the start.
                 if hasattr(self, 'corrected_dice') and not math.isnan(self.corrected_dice[idx]):
-                    x = [idx + 1]
+                    x = [self.x_vals[idx]]
                     y = [self.metrics_list[idx][self.selected_metric]]
                     if self.highlight_point is not None:
                         self.highlight_point.setData(x, y) # update position of existing point clearing causes trouble.
@@ -690,6 +695,8 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             else:
                 raise Exception(f"Unhandled: {self.x_axis_display_name}")
 
+
+            self.x_vals = x # used for show selected point
             y = self.corrected_dice
             scatter_points = [{'pos': [x, y], 'data': f} for (x, y, f) in zip(x, y, self.fnames)]
             self.graph_plot.clear()

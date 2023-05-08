@@ -134,9 +134,9 @@ def compute_seg_metrics(seg_dir, annot_dir, fname, model_dir, annot_events=None)
         seg_path, model_dir)
 
     if annot_events:
-        annot_duration_s, annot_clicks = get_annot_duration_s(annot_events, fname)
+        annot_duration_s, clicks = get_annot_duration_s(annot_events, fname)
         corrected_segmentation_metrics['annot_duration_s'] = annot_duration_s
-        corrected_segmentation_metrics['annot_clicks'] = annot_clicks
+        corrected_segmentation_metrics['clicks'] = clicks
     
     return corrected_segmentation_metrics
 
@@ -487,7 +487,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         keys = ["f1", "accuracy", "tn","fp", "fn", "tp", 
                 "precision", "recall",
                 "annot_fg", "annot_bg", "area_true", "area_pred",
-                "area_error", 'annot_duration_s']
+                "area_error", 'annot_duration_s', 'clicks']
         display_names = ["Dice", "Accuracy", "True Negatives",
                          "False Positives", "False Negatives",
                          "True Positives", "Precision", "Recall",
@@ -495,7 +495,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
                          "Corrected Area",
                          "Predicted Area",
                          "Predicted - Corrected Area",
-                         "Annotation duration (seconds)"]
+                         "Annotation duration (seconds)", 'Clicks']
         self.metric_combo = QtWidgets.QComboBox()
         self.metric_combo.setFixedWidth(130)
         for d in display_names:

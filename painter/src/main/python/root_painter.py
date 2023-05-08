@@ -32,6 +32,8 @@ import json
 from functools import partial
 from datetime import datetime
 import time
+import threading
+import traceback
 
 from skimage.io import use_plugin
 from PyQt5 import QtWidgets
@@ -69,6 +71,7 @@ use_plugin("pil")
 
 Image.MAX_IMAGE_PIXELS = None
 
+
 class RootPainter(QtWidgets.QMainWindow):
 
     closed = QtCore.pyqtSignal()
@@ -101,6 +104,8 @@ class RootPainter(QtWidgets.QMainWindow):
         self.log_debounce.setSingleShot(True)
         self.log_debounce.timeout.connect(self.log_debounced)
 
+        sys.excepthook = self.log_exception
+        threading.excepthook = self.log_thread_exception
         self.initUI()
 
     def assign_sync_directory(self, sync_dir):
@@ -149,7 +154,6 @@ class RootPainter(QtWidgets.QMainWindow):
                                             ' is not a valid '
                                             'segmentation project (.seg_proj) file')
             self.init_missing_project_ui()
-
 
     def confirm_dataset_exists_or_respecify(self, specified_dataset_dir, proj_file_path):
         if os.path.isdir(specified_dataset_dir):
@@ -240,6 +244,22 @@ class RootPainter(QtWidgets.QMainWindow):
     def log(self, message):
         self.lines_to_log.append(f"{datetime.now()},{time.time()},{message}\n")
         self.log_debounce.start() # write after 1 second
+
+    def log_exception(self, type, value, tb):
+        message = f"Error. type: {type}, value: {value}, traceback: "
+        message += ''.join(traceback.format_tb(tb))
+        now_str = str(datetime.now())
+        message = now_str + '|sys_exception|' + message
+        print('log_exception', message)
+        print(message, file=open(os.path.join(self.sync_dir, 'client_exceptions.txt'), 'a+'))
+
+    def log_thread_exception(self, type, value, tb):
+        message = f"Error. type: {type}, value: {value}, traceback: "
+        message += ''.join(traceback.format_tb(tb))
+        now_str = str(datetime.now())
+        message = now_str + '|thread_exception|' + message
+        print('log_thread_exception', message)
+        print(message, file=open(os.path.join(self.sync_dir, 'client_exceptions.txt'), 'a+'))
 
     def update_file(self, fpath):
         

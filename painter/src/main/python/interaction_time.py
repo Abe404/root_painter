@@ -1,4 +1,21 @@
+"""
+Copyright (C) 2023 Abraham George Smith
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 from dataclasses import dataclass
+import os
 
 @dataclass
 class Event:
@@ -19,6 +36,7 @@ def is_pause(prev_event, period_len_s):
     return False
 
 def get_annot_duration_s(events, fname):
+    fname = os.path.splitext(fname)[0] # event object doesn't include file extension
     # we consider interaction as mouseup and mouse down events
     fname_events = [e for e in events if e.fname == fname and e.name in [
                     'mouse_press', 'mouse_release',
@@ -36,7 +54,6 @@ def get_annot_duration_s(events, fname):
         # if the current event is mouse_up then we count this as a click.
         if e.name == 'mouse_release':
             click_count += 1
-        
         if not is_pause(most_recent_event, period_between_events):
             total_duration += period_between_events
         most_recent_event = e
@@ -51,7 +68,11 @@ def events_from_client_log(client_log_fpath):
         event_time = parts[1]
         event_name = parts[2]
         fname = [p for p in parts if 'fname:' in p][0].replace('fname:', '')
+        # because load image has .jpg name (perhaps) but save annotation has png
+        # so let's just work with the file name without the extension.
+        fname = os.path.splitext(fname)[0] 
         events.append(Event(name=event_name, fname=fname, time=float(event_time)))
+
     return events
 
 

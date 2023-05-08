@@ -287,7 +287,7 @@ class ExtractMetricsWidget(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
         self.setWindowTitle("Extract Metrics")
-
+        
         text_label = QtWidgets.QLabel()
         text_label.setText("")
         layout.addWidget(text_label)
@@ -300,6 +300,9 @@ corrections assigned.
 The metrics saved to the CSV file include accuracy, tn (true negatives), fp (false positives),     
 tp (true positives), precision, recall, f1 (also known as dice score), annot_fg (number of pixels      
 annotated as foreground) and annot_bg (number of pixels annotated as background).
+
+If an interaction log is found for the project then the estimated time spent interacting with each image 
+will be exported (annot_duration_s), and also the number of clicks (clicks).
 
 The metrics CSV will be saved in the project folder, with the CSV file path displayed on export 
 completion.

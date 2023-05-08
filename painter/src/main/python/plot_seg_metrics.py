@@ -98,6 +98,15 @@ def get_cache_key(fname):
     fname = os.path.splitext(fname)[0] + '.png'
     return fname
 
+def load_annot_events(proj_dir):
+    client_log_fpath = os.path.join(proj_dir, 'logs', 'client.csv')
+    if os.path.isfile(client_log_fpath):
+        annot_events = events_from_client_log(client_log_fpath)
+    else:
+        annot_events = None
+    return annot_events
+
+
 def compute_seg_metrics(seg_dir, annot_dir, fname, model_dir, annot_events=None):
     
     # annot and seg are both PNG
@@ -185,7 +194,7 @@ class Thread(QtCore.QThread):
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
         start = time.time()
         # load the annotation events first (and once)
-        annot_events = events_from_client_log(self.client_log_fpath)
+        annot_events = load_annot_events(self.proj_dir)
         cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
         if os.path.isfile(cache_dict_path):
             cache_dict = pickle.load(open(cache_dict_path, 'rb'))
@@ -337,12 +346,13 @@ class MetricsPlot:
         if self.plot_window is not None:
             seg_dir = os.path.join(self.proj_dir, 'segmentations')
             annot_dir = os.path.join(self.proj_dir, 'annotations')
-            client_log_fpath = os.path.join(self.proj_dir, 'logs', 'client.csv')
 
             cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
             cache_dict = pickle.load(open(cache_dict_path, 'rb'))
             cache_key = get_cache_key(fname)
-            annot_events = events_from_client_log(client_log_fpath)
+
+            annot_events = load_annot_events(self.proj_dir)
+    
             metrics = compute_seg_metrics(seg_dir, annot_dir, fname,
                                           os.path.join(self.proj_dir, 'models'),
                                           annot_events)
@@ -703,8 +713,10 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             def hover_tip(x, y, data):
                 return f'{int(x)} {data}  {self.metric_display_name}: {round(y, 4)} model: {self.get_model_name(int(x)-1)}'
 
-            self.scatter = pg.ScatterPlotItem(size=8, symbol='x', clickable=True, hoverable=True,
-                                              hoverBrush=pg.mkBrush('grey'), hoverPen=pg.mkPen('grey'),
+            self.scatter = pg.ScatterPlotItem(size=8, symbol='x',
+                                              clickable=True, hoverable=True,
+                                              hoverBrush=pg.mkBrush('grey'),
+                                              hoverPen=pg.mkPen('grey'),
                                               tip=hover_tip)
             self.scatter.addPoints(scatter_points)
             self.graph_plot.addItem(self.scatter)

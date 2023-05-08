@@ -33,6 +33,11 @@ def is_pause(prev_event, period_len_s):
         if period_len_s > 20:
             # then don't include the interaction - we consider this a pause in annotation
             return True
+
+    # 'save_annotation' is called when navigating away from the file.
+    # meaning that time since this was called was spent on other files
+    if prev_event.name == 'save_annotation':
+        return True
     return False
 
 def get_annot_duration_s(events, fname):

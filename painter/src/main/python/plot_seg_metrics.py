@@ -34,10 +34,10 @@ from interaction_time import events_from_client_log
 from interaction_time import get_annot_duration_s
 
 
-def moving_average(original, w):
+def moving_average(x_vals, y_vals, w):
     averages = []
     x_pos_list = []
-    max_i = len(original)
+    max_i = len(y_vals)
     for i in range(w//2, max_i):
         j = i - (w//2)
         non_nan_elements = []
@@ -45,11 +45,10 @@ def moving_average(original, w):
          
         #for i in range(start_i, stop_i):
         while len(non_nan_elements) < w and j < max_i:
-            e = original[j]
-            
+            e = y_vals[j]
             if not math.isnan(e):
                 non_nan_elements.append(e)
-                element_positions.append(j+1) # +1 because images start at 1
+                element_positions.append(x_vals[j])
             j += 1
         
         if len(element_positions) == w:
@@ -710,7 +709,8 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             self.scatter.addPoints(scatter_points)
             self.graph_plot.addItem(self.scatter)
 
-            x, y = moving_average(self.corrected_dice, self.rolling_n)
+            x, y = moving_average(self.x_vals, self.corrected_dice, self.rolling_n)
+
             # shift x forwards as images start from 1
             self.graph_plot.plot(x, y, pen = pg.mkPen('r', width=3),
                                  symbol=None, name=f'Average (n={self.rolling_n})')

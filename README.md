@@ -19,15 +19,12 @@ A BioRxiv Pre-print (earlier version of the paper) is available at:
  
  A  shorter [mini guide](https://github.com/Abe404/root_painter/blob/master/docs/mini_guide.md) is available including more concise instruction, that could be used as reference. I suggest the paper, videos and then colab tutorial to get an idea of how the software interface could be used and then this mini guide for reference to help remember each of the key steps to get from raw data to final measurements. 
  
- 
- 
-
- 
 ### Videos
+A 14 minute video demonstrating how to install RootPainter on windows 11 with google drive and google colab is available on [youtube](https://www.youtube.com/watch?v=HuSujZQOkQw). I suggest watching this video if you have trouble with the initial installation part of the colab tutorial.
+
 A video demonstrating how to train and use a model is available to [download](https://nph.onlinelibrary.wiley.com/action/downloadSupplement?doi=10.1111%2Fnph.18387&file=nph18387-sup-0002-VideoS1.mp4)
 
-There is a [youtube video](https://www.youtube.com/watch?v=73u73tBvRO4) of a workshop explaining the background behind the software and covering using the colab notebook to train and use a root segmentation model.
-
+There is another [youtube video](https://www.youtube.com/watch?v=73u73tBvRO4) of a workshop explaining the background behind the software and covering using the colab notebook to train and use a root segmentation model.
 
 ### Client Downloads
 

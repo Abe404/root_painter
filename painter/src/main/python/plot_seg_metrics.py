@@ -1,6 +1,7 @@
 #pylint: disable=I1101,C0111,W0201,R0903,E0611, R0902, R0914, C0303, C0103
 """
 Copyright (C) 2022 Abraham George Smith
+Copyright (C) 2023 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,23 +21,23 @@ import csv
 import math
 import json
 import time
-from functools import partial
 import pickle
-import matplotlib.pyplot as plt
 import numpy as np
+import random
 import pyqtgraph as pg
 from pyqtgraph.Qt import mkQApp
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from skimage.io import imread
 from progress_widget import BaseProgressWidget
+from interaction_time import events_from_client_log 
+from interaction_time import get_annot_duration_s
 
 
-
-def moving_average(original, w):
+def moving_average(x_vals, y_vals, w):
     averages = []
     x_pos_list = []
-    max_i = len(original)
+    max_i = len(y_vals)
     for i in range(w//2, max_i):
         j = i - (w//2)
         non_nan_elements = []
@@ -44,11 +45,10 @@ def moving_average(original, w):
          
         #for i in range(start_i, stop_i):
         while len(non_nan_elements) < w and j < max_i:
-            e = original[j]
-            
+            e = y_vals[j]
             if not math.isnan(e):
                 non_nan_elements.append(e)
-                element_positions.append(j+1) # +1 because images start at 1
+                element_positions.append(x_vals[j])
             j += 1
         
         if len(element_positions) == w:
@@ -94,11 +94,20 @@ def compute_metrics_from_masks(y_pred, y_true, fg_labels, bg_labels):
     }
 
 
-def get_cache_key(seg_dir, annot_dir, fname):
+def get_cache_key(fname):
     fname = os.path.splitext(fname)[0] + '.png'
     return fname
 
-def compute_seg_metrics(seg_dir, annot_dir, fname):
+def load_annot_events(proj_dir):
+    client_log_fpath = os.path.join(proj_dir, 'logs', 'client.csv')
+    if os.path.isfile(client_log_fpath):
+        annot_events = events_from_client_log(client_log_fpath)
+    else:
+        annot_events = None
+    return annot_events
+
+
+def compute_seg_metrics(seg_dir, annot_dir, fname, model_dir, annot_events=None):
     
     # annot and seg are both PNG
     fname = os.path.splitext(fname)[0] + '.png'
@@ -109,11 +118,6 @@ def compute_seg_metrics(seg_dir, annot_dir, fname):
     annot_path = os.path.join(annot_dir, 'train', fname)
     if not os.path.isfile(annot_path):
         annot_path = os.path.join(annot_dir, 'val', fname)
-    
-    if os.path.isfile(annot_path):
-        annot_mtime = os.path.getmtime(annot_path)
-    else:
-        annot_mtime = 0
     
     seg = imread(seg_path)
 
@@ -133,7 +137,36 @@ def compute_seg_metrics(seg_dir, annot_dir, fname):
     corrected_segmentation_metrics = compute_metrics_from_masks(
         seg, corrected, np.sum(foreground > 0), np.sum(background > 0))
 
+    corrected_segmentation_metrics['seg_time'] = os.path.getmtime(seg_path)
+
+    corrected_segmentation_metrics['model_name'] = get_model_name_for_seg(
+        seg_path, model_dir)
+
+    if annot_events:
+        annot_duration_s, clicks = get_annot_duration_s(annot_events, fname)
+        corrected_segmentation_metrics['annot_duration_s'] = annot_duration_s
+        corrected_segmentation_metrics['clicks'] = clicks
+    
     return corrected_segmentation_metrics
+
+
+def get_model_name_for_seg(seg_path, models_dir):
+    # get modified time
+    seg_m_time = os.path.getmtime(seg_path)
+    model_fnames = sorted(os.listdir(models_dir))
+    for i, m in enumerate(model_fnames):
+        model_m_time = int(m.replace('.pkl', '').split('_')[1])
+        # if it's the last model then it must be this one.
+        if i == (len(model_fnames) - 1):
+            return m
+        next_m = model_fnames[i+1]
+        next_model_m_time = int(next_m.replace('.pkl', '').split('_')[1])
+        # if the model is before the seg
+        if model_m_time < seg_m_time:
+            # and the next model is after the seg
+            if next_model_m_time > seg_m_time:
+                # then return the model 
+                return m
 
 
 class Thread(QtCore.QThread):
@@ -145,6 +178,8 @@ class Thread(QtCore.QThread):
         self.proj_dir = proj_dir
         self.seg_dir = os.path.join(proj_dir, 'segmentations')
         self.annot_dir = os.path.join(proj_dir, 'annotations')
+        self.model_dir = os.path.join(proj_dir, 'models')
+        self.client_log_fpath = os.path.join(self.proj_dir, 'logs', 'client.csv')
         self.csv_path = csv_path
         self.fnames = fnames
 
@@ -158,6 +193,8 @@ class Thread(QtCore.QThread):
             writer = csv.writer(csv_file, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
         start = time.time()
+        # load the annotation events first (and once)
+        annot_events = load_annot_events(self.proj_dir)
         cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
         if os.path.isfile(cache_dict_path):
             cache_dict = pickle.load(open(cache_dict_path, 'rb'))
@@ -166,8 +203,7 @@ class Thread(QtCore.QThread):
         
         for i, fname in enumerate(self.fnames):
             self.progress_change.emit(i+1, len(self.fnames))
-            # cache_dir = os.path.join(self.proj_dir, 'metrics_cache')
-            cache_key = get_cache_key(self.seg_dir, self.annot_dir, fname)
+            cache_key = get_cache_key(fname)
             metrics = None
             if cache_key in cache_dict: 
                 metrics = cache_dict[cache_key]
@@ -177,14 +213,14 @@ class Thread(QtCore.QThread):
                 if metrics and 'area_error' not in metrics:
                     metrics = None
 
-
-
             # also recompute is metrics is None (even if found in cache) as None could indicate 
             # that the segmentation was previously missing when metrics was last computed. 
-            # but segmentation may now be available so we still need to ignore this cached result and 
+            # but segmentation may now be available so we still need 
+            # to ignore this cached result and 
             # recompute metrics, just incase the segmentation now exists.
             if metrics is None:
-                metrics = compute_seg_metrics(self.seg_dir, self.annot_dir, fname)
+                metrics = compute_seg_metrics(self.seg_dir, self.annot_dir,
+                                              fname, self.model_dir, annot_events)
                 cache_dict[cache_key] = metrics
     
             if metrics: 
@@ -251,7 +287,7 @@ class ExtractMetricsWidget(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
         self.setWindowTitle("Extract Metrics")
-
+        
         text_label = QtWidgets.QLabel()
         text_label.setText("")
         layout.addWidget(text_label)
@@ -264,6 +300,9 @@ corrections assigned.
 The metrics saved to the CSV file include accuracy, tn (true negatives), fp (false positives),     
 tp (true positives), precision, recall, f1 (also known as dice score), annot_fg (number of pixels      
 annotated as foreground) and annot_bg (number of pixels annotated as background).
+
+If an interaction log is found for the project then the estimated time spent interacting with each image 
+will be exported (annot_duration_s), and also the number of clicks (clicks).
 
 The metrics CSV will be saved in the project folder, with the CSV file path displayed on export 
 completion.
@@ -313,9 +352,13 @@ class MetricsPlot:
 
             cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
             cache_dict = pickle.load(open(cache_dict_path, 'rb'))
-            # cache_key is just the fname for now.
-            cache_key = get_cache_key(seg_dir, annot_dir, fname)
-            metrics = compute_seg_metrics(seg_dir, annot_dir, fname)
+            cache_key = get_cache_key(fname)
+
+            annot_events = load_annot_events(self.proj_dir)
+    
+            metrics = compute_seg_metrics(seg_dir, annot_dir, fname,
+                                          os.path.join(self.proj_dir, 'models'),
+                                          annot_events)
             if metrics:
                 cache_dict[cache_key] = metrics
                 self.plot_window.add_point(fname, metrics)
@@ -348,6 +391,7 @@ class MetricsPlot:
                 "annot_fg": int(annot_fg),
                 "annot_bg": int(annot_bg)
             })
+
         self.plot_window = QtGraphMetricsPlot(
             fnames, metrics_list, rolling_n=30)
         self.plot_window.setWindowTitle(
@@ -395,13 +439,14 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.rolling_n = rolling_n
         self.selected_metric = 'f1'
         self.metric_display_name = 'Dice'
+
+        self.x_axis_display_name = 'Image'
         self.highlight_point_fname = selected_fname
 
         # index of first correctively annotated image. first image is 0
         # we define this to be 6 initially as we assume the user annotated 6 images clearly.
         # so image 7 (index of 6) will be the first correctively annotated.
         self.first_corrective_idx = 6 
-
 
         self.highlight_point = None
         self.show_selected = True
@@ -416,28 +461,56 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.control_bar_layout.setContentsMargins(10, 0, 0, 10) # left, top, right, bottom
         self.control_bar.setMaximumHeight(60)
         self.control_bar.setMinimumHeight(60)
-        self.control_bar.setMinimumWidth(870)
+        self.control_bar.setMinimumWidth(930)
         self.control_bar.setLayout(self.control_bar_layout)
         self.layout.addWidget(self.control_bar)
+        
+        self.combo_container = QtWidgets.QWidget()
+        self.control_bar_layout.addWidget(self.combo_container)
+        self.combo_container.setMaximumWidth(290) 
+        self.combo_container_layout = QtWidgets.QHBoxLayout()
+        self.combo_container_layout.setContentsMargins(0, 0, 0, 0) # left, top, right, bottom
+        self.combo_container.setLayout(self.combo_container_layout)
+    
+        self.add_x_axis_dropbown()
         self.add_metrics_dropdown()
         self.add_average_control()
         self.add_first_corrective_control()
         self.add_selected_point_visbility_control()
         self.add_selected_point_label()
 
+    def add_x_axis_dropbown(self):
+        self.x_combo = QtWidgets.QComboBox()
+        self.x_combo.setFixedWidth(130)
+        self.x_combo.addItem('Image')
+        self.x_combo.addItem('Annotation duration (m)')
+
+        def selection_changed():
+            self.x_axis_display_name = self.x_combo.currentText()
+            self.graph_plot.setLabel('bottom', self.x_axis_display_name)
+            self.render_data()
+
+        self.x_combo.currentIndexChanged.connect(selection_changed)
+        x_label = QtWidgets.QLabel()
+        x_label.setText("x:")
+        self.combo_container_layout.addWidget(x_label)
+        self.combo_container_layout.addWidget(self.x_combo)
 
     def add_metrics_dropdown(self):
         keys = ["f1", "accuracy", "tn","fp", "fn", "tp", 
                 "precision", "recall",
-                "annot_fg", "annot_bg", "area_true", "area_pred", "area_error"]
+                "annot_fg", "annot_bg", "area_true", "area_pred",
+                "area_error", 'annot_duration_s', 'clicks']
         display_names = ["Dice", "Accuracy", "True Negatives",
                          "False Positives", "False Negatives",
                          "True Positives", "Precision", "Recall",
                          "Foreground Annotation", "Background Annotation", 
                          "Corrected Area",
                          "Predicted Area",
-                         "Predicted - Corrected Area"]
+                         "Predicted - Corrected Area",
+                         "Annotation duration (seconds)", 'Clicks']
         self.metric_combo = QtWidgets.QComboBox()
+        self.metric_combo.setFixedWidth(130)
         for d in display_names:
             self.metric_combo.addItem(d)
 
@@ -448,16 +521,15 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             self.render_data()
 
         self.metric_combo.currentIndexChanged.connect(selection_changed)
-        self.control_bar_layout.addWidget(self.metric_combo)
+        y_label = QtWidgets.QLabel()
+        y_label.setText("y:")
+        self.combo_container_layout.addWidget(y_label, QtCore.Qt.AlignLeft)
+        self.combo_container_layout.addWidget(self.metric_combo, QtCore.Qt.AlignLeft)
+
 
     def add_events(self):
-        def clicked(obj, points):
-            # scatter plot
-            pos = points[0].pos()
-            # pos = points.currentItem.ptsClicked[0].pos() # normal plot
-            fname_idx = int(pos.x()) - 1
-            clicked_fname = self.fnames[fname_idx]
-
+        def clicked(_obj, points):
+            clicked_fname = points[0]._data[7]
             def nav_to_im():
                 # will trigger updating file in the viewer and 
                 # then setting the highlight point.
@@ -570,7 +642,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
             idx = self.fnames.index(self.highlight_point_fname)
             y = self.metrics_list[idx][self.selected_metric]
             self.selected_point_label.setText(
-                f"{self.metric_display_name}: {round(y, 4)}")
+                f"Y: {round(y, 4)}")
             self.render_highlight_point()
 
             self.selected_checkbox.show() # only show once a point on the plot is selected.
@@ -584,7 +656,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
                 # dont show the point if the corrected dice is NaN.
                 # This is the case for the clear examples at the start.
                 if hasattr(self, 'corrected_dice') and not math.isnan(self.corrected_dice[idx]):
-                    x = [idx + 1]
+                    x = [self.x_vals[idx]]
                     y = [self.metrics_list[idx][self.selected_metric]]
                     if self.highlight_point is not None:
                         self.highlight_point.setData(x, y) # update position of existing point clearing causes trouble.
@@ -624,34 +696,56 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
 
             if hasattr(self, 'message'):
                 self.message.hide()
+            
+            # if we are showing image on the x-axis then x-position is just the image index
+            if self.x_axis_display_name == 'Image':
+                x = list(range(1, len(self.corrected_dice) + 1)) # start from 1 because first image is 1/N
+            elif self.x_axis_display_name == 'Annotation duration (m)':
+                durations_s = [float(m['annot_duration_s']) for m in self.metrics_list]
+                x = list(np.cumsum(durations_s))
+                x = [xi/60 for xi in x] # minutes
+            else:
+                raise Exception(f"Unhandled: {self.x_axis_display_name}")
 
-            x = list(range(1, len(self.corrected_dice) + 1)) # start from 1 because first image is 1/N
+
+            self.x_vals = x # used for show selected point
             y = self.corrected_dice
             scatter_points = [{'pos': [x, y], 'data': f} for (x, y, f) in zip(x, y, self.fnames)]
             self.graph_plot.clear()
 
             def hover_tip(x, y, data):
-                return f'{int(x)} {data}  {self.metric_display_name}: {round(y, 4)}'
+                return f'{int(x)} {data}  {self.metric_display_name}: {round(y, 4)} model: {self.get_model_name(int(x)-1)}'
 
-            self.scatter = pg.ScatterPlotItem(size=8, symbol='x', clickable=True, hoverable=True,
-                                              hoverBrush=pg.mkBrush('grey'), hoverPen=pg.mkPen('grey'),
+            self.scatter = pg.ScatterPlotItem(size=8, symbol='x',
+                                              clickable=True, hoverable=True,
+                                              hoverBrush=pg.mkBrush('grey'),
+                                              hoverPen=pg.mkPen('grey'),
                                               tip=hover_tip)
             self.scatter.addPoints(scatter_points)
             self.graph_plot.addItem(self.scatter)
 
-            x, y = moving_average(self.corrected_dice, self.rolling_n)
+            x, y = moving_average(self.x_vals, self.corrected_dice, self.rolling_n)
+
             # shift x forwards as images start from 1
             self.graph_plot.plot(x, y, pen = pg.mkPen('r', width=3),
                                  symbol=None, name=f'Average (n={self.rolling_n})')
      
             self.highlight_point = None # cleared now.
-
            
             # highlight point pos is a currently clicked point.
             if self.highlight_point_fname is not None:
                 self.render_highlight_point()
             self.add_events()
-       
+    
+    def get_model_name(self, x):
+        # we want to know which model was used to generate each segmentation.       
+        # x is the index of the segmentation in the list.  
+        if x < len(self.metrics_list):
+            if self.metrics_list[x] and 'model_name' in self.metrics_list[x]:
+                return self.metrics_list[x]['model_name']
+        return ''
+        
+
     def get_corrected_dice(self):
         corrected_dice = []
         for i, m in enumerate(self.metrics_list):
@@ -680,7 +774,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         p21.showGrid(x = True, y = True, alpha = 0.4)
         p21.addLegend(offset=(-90, -90),labelTextSize='12pt' )
         p21.setLabel('left', 'Dice')
-        p21.setLabel('bottom', 'Image')
+        p21.setLabel('bottom', self.x_axis_display_name)
         self.graph_plot = p21
         hide_weird_options(self.graph_plot)
         self.view = view # avoid errors with view being deleted
@@ -709,8 +803,9 @@ def hide_weird_options(graph_plot):
     graph_plot.vb.menu.ctrl[1].mouseCheck.hide()
     graph_plot.ctrlMenu = None
 
-if __name__ == '__main__':
-    # a quick test to demo the plot. Useful for testing a debugging.
+
+def demo_plot_test():
+    # a quick test to demo the plot. Useful for testing / debugging.
     app = QtWidgets.QApplication([])
     corrected_dice = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
     fnames = ['1', '2', '3', '4', '5', '6']
@@ -720,18 +815,19 @@ if __name__ == '__main__':
     corrected_dice += [0.7]
     metrics_list = [{'f1': a, 'accuracy': (1-a)/2, 'annot_fg': 100, 'annot_bg': 100} for a in corrected_dice]
     rolling_n = 3
-    selected_image = '7'
     plot = QtGraphMetricsPlot(fnames, metrics_list, rolling_n, selected_fname=None)
     plot.show()
-   
-    import random
-    def mouseMoved(evt):
-        pos = evt[0]  ## using signal proxy turns original arguments into a tuple
+
+    def mouseMoved(_evt):
+        # pos = evt[0]  ## using signal proxy turns original arguments into a tuple
         if plot.rolling_n > 30:
             plot.add_point(str(len(plot.metrics_list)),
                            {'f1': random.random(),
                             'annot_fg': 100,
                             'annot_bg': 100})
 
-    proxy = pg.SignalProxy(plot.view.scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)
+    _proxy = pg.SignalProxy(plot.view.scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)
     app.exec_()
+
+if __name__ == '__main__':
+    demo_plot_test()

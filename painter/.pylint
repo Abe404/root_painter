@@ -1,0 +1,26 @@
+[MESSAGES CONTROL]
+# import-error, no-member, trailing whitespace
+#disable=E0401,E1101,W291 
+
+disable=trailing-whitespace,
+	invalid-name,
+	broad-except,
+	no-member, # falsely detected by pylint
+	import-error, # falsely detected by pylint
+	c-extension-no-member, # falsely detected by pylint
+	ungrouped-imports, # perhaps something to come back to
+	wrong-import-order, # perhaps something to come back to
+	too-many-locals, # perhaps something to come back to
+	missing-docstring, # not something that's going to cuase errors - consider coming back to this.
+	# sometimes more arguments and attributes make sense, but we may want to investigate this as possible techincal debt
+	too-many-instance-attributes,
+	too-many-arguments,
+	too-many-public-methods,
+	inconsistent-return-statements, # sometimes these make sense
+	global-statement, # avoid it in general but sometimes it's useful :) 
+	missing-final-newline, # is this actually a problem?
+	line-too-long, # i do care about this but errors matter more
+    unreachable, # i have some code that cant run due to an exception saying it is disabled.
+    consider-using-with,
+    too-many-statements,
+    attribute-defined-outside-init

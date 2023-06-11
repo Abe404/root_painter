@@ -72,7 +72,13 @@ def load_train_image_and_annot(dataset_dir, train_annot_dir):
                                            os.path.splitext(fname)[0])
             # it's possible the image has a different extenstion
             # so use glob to get it
+            
+            # Use glob.escape to allow arbitrary strings in file paths,
+            # including [ and ]  
+            # For related bug See https://github.com/Abe404/root_painter/issues/87
+            image_path_part = glob.escape(image_path_part)
             image_path = glob.glob(image_path_part + '.*')[0]
+            
             latest_im_path = image_path
             image = load_image(image_path)
             latest_annot_path = annot_path
@@ -241,6 +247,9 @@ def save_then_move(out_path, seg_output, npy=False):
 
 def load_image(photo_path):
     photo = Image.open(photo_path)
+    # Convert to RGB before converting to NumPy due to bug in Pillow
+    # https://github.com/Abe404/root_painter/issues/94
+    photo = photo.convert("RGB")
     photo = ImageOps.exif_transpose(photo)
     photo = np.array(photo)
 
@@ -256,4 +265,5 @@ def load_image(photo_path):
     # TODO: train directly on B/W instead of doing this conversion.
     if len(photo.shape) == 2:
         photo = color.gray2rgb(photo)
+
     return photo

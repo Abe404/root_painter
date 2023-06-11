@@ -22,7 +22,7 @@ from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from progress_widget import BaseProgressWidget
 from skimage.io import imread, imsave
-from skimage import img_as_ubyte
+from skimage import img_as_ubyte, img_as_float
 
 class ConvertThread(QtCore.QThread):
     progress_change = QtCore.pyqtSignal(int, int)
@@ -56,11 +56,12 @@ def convert_seg_to_rve(seg):
 def convert_seg_to_annot(seg):
     """ segmention blue channel is foreground annotation
         everything else is background annotation """
-    seg_blue = seg[:, :, 2] # foreground prediction
-    annot = np.zeros(seg.shape)
-    annot[:, :, 0] = (seg_blue > 0)# Red channel
-    annot[:, :, 1] = (seg_blue == 0) # bg channel
-    annot[:, :, 3] = np.ones(seg_blue.shape) # alpha channel - everything defined.
+    annot = np.zeros((seg.shape[0], seg.shape[1], 4))
+    seg_fg = seg[:, :, 2] # assume blue is foreground prediction
+    seg_fg = img_as_float(seg_fg)
+    annot[:, :, 0] = (seg_fg >= 0.5) 
+    annot[:, :, 1] = (seg_fg < 0.5) # bg channel
+    annot[:, :, 3] = np.ones(seg_fg.shape) 
     return img_as_ubyte(annot)
 
 class ConvertProgressWidget(BaseProgressWidget):

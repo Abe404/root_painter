@@ -25,10 +25,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # too many public methods
 
 import sys
+import subprocess
 import os
 from pathlib import PurePath, Path
 import json
 from functools import partial
+from datetime import datetime
+import time
+import threading
+import traceback
 
 from skimage.io import use_plugin
 from PyQt5 import QtWidgets
@@ -55,14 +60,17 @@ from visibility_widget import VisibilityWidget
 from file_utils import last_fname_with_annotations
 from file_utils import get_annot_path
 from file_utils import maybe_save_annotation
+from file_utils import ls # list directory without hidden files.
 import im_utils
 from instructions import send_instruction
 from plot_seg_metrics import MetricsPlot, ExtractMetricsWidget
 from im_viewer import ContextViewer
 from random_split import RandomSplitWidget
+from resize_images import ResizeWidget
 use_plugin("pil")
 
 Image.MAX_IMAGE_PIXELS = None
+
 
 class RootPainter(QtWidgets.QMainWindow):
 
@@ -76,6 +84,8 @@ class RootPainter(QtWidgets.QMainWindow):
 
         self.assign_sync_directory(sync_dir)
         self.tracking = False
+
+        self.contrast_enhance_enabled = False
         self.image_pixmap_holder = None
         self.seg_pixmap_holder = None
         self.annot_pixmap_holder = None
@@ -88,6 +98,14 @@ class RootPainter(QtWidgets.QMainWindow):
         self.im_height = None
         self.metrics_plot = None
 
+        self.lines_to_log = []
+        self.log_debounce = QtCore.QTimer()
+        self.log_debounce.setInterval(500)
+        self.log_debounce.setSingleShot(True)
+        self.log_debounce.timeout.connect(self.log_debounced)
+
+        sys.excepthook = self.log_exception
+        threading.excepthook = self.log_thread_exception
         self.initUI()
 
     def assign_sync_directory(self, sync_dir):
@@ -136,7 +154,6 @@ class RootPainter(QtWidgets.QMainWindow):
                                             ' is not a valid '
                                             'segmentation project (.seg_proj) file')
             self.init_missing_project_ui()
-
 
     def confirm_dataset_exists_or_respecify(self, specified_dataset_dir, proj_file_path):
         if os.path.isdir(specified_dataset_dir):
@@ -216,6 +233,34 @@ class RootPainter(QtWidgets.QMainWindow):
         self.track_changes()
 
 
+    def log_debounced(self):
+        """ write to log file only so often to avoid lag """
+        with open(os.path.join(self.log_dir, 'client.csv'), 'a+') as log_file:
+            while self.lines_to_log:
+                line = self.lines_to_log[0]
+                log_file.write(line)
+                self.lines_to_log = self.lines_to_log[1:]
+
+    def log(self, message):
+        self.lines_to_log.append(f"{datetime.now()},{time.time()},{message}\n")
+        self.log_debounce.start() # write after 1 second
+
+    def log_exception(self, type, value, tb):
+        message = f"Error. type: {type}, value: {value}, traceback: "
+        message += ''.join(traceback.format_tb(tb))
+        now_str = str(datetime.now())
+        message = now_str + '|sys_exception|' + message
+        print('log_exception', message)
+        print(message, file=open(os.path.join(self.sync_dir, 'client_exceptions.txt'), 'a+'))
+
+    def log_thread_exception(self, type, value, tb):
+        message = f"Error. type: {type}, value: {value}, traceback: "
+        message += ''.join(traceback.format_tb(tb))
+        now_str = str(datetime.now())
+        message = now_str + '|thread_exception|' + message
+        print('log_thread_exception', message)
+        print(message, file=open(os.path.join(self.sync_dir, 'client_exceptions.txt'), 'a+'))
+
     def update_file(self, fpath):
         
         fname = os.path.basename(fpath)
@@ -238,6 +283,8 @@ class RootPainter(QtWidgets.QMainWindow):
                                          self.val_annot_dir)
         self.update_image()
 
+        self.update_context_viewer()
+
         self.scene.history = []
         self.scene.redo_list = []
 
@@ -246,6 +293,22 @@ class RootPainter(QtWidgets.QMainWindow):
 
         self.segment_current_image()
         self.update_window_title()
+        self.log(f'update_file_end,fname:{os.path.basename(fpath)}')
+
+
+    def update_context_viewer(self):
+        if hasattr(self, 'original_images'):
+            fname = os.path.splitext(self.png_fname)[0]
+            tile_num_str = fname.split('_')[-1]
+            fname = fname[:len(fname) - len('_' + tile_num_str)]
+
+            original_fname = None
+            for fname_with_ext in self.original_images:
+                if os.path.splitext(fname_with_ext)[0] == fname:
+                    original_fname = fname_with_ext
+                    break 
+            original_fpath = os.path.join(self.original_image_dir, original_fname)
+            self.context_viewer.update(original_fpath, self.graphics_view.image)
 
 
     def update_image(self):
@@ -253,9 +316,19 @@ class RootPainter(QtWidgets.QMainWindow):
         if not os.path.isfile(self.image_path):
             QtWidgets.QMessageBox.about(self, 'Error', f"Cannot find file {self.image_path}")
             raise Exception(f"Cannot find file {self.image_path}")
+        self.np_im = im_utils.load_image(self.image_path)
+        self.show_image_with_contrast_applied()
+
+        
+    def show_image_with_contrast_applied(self):
+        # Show image with contrast enhancement if this option was specified.
+        if self.contrast_enhance_enabled:
+            np_im_to_show = im_utils.auto_contrast(self.np_im)
+        else:
+            np_im_to_show = self.np_im
 
         # There's a problem with this function, as some images are loaded in the wrong orientation.
-        image_pixmap = im_utils.fpath_to_pixmap(self.image_path)
+        image_pixmap = im_utils.np_im_to_pixmap(np_im_to_show)
         im_size = image_pixmap.size()
 
         im_width, im_height = im_size.width(), im_size.height()
@@ -450,6 +523,14 @@ class RootPainter(QtWidgets.QMainWindow):
         self.setWindowTitle("RootPainter")
         self.resize(layout.sizeHint())
 
+    def open_sync_directory(self):
+        if sys.platform == "darwin": # Mac/OSX
+            subprocess.call(['open', self.sync_dir])
+        elif sys.platform == 'win32': # Windows
+            os.startfile(self.sync_dir)
+        else: # assume linux/ubuntu
+            subprocess.call(['xdg-open', self.sync_dir])
+
     def specify_sync_directory(self):
         """ User may choose to update the sync directory.
             This may happen if they initially specified the wrong
@@ -499,6 +580,11 @@ class RootPainter(QtWidgets.QMainWindow):
         specify_sync_dir_btn.triggered.connect(self.specify_sync_directory)
         extras_menu.addAction(specify_sync_dir_btn)
 
+        open_sync_dir_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                 'Open sync directory',
+                                                 self)
+        open_sync_dir_btn.triggered.connect(self.open_sync_directory)
+        extras_menu.addAction(open_sync_dir_btn)
 
         mask_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Mask images', self)
         mask_btn.triggered.connect(self.show_mask_images)
@@ -517,6 +603,16 @@ class RootPainter(QtWidgets.QMainWindow):
                                  self)
         random_split_btn.triggered.connect(show_random_split)
         extras_menu.addAction(random_split_btn)
+
+        def show_resize_images():
+            self.resize_images_widget = ResizeWidget()
+            self.resize_images_widget.show()
+
+        resize_images_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                'Resize images',
+                                 self)
+        resize_images_btn.triggered.connect(show_resize_images)
+        extras_menu.addAction(resize_images_btn)
 
 
         def view_metric_csv():
@@ -538,10 +634,15 @@ class RootPainter(QtWidgets.QMainWindow):
         self.metrics_plot = MetricsPlot()
 
 
-        view_metrics_csv_btn.triggered.connect(view_metric_csv)
-        extras_menu.addAction(view_metrics_csv_btn)
-
-
+        # view_metrics_csv_btn.triggered.connect(view_metric_csv)
+        # This has been disabled because the metrics are getting constantly
+        # expanded (new features) and the code that loads metrics from csv
+        # needs to be udpated to include the new metrics.  I'm going to disable
+        # this functionality for a while and see if anyone notices. If they
+        # notice/complain, then I think it would be worthwhile to update this
+        # functionality and think about how to make it work with both new
+        # (including more metrics) and old metrics CSV files.
+        # extras_menu.addAction(view_metrics_csv_btn)
 
         if project_open:
             metrics_plot_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
@@ -640,7 +741,7 @@ class RootPainter(QtWidgets.QMainWindow):
         bottom_bar = QtWidgets.QWidget()
         bottom_bar_layout = QtWidgets.QHBoxLayout()
         # left, top, right, bottom
-        bottom_bar_layout.setContentsMargins(20, 0, 20, 20)
+        bottom_bar_layout.setContentsMargins(20, 0, 15, 10)
         bottom_bar_layout.setSpacing(0)
         bottom_bar.setLayout(bottom_bar_layout)
 
@@ -667,20 +768,35 @@ class RootPainter(QtWidgets.QMainWindow):
         self.nav.image_path = self.image_path
         self.nav.update_nav_label()
 
-        # info label
-        info_container = QtWidgets.QWidget()
-        info_container_layout = QtWidgets.QHBoxLayout()
-        info_container_layout.setAlignment(Qt.AlignCenter)
-        info_label = QtWidgets.QLabel()
-        info_label.setText("")
-        info_container_layout.addWidget(info_label)
-        # left, top, right, bottom
-        info_container_layout.setContentsMargins(0, 0, 0, 0)
-        info_container.setLayout(info_container_layout)
-        self.info_label = info_label
+        # messages label
+        info_container_left = QtWidgets.QWidget()
+        info_container_left_layout = QtWidgets.QHBoxLayout()
+        info_container_left_layout.setAlignment(Qt.AlignCenter)
+        messages_label = QtWidgets.QLabel()
+        messages_label.setText("")
 
-        bottom_bar_r_layout.addWidget(info_container)
+        messages_label.setContentsMargins(0, 2, 0, 3)
+        info_container_left_layout.addWidget(messages_label)
+        # left, top, right, bottom
+        info_container_left_layout.setContentsMargins(0, 0, 0, 0)
+        info_container_left.setLayout(info_container_left_layout)
+        self.messages_label = messages_label
+        bottom_bar_r_layout.addWidget(info_container_left)
         bottom_bar_r_layout.addWidget(self.nav)
+
+        # brush size label
+        info_container_right = QtWidgets.QWidget()
+        info_container_right_layout = QtWidgets.QHBoxLayout()
+        info_container_right_layout.setAlignment(Qt.AlignRight)
+        brush_size_label = QtWidgets.QLabel()
+        brush_size_label.setMinimumWidth(115)
+        info_container_right_layout.addWidget(brush_size_label)
+        # left, top, right, bottom
+        info_container_right.setLayout(info_container_right_layout)
+        self.brush_size_label = brush_size_label
+        self.brush_size_label.setContentsMargins(0, 0, 0, 0)
+        bottom_bar_r_layout.addWidget(info_container_right)
+        bottom_bar_r_layout.setContentsMargins(0, 0, 0, 0)
 
         self.add_menu()
 
@@ -701,16 +817,21 @@ class RootPainter(QtWidgets.QMainWindow):
         self.tracking = True
         def check():
             # check for any messages
-            messages = os.listdir(str(self.message_dir))
+            messages = ls(str(self.message_dir))
             for m in messages:
-                if hasattr(self, 'info_label'):
-                    self.info_label.setText(m)
+                if hasattr(self, 'messages_label'):
+                    self.messages_label.setText(m)
                 try:
-                    # Added try catch because this error happened (very rarely)
-                    # PermissionError: [WinError 32]
-                    # The process cannot access the file because it is
-                    # being used by another process
-                    os.remove(os.path.join(self.message_dir, m))
+                    fpath = os.path.join(self.message_dir, m)
+                    # added check for it being a file because google drive for desktop on mac sometimes 
+                    # gives a list of files from os.listdir and then those files cannot be seen in either finder
+                    # and os.remove will complain that there is no such file..
+                    if os.path.isfile(fpath):
+                        # Added try catch because this error happened (very rarely)
+                        # PermissionError: [WinError 32]
+                        # The process cannot access the file because it is
+                        # being used by another process
+                        os.remove(fpath)
                 except Exception as e:
                     print('Caught exception when trying to detele msg', e)
             if hasattr(self, 'seg_path') and os.path.isfile(self.seg_path):
@@ -767,14 +888,22 @@ class RootPainter(QtWidgets.QMainWindow):
         redo_action.triggered.connect(self.scene.redo)
 
         options_menu = menu_bar.addMenu("Options")
+
         # pre segment count
         pre_segment_count_action = QtWidgets.QAction(QtGui.QIcon(""), "Pre-Segment", self)
         options_menu.addAction(pre_segment_count_action)
         pre_segment_count_action.triggered.connect(self.open_pre_segment_count_dialog)
 
+        # contrast enhance
+        contrast_enhance_count_action = QtWidgets.QAction(QtGui.QIcon(""), "Contrast enhance", self)
+        options_menu.addAction(contrast_enhance_count_action)
+        contrast_enhance_count_action.triggered.connect(self.open_contrast_enhance_dialog)
+
+        # brush size
         brush_edit_action = QtWidgets.QAction(QtGui.QIcon(""), "Change brush size", self)
         options_menu.addAction(brush_edit_action)
         brush_edit_action.triggered.connect(self.show_brush_size_edit)
+
 
         # change brush colors
         change_foreground_color_action = QtWidgets.QAction(QtGui.QIcon(""),
@@ -849,13 +978,9 @@ class RootPainter(QtWidgets.QMainWindow):
         show_image_context_btn.setShortcut('Ctrl+C')
 
         def show_image_context():
-            fname = os.path.splitext(self.png_fname)[0]
-            tile_num_str = fname.split('_')[-1]
-            fname = fname[:len(fname) - len('_' + tile_num_str)]
             proj_settings = json.load(open(self.proj_file_path))
-
             if 'original_image_dir' in proj_settings:
-                original_image_dir = proj_settings['original_image_dir']
+                self.original_image_dir = proj_settings['original_image_dir']
             else:
                 # if the project doesn't yet have the path for the original
                 # images then ask the user for it.
@@ -864,28 +989,21 @@ class RootPainter(QtWidgets.QMainWindow):
                          "Please specify the original image directory.")
                 msg.setText(output)
                 msg.exec_()
-                original_image_dir = QtWidgets.QFileDialog.getExistingDirectory()
-                if not original_image_dir:
+                self.original_image_dir = QtWidgets.QFileDialog.getExistingDirectory()
+                if not self.original_image_dir:
                     return
                 else:
-                    proj_settings['original_image_dir'] = original_image_dir
+                    proj_settings['original_image_dir'] = self.original_image_dir
                     with open(self.proj_file_path, 'w') as file:
                         json.dump(proj_settings, file, indent=4)
 
-            original_images = os.listdir(original_image_dir)
-            original_fname = None
-            for fname_with_ext in original_images:
-                if os.path.splitext(fname_with_ext)[0] == fname:
-                    original_fname = fname_with_ext
-                    break 
-            original_fpath = os.path.join(original_image_dir, original_fname)
-            self.context_viewer = ContextViewer(original_fpath, self.graphics_view.image)
+            self.original_images = os.listdir(self.original_image_dir)
+            self.context_viewer = ContextViewer()
             self.context_viewer.show()
+            self.update_context_viewer()
 
         show_image_context_btn.triggered.connect(show_image_context)
-        print('view menu add action')
         view_menu.addAction(show_image_context_btn)
-
 
         def zoom_in():
             self.graphics_view.zoom *= 1.1
@@ -990,12 +1108,12 @@ class RootPainter(QtWidgets.QMainWindow):
         self.convert_to_annot_widget.show()
 
     def stop_training(self):
-        self.info_label.setText("Stopping training...")
+        self.messages_label.setText("Stopping training...")
         content = {"message_dir": self.message_dir}
         self.send_instruction('stop_training', content)
 
     def start_training(self):
-        self.info_label.setText("Starting training...")
+        self.messages_label.setText("Starting training...")
         content = {
             "model_dir": self.model_dir,
             "dataset_dir": self.dataset_dir,
@@ -1096,7 +1214,9 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def show_brush_size_edit(self):
          new_size, ok = QtWidgets.QInputDialog.getInt(self, "",
-                 "Brush size can also be altered by holding shift and moving the cursor. \n \n \n Select brush size", self.scene.brush_size, 1, 300, 1)
+                 "Brush size can also be altered by holding shift "
+                 " and moving the cursor. \n \n \n Select brush size",
+                 round(self.scene.brush_size), 1, 300, 1)
          if ok:
              self.scene.brush_size = new_size
              self.update_cursor()
@@ -1124,6 +1244,8 @@ class RootPainter(QtWidgets.QMainWindow):
         ellipse_h = int(round(brush_w))
 
         
+        self.brush_size_label.setText(f"Brush Size: {round(self.scene.brush_size)}")
+
         painter.drawEllipse(ellipse_x, ellipse_y, ellipse_w, ellipse_h)
         painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 180), 2,
                                   Qt.SolidLine, Qt.FlatCap))
@@ -1150,15 +1272,36 @@ class RootPainter(QtWidgets.QMainWindow):
         if not modifiers & QtCore.Qt.ControlModifier:
             self.graphics_view.setDragMode(QtWidgets.QGraphicsView.NoDrag)
 
+
+    def open_contrast_enhance_dialog(self):
+
+        items = ('Disabled', 'Enabled')	
+        item, ok = QtWidgets.QInputDialog.getItem(self, "Select Contrast Enhance",
+                                                      "Select Contrast Enhance",
+                                                      items,
+                                                      int(self.contrast_enhance_enabled), False)
+        if ok:
+            new_value = (item == 'Enabled')
+            if new_value != self.contrast_enhance_enabled:
+                self.contrast_enhance_enabled = new_value
+                self.show_image_with_contrast_applied()
+        # For some reason the events get confused and
+        # scroll+pan gets switched on here.
+        # Check if control key is up to disble it.
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        if not modifiers & QtCore.Qt.ControlModifier:
+            self.graphics_view.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+
+
     def save_annotation(self):
         if self.scene.annot_pixmap:
+            self.log(f'save_annotation,fname:{self.png_fname}')
             self.annot_path = maybe_save_annotation(self.proj_location,
                                                     self.scene.annot_pixmap,
                                                     self.annot_path,
                                                     self.png_fname,
                                                     self.train_annot_dir,
                                                     self.val_annot_dir)
-
             self.metrics_plot.add_file_metrics(os.path.basename(self.image_path))
 
 

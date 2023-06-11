@@ -54,7 +54,8 @@ class NavWidget(QtWidgets.QWidget):
         nav_layout.addWidget(self.next_image_button)
 
         # left, top, right, bottom
-        nav_layout.setContentsMargins(0, 0, 0, 5)
+        nav_layout.setContentsMargins(0, 0, 0, 0)
+        nav_layout.setSpacing(2)
         nav.setLayout(nav_layout)
         nav.setMaximumWidth(600)
 

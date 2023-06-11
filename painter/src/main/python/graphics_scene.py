@@ -63,13 +63,12 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.annot_pixmap_holder.setPixmap(new_state)
             self.annot_pixmap = new_state
 
-
     def mousePressEvent(self, event):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
+        pos = event.scenePos()
+        x, y = pos.x(), pos.y()
         if not modifiers & QtCore.Qt.ControlModifier and self.parent.annot_visible:
             self.drawing = True
-            pos = event.scenePos()
-            x, y = pos.x(), pos.y()
             if self.brush_size == 1:
                 circle_x = x
                 circle_y = y
@@ -92,8 +91,16 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             painter.end()
             self.last_x = x
             self.last_y = y
+        # log even if not drawing - all interaction is relevant
+        self.parent.log(f'mouse_press,'
+                        f'fname:{self.parent.png_fname}'
+                        f',x:{x},y:{y}'
+                        f',brush_size:{self.brush_size}'
+                        f',brush_color:{self.brush_color.name()}'
+                        f',drawing:{self.drawing}')
 
-    def mouseReleaseEvent(self, _event):
+    def mouseReleaseEvent(self, event):
+        was_drawing = self.drawing
         if self.drawing:
             self.drawing = False
             # has to be some limit to history or RAM will run out
@@ -101,6 +108,16 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
                 self.history = self.history[-50:]
             self.history.append(self.annot_pixmap.copy())
             self.redo_list = []
+
+        pos = event.scenePos()
+        x, y = pos.x(), pos.y()
+        self.parent.log(f'mouse_release'
+                        f',fname:{self.parent.png_fname}'
+                        f',x:{x},y:{y}'
+                        f',brush_size:{self.brush_size}'
+                        f',brush_color:{self.brush_color.name()}'
+                        f',drawing:{was_drawing}')
+
 
     def mouseMoveEvent(self, event):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
@@ -123,7 +140,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
             # Based on empirical observation
             if self.brush_size % 2 == 0:
-                painter.drawLine(self.last_x+0.5, self.last_y+0.5, x+0.5, y+0.5)
+                painter.drawLine(round(self.last_x+0.5), round(self.last_y+0.5),
+                                 round(x+0.5), round(y+0.5))
             else:
                 painter.drawLine(round(self.last_x), round(self.last_y), round(x), round(y))
 
@@ -131,6 +149,3 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             painter.end()
         self.last_x = x
         self.last_y = y
-
-
-

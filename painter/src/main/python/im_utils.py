@@ -26,6 +26,7 @@ from skimage import color
 from skimage.io import imread, imsave
 from skimage import img_as_ubyte
 from skimage import img_as_float
+from skimage import exposure
 from skimage.transform import resize
 from skimage.color import rgb2gray
 import qimage2ndarray
@@ -49,11 +50,7 @@ def all_image_paths_in_dir(dir_path):
     return image_paths
 
 
-
-
-def fpath_to_pixmap(fpath):
-    """ Load image from fpath and convert to a PyQt5 pixmap object """
-    np_im = load_image(fpath)
+def np_im_to_pixmap(np_im):
     # some (png) images were float64 and appeared very 
     # dark after conversion to pixmap.
     # convert to int8 to fix.
@@ -61,9 +58,36 @@ def fpath_to_pixmap(fpath):
     q_image = qimage2ndarray.array2qimage(np_im)
     return QtGui.QPixmap.fromImage(q_image)
 
+
+def auto_contrast(img, clip_limit=0.02):
+    # Convert the input image to float format
+    img_float = img_as_float(img)
+
+    # if the difference between the min and max values is less than a threshold
+    # Then this image could basically be one continuous colour i.e totally black image
+    # and contrast enhancement gives very unrealistic looking results.
+    # so do not apply.
+    if np.min(img_float) <= np.max(img_float) - 0.1:
+        # Apply contrast-limited adaptive histogram equalization
+        equalized_img = exposure.equalize_adapthist(img_float, clip_limit=clip_limit)
+    else:
+        return img
+
+    # Rescale the output to the range [0, 255]
+    enhanced_img = (equalized_img * 255).astype(np.uint8)
+
+    return enhanced_img
+
+
+
+
 def load_image(photo_path):
-    #photo = imread(photo_path)
     photo = Image.open(photo_path)
+
+    # Convert to RGB before converting to NumPy due to bug in Pillow
+    # https://github.com/Abe404/root_painter/issues/94
+    photo = photo.convert("RGB") 
+
     photo = ImageOps.exif_transpose(photo)
     photo = np.array(photo)
     # sometimes photo is a list where first element is the photo
@@ -97,9 +121,18 @@ def save_masked_image(seg_dir, image_dir, output_dir, fname):
     im_path = os.path.join(image_dir, os.path.splitext(fname)[0]) + '.*'
     glob_results = glob.glob(im_path)
     if glob_results:
-        im = imread(glob_results[0])
-        im[seg==0] = 0 # make background black.
-        imsave(os.path.join(output_dir, os.path.splitext(fname)[0] + '.jpg'), im, quality=95)
+        im_fpath = glob_results[0]
+        im_fname = os.path.basename(im_fpath)
+        im = Image.open(im_fpath)
+        if im.mode == 'P': # see https://github.com/python-pillow/Pillow/issues/7045
+            im = im.convert("RGBA")
+        im = np.array(im)
+        # resize the segmentation to match the image, so smaller segmentations
+        # can be used to mask larger images (for example in localisation stages)
+        if im.shape[:2] != seg.shape[:2]:
+            seg = resize(seg, (im.shape[0], im.shape[1], 3), order=0)
+        im[:][seg[:, :, 2] == 0] = 0 # make background black.
+        imsave(os.path.join(output_dir, im_fname), im, quality=95)
 
 def save_corrected_segmentation(annot_fpath, seg_dir, output_dir):
     """assign the annotations (corrections) to the segmentations. This is useful
@@ -112,6 +145,14 @@ def save_corrected_segmentation(annot_fpath, seg_dir, output_dir):
     seg[bg > 0] = [0,0,0,0]
     seg[fg > 0] = [0, 1.0, 1.0, 0.7]
     imsave(os.path.join(output_dir, fname), seg)
+
+
+def resize_image(im, resize_percent):
+    # assume that image is RGB
+    target_shape = (im.shape[0] * (resize_percent/100),
+                    im.shape[1] * (resize_percent/100), 3)
+    resized_im = resize(im, target_shape)
+    return resized_im
 
 
 def gen_composite(annot_dir, photo_dir, comp_dir, fname, ext='.jpg'):

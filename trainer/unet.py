@@ -139,3 +139,35 @@ class UNetGNRes(nn.Module):
         out = self.up4(out, out1)
         out = self.conv_out(out)
         return out
+
+
+if __name__ == '__main__':
+    import torch
+    from torch.nn.functional import softmax
+    from skimage.io import imsave
+    import numpy as np
+    unet = UNetGNRes()
+    unet.eval()
+    # test_input = np.random.rand(1, 3, 572, 572)
+    test_input = np.zeros((1, 3, 572, 572))
+    test_input = torch.from_numpy(test_input)
+    test_input.cuda()
+    test_input = test_input.float()
+    output = unet(test_input)
+    output = output.detach()
+    print('output.shape', output.shape)
+    softmaxed = softmax(output, 1)[:, 1, :] # just fg probability
+    softmaxed = softmaxed[0] # single image.
+    print('softmaxed shape = ', softmaxed.shape)
+    imsave('out.png', softmaxed)
+
+       
+
+
+
+
+
+
+
+
+

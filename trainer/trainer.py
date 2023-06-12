@@ -35,6 +35,7 @@ import torch
 from torch.nn.functional import softmax
 from torch.utils.data import DataLoader
 from loss import combined_loss as criterion
+from torch.nn.functional import binary_cross_entropy
 
 from datasets import TrainDataset
 from metrics import get_metrics, get_metrics_str, get_metric_csv_row
@@ -93,7 +94,7 @@ class Trainer():
         # There is no obvious way of getting memory for MPS
         # FIXME: setting arbitrary amount of memory.
         if torch.backends.mps.is_available():
-            total_mem = 16_589_934_592
+            total_mem = 24_589_934_592
 
         self.bs = total_mem // mem_per_item
         self.bs = min(12, self.bs)
@@ -260,28 +261,24 @@ class Trainer():
 
             self.check_for_instructions()
             photo_tiles = photo_tiles.to(device)
-            foreground_tiles = foreground_tiles.to(device)
+            foreground_tiles = foreground_tiles.to(device).float()
             defined_tiles = defined_tiles.to(device)
             self.optimizer.zero_grad()
             outputs = self.model(photo_tiles)
-            softmaxed = softmax(outputs, 1)
-            # just the foreground probability.
-            foreground_probs = softmaxed[:, 1, :]
-            # remove any of the predictions for which we don't have ground truth
-            # Set outputs to 0 where annotation undefined so that
-            # The network can predict whatever it wants without any penalty.
-            outputs[:, 0] *= defined_tiles
-            outputs[:, 1] *= defined_tiles
-            loss = criterion(outputs, foreground_tiles)
+            softmaxed = softmax(outputs, 1)[:, 1] # just fg probabiliy
+            loss = binary_cross_entropy(softmaxed, foreground_tiles, weight=defined_tiles)
             loss.backward()
             self.optimizer.step()
-            foreground_probs *= defined_tiles
-            predicted = foreground_probs > 0.5
 
-            # we only want to calculate metrics on the
-            # part of the predictions for which annotations are defined
+            # make the predictions match in undefined areas so metrics in these
+            # regions are not taken into account.
+            softmaxed *= defined_tiles 
+            predicted = softmaxed > 0.5
+
+            # we only want to calculate metrics on the
+            # part of the predictions for which annotations are defined
             # so remove all predictions and foreground labels where
-            # we didn't have any annotation.
+            # we didn't have any annotation.
 
             defined_list = defined_tiles.view(-1)
             preds_list = predicted.view(-1)[defined_list > 0]
@@ -499,7 +496,6 @@ class Trainer():
                     seg_alpha[seg_out > 0] = [0, 1.0, 1.0, 0.7]
                     # Conver to uint8 to save as png without warning
                     seg_out  = (seg_alpha * 255).astype(np.uint8)
-
 
                 if sync_save:
                     # other wise do sync because we don't want to delete the segment

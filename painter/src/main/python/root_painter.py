@@ -769,7 +769,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # messages label
         info_container_left = QtWidgets.QWidget()
         info_container_left_layout = QtWidgets.QHBoxLayout()
-        info_container_left_layout.setAlignment(Qt.AlignCenter)
+        info_container_left_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         messages_label = QtWidgets.QLabel()
         messages_label.setText("")
 
@@ -785,7 +785,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # brush size label
         info_container_right = QtWidgets.QWidget()
         info_container_right_layout = QtWidgets.QHBoxLayout()
-        info_container_right_layout.setAlignment(Qt.AlignRight)
+        info_container_right_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
         brush_size_label = QtWidgets.QLabel()
         brush_size_label.setMinimumWidth(115)
         info_container_right_layout.addWidget(brush_size_label)

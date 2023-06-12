@@ -60,7 +60,7 @@ class NavWidget(QtWidgets.QWidget):
         nav.setMaximumWidth(600)
 
         container_layout = QtWidgets.QHBoxLayout()
-        container_layout.setAlignment(Qt.AlignCenter)
+        container_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         container_layout.addWidget(nav)
         self.setLayout(container_layout)
         container_layout.setContentsMargins(0, 0, 0, 0)

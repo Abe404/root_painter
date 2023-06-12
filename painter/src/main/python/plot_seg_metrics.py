@@ -522,8 +522,8 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         self.metric_combo.currentIndexChanged.connect(selection_changed)
         y_label = QtWidgets.QLabel()
         y_label.setText("y:")
-        self.combo_container_layout.addWidget(y_label, QtCore.Qt.AlignLeft)
-        self.combo_container_layout.addWidget(self.metric_combo, QtCore.Qt.AlignLeft)
+        self.combo_container_layout.addWidget(y_label, QtCore.Qt.AlignmentFlag.AlignLeft)
+        self.combo_container_layout.addWidget(self.metric_combo, QtCore.Qt.AlignmentFlag.AlignLeft)
 
 
     def add_events(self):
@@ -568,7 +568,7 @@ class QtGraphMetricsPlot(QtWidgets.QMainWindow):
         selected_point_widget.setLayout(selected_point_widget_layout)
         self.selected_point_label = QtWidgets.QLabel()
         selected_point_widget_layout.addWidget(self.selected_point_label)
-        selected_point_widget_layout.setAlignment(QtCore.Qt.AlignRight)
+        selected_point_widget_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.navigate_btn = QtWidgets.QPushButton()
         self.navigate_btn.setText("Navigate to Image")

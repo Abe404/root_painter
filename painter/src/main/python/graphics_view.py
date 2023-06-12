@@ -34,7 +34,7 @@ class CustomGraphicsView(QtWidgets.QGraphicsView):
     def __init__(self):
         super().__init__()
         self.zoom = 1
-        self.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+        self.setDragMode(QtWidgets.QGraphicsView.DragMode.NoDrag)
 
     def update_zoom(self):
         """ Transform the view based on current zoom value """
@@ -46,11 +46,11 @@ class CustomGraphicsView(QtWidgets.QGraphicsView):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Control:
-            self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
+            self.setDragMode(QtWidgets.QGraphicsView.DragMode.ScrollHandDrag)
 
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key_Control:
-            self.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+            self.setDragMode(QtWidgets.QGraphicsView.DragMode.NoDrag)
 
     def show_actual_size(self):
         self.zoom = 1

@@ -1268,7 +1268,11 @@ class RootPainter(QtWidgets.QMainWindow):
         # Check if control key is up to disble it.
         modifiers = QtWidgets.QApplication.keyboardModifiers()
         if not modifiers & QtCore.Qt.ControlModifier:
-            self.graphics_view.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+            self.graphics_view.setDragMode(QtWidgets.QGraphicsView.DragMode.NoDrag)
+
+
+
+
 
 
     def open_contrast_enhance_dialog(self):
@@ -1288,7 +1292,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # Check if control key is up to disble it.
         modifiers = QtWidgets.QApplication.keyboardModifiers()
         if not modifiers & QtCore.Qt.ControlModifier:
-            self.graphics_view.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+            self.graphics_view.setDragMode(QtWidgets.QGraphicsView.DragMode.NoDrag)
 
 
     def save_annotation(self):

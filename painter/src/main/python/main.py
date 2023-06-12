@@ -65,7 +65,7 @@ def init_root_painter():
         sys.exec_info()[0]: {sys.exc_info()[0]}
         """
         msg.setText(output)
-        msg.exec_()
+        msg.exec()
     else:
         sys.exit(exit_code)
 

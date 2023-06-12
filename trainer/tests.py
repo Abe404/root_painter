@@ -2,6 +2,7 @@ from unet import UNetGNRes
 
 
 def setup_function():
+    import os
     """setup any state tied to the execution of the given function.
     Invoked for every test function in the module.
     """

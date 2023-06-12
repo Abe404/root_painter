@@ -375,7 +375,7 @@ class RootPainter(QtWidgets.QMainWindow):
             font.setPointSize(48)
             painter.setFont(font)
             painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255)))
-            painter.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255), Qt.SolidPattern))
+            painter.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255), Qt.BrushStyle.SolidPattern))
             if sys.platform == 'win32':
                 # For some reason the text has a different size
                 # and position on windows
@@ -1124,17 +1124,17 @@ class RootPainter(QtWidgets.QMainWindow):
         self.send_instruction('start_training', content)
 
     def seg_checkbox_change(self, state):
-        checked = (state == QtCore.Qt.Checked)
+        checked = (state == QtCore.Qt.CheckState.Checked)
         if checked is not self.seg_visible:
             self.show_hide_seg()
 
     def annot_checkbox_change(self, state):
-        checked = (state == QtCore.Qt.Checked)
+        checked = (state == QtCore.Qt.CheckState.Checked)
         if checked is not self.annot_visible:
             self.show_hide_annot()
 
     def im_checkbox_change(self, state):
-        checked = (state == QtCore.Qt.Checked)
+        checked = (state == QtCore.Qt.CheckState.Checked)
         if checked is not self.image_visible:
             self.show_hide_image()
 
@@ -1234,8 +1234,8 @@ class RootPainter(QtWidgets.QMainWindow):
         r, g, b = brush_rgb.red(), brush_rgb.green(), brush_rgb.blue()
         cursor_color = QtGui.QColor(r, g, b, 120)
 
-        painter.setPen(QtGui.QPen(cursor_color, 3, Qt.SolidLine,
-                                  Qt.RoundCap, Qt.RoundJoin))
+        painter.setPen(QtGui.QPen(cursor_color, 3, Qt.PenStyle.SolidLine,
+                                  Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         ellipse_x = int(round(canvas_w/2 - (brush_w)/2))
         ellipse_y = int(round(canvas_w/2 - (brush_w)/2))
         ellipse_w = int(round(brush_w))
@@ -1246,7 +1246,7 @@ class RootPainter(QtWidgets.QMainWindow):
 
         painter.drawEllipse(ellipse_x, ellipse_y, ellipse_w, ellipse_h)
         painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 180), 2,
-                                  Qt.SolidLine, Qt.FlatCap))
+                                  Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
 
         # Draw black to show where cursor is even when brush is small
         painter.drawLine(0, round(canvas_w/2), round(canvas_w*2), round(canvas_w/2))

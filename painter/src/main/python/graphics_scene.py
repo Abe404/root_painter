@@ -77,11 +77,11 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
                 circle_y = y - (self.brush_size / 2) + 0.5
 
             painter = QtGui.QPainter(self.annot_pixmap)
-            painter.setCompositionMode(QtGui.QPainter.CompositionMode_Source)
+            painter.setCompositionMode(QtGui.QPainter.CompositionMode.CompositionMode_Source)
             painter.drawPixmap(0, 0, self.annot_pixmap)
-            painter.setPen(QtGui.QPen(self.brush_color, 0, Qt.SolidLine,
-                                      Qt.RoundCap, Qt.RoundJoin))
-            painter.setBrush(QtGui.QBrush(self.brush_color, Qt.SolidPattern))
+            painter.setPen(QtGui.QPen(self.brush_color, 0, Qt.PenStyle.SolidLine,
+                                      Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            painter.setBrush(QtGui.QBrush(self.brush_color, Qt.BrushStyle.SolidPattern))
             if self.brush_size == 1:
                 painter.drawPoint(round(circle_x), round(circle_y))
             else:
@@ -132,10 +132,10 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.parent.update_cursor()
         elif self.drawing:
             painter = QtGui.QPainter(self.annot_pixmap)
-            painter.setCompositionMode(QtGui.QPainter.CompositionMode_Source)
+            painter.setCompositionMode(QtGui.QPainter.CompositionMode.CompositionMode_Source)
             painter.drawPixmap(0, 0, self.annot_pixmap)
-            pen = QtGui.QPen(self.brush_color, self.brush_size, Qt.SolidLine,
-                             Qt.RoundCap, Qt.RoundJoin)
+            pen = QtGui.QPen(self.brush_color, self.brush_size, Qt.PenStyle.SolidLine,
+                             Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
             painter.setPen(pen)
 
             # Based on empirical observation

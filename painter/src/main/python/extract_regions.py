@@ -76,7 +76,7 @@ class ExtractRegionsWidget(BaseExtractWidget):
         self.eccentricity_checkbox.stateChanged.connect(self.output_eccentricity_changed)
 
     def output_eccentricity_changed(self, state):
-        checked = (state == QtCore.Qt.Checked)
+        checked = (state == QtCore.Qt.CheckState.Checked)
         if checked:
             self.headers = region_props_headers
         else:

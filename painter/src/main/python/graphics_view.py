@@ -45,11 +45,11 @@ class CustomGraphicsView(QtWidgets.QGraphicsView):
         self.mouse_scroll_event.emit(event)
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Control:
+        if event.key() == Qt.Key.Key_Control:
             self.setDragMode(QtWidgets.QGraphicsView.DragMode.ScrollHandDrag)
 
     def keyReleaseEvent(self, event):
-        if event.key() == Qt.Key_Control:
+        if event.key() == Qt.Key.Key_Control:
             self.setDragMode(QtWidgets.QGraphicsView.DragMode.NoDrag)
 
     def show_actual_size(self):
@@ -71,7 +71,7 @@ class CustomGraphicsView(QtWidgets.QGraphicsView):
 
         scene_rect = self.sceneRect()
         def fitin():
-            self.fitInView(scene_rect, Qt.KeepAspectRatio)
+            self.fitInView(scene_rect, Qt.AspectRatioMode.KeepAspectRatio)
         fitin()
         QtCore.QTimer.singleShot(100, fitin)
         self.zoom_change.emit()

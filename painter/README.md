@@ -8,3 +8,6 @@ The server (trainer) must be running for the client to function.
 I typically suggest using a virtual environment for this.
     > pip install -r requirements.txt
 
+
+To run the client from the command line
+    > python src/main/python/main.py

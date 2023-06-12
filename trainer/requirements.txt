@@ -5,3 +5,4 @@ Pillow==9.3.0
 imagecodecs==2023.3.16
 torch==2.0.1
 torchvision==0.15.2
+pytest==7.3.2

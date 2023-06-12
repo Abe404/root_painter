@@ -20,9 +20,9 @@ Palette: Provides a way to add, edit and remove brushes / colours / classes
 import random
 from functools import partial
 
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
-from PyQt5 import QtGui
+from PyQt6 import QtWidgets
+from PyQt6 import QtCore
+from PyQt6 import QtGui
 
 
 class BrushEditWidget(QtWidgets.QWidget):

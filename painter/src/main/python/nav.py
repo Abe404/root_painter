@@ -1,5 +1,5 @@
 """
-Copyright (C) 2020 Abraham George Smith
+Copyright (C) 2020-2023 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,9 +17,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # pylint: disable=C0111, I1101, E0611
 import os
 
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
-from PyQt5.QtCore import Qt
+from PyQt6 import QtWidgets
+from PyQt6 import QtCore
+from PyQt6.QtCore import Qt
 
 
 class NavWidget(QtWidgets.QWidget):

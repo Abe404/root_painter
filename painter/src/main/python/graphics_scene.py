@@ -67,7 +67,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
         pos = event.scenePos()
         x, y = pos.x(), pos.y()
-        if not modifiers & QtCore.Qt.ControlModifier and self.parent.annot_visible:
+        if not modifiers & QtCore.Qt.KeyboardModifier.ControlModifier and self.parent.annot_visible:
             self.drawing = True
             if self.brush_size == 1:
                 circle_x = x
@@ -121,7 +121,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
     def mouseMoveEvent(self, event):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
-        shift_down = (modifiers & QtCore.Qt.ShiftModifier)
+        shift_down = (modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier)
         pos = event.scenePos()
         x, y = pos.x(), pos.y()
         if shift_down:

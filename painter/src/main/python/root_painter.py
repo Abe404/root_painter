@@ -118,8 +118,8 @@ class RootPainter(QtWidgets.QMainWindow):
     def mouse_scroll(self, event):
         scroll_up = event.angleDelta().y() > 0
         modifiers = QtWidgets.QApplication.keyboardModifiers()
-        alt_down = (modifiers & QtCore.Qt.AltModifier)
-        shift_down = (modifiers & QtCore.Qt.ShiftModifier)
+        alt_down = (modifiers & QtCore.Qt.KeyboardModifier.AltModifier)
+        shift_down = (modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier)
 
         if alt_down or shift_down:
             # change by 10% (nearest int) or 1 (min)
@@ -1267,7 +1267,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # scroll+pan gets switched on here.
         # Check if control key is up to disble it.
         modifiers = QtWidgets.QApplication.keyboardModifiers()
-        if not modifiers & QtCore.Qt.ControlModifier:
+        if not modifiers & QtCore.Qt.KeyboardModifier.ControlModifier:
             self.graphics_view.setDragMode(QtWidgets.QGraphicsView.DragMode.NoDrag)
 
 
@@ -1291,7 +1291,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # scroll+pan gets switched on here.
         # Check if control key is up to disble it.
         modifiers = QtWidgets.QApplication.keyboardModifiers()
-        if not modifiers & QtCore.Qt.ControlModifier:
+        if not modifiers & QtCore.Qt.KeyboardModifier.ControlModifier:
             self.graphics_view.setDragMode(QtWidgets.QGraphicsView.DragMode.NoDrag)
 
 

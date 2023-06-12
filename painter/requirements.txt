@@ -8,6 +8,6 @@ Pillow==9.3.0
 scipy==1.9.3
 imagecodecs==2021.11.20
 matplotlib==3.5.2
-pyqtgraph==0.12.4
+pyqtgraph==0.13.3
 qimage2ndarray==1.10.0
 humanfriendly==10.0

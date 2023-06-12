@@ -83,19 +83,17 @@ class Trainer():
         self.num_workers=min(multiprocessing.cpu_count(), max_workers)
         print(self.num_workers, 'workers assigned for data loader')
 
-        print('GPU Available', torch.cuda.is_available())
-        print("Device Count:", torch.cuda.device_count())
+        print('CUDA Available', torch.cuda.is_available())
+        print("CUDA Device Count:", torch.cuda.device_count())
         for i in range(torch.cuda.device_count()):
             total_mem += torch.cuda.get_device_properties(i).total_memory
-
 
         print('MPS Available', torch.backends.mps.is_available())
         # MPS only has one device.
         # There is no obvious way of getting memory for MPS
         # FIXME: setting arbitrary amount of memory.
         if torch.backends.mps.is_available():
-            total_mem = 8_589_934_592
-
+            total_mem = 16_589_934_592
 
         self.bs = total_mem // mem_per_item
         self.bs = min(12, self.bs)

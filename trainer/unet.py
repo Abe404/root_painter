@@ -89,7 +89,6 @@ class UpBlock(nn.Module):
             nn.Conv2d(in_channels, in_channels,
                       kernel_size=3, padding=0),
             nn.ReLU(),
-            nn.GroupNorm(32, in_channels)
         )
 
     def forward(self, x, down_out):
@@ -123,8 +122,8 @@ class UNetGNRes(nn.Module):
         self.up4 = UpBlock(64)
         self.conv_out = nn.Sequential(
             nn.Conv2d(64, 2, kernel_size=1, padding=0),
-            nn.ReLU(),
-            nn.GroupNorm(2, 2)
+            nn.ReLU()
+            #nn.GroupNorm(2, 2)
         )
 
     def forward(self, x):
@@ -160,14 +159,3 @@ if __name__ == '__main__':
     softmaxed = softmaxed[0] # single image.
     print('softmaxed shape = ', softmaxed.shape)
     imsave('out.png', softmaxed)
-
-       
-
-
-
-
-
-
-
-
-

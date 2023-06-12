@@ -19,7 +19,6 @@ import sys
 from os.path import dirname
 sys.path.append(dirname(__file__)) # find modules in current directory
 
-from trainer import Trainer
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -28,6 +27,7 @@ parser.add_argument('--syncdir',
                            ' synced between the client and server'))
 
 def start():
+    from trainer import Trainer
     args = parser.parse_args()
     if args.syncdir:
         trainer = Trainer(sync_dir=args.syncdir)

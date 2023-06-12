@@ -1,7 +1,6 @@
 #pylint: disable=I1101,C0111,W0201,R0903,E0611, R0902, R0914, C0303, C0103
 """
-Copyright (C) 2022 Abraham George Smith
-Copyright (C) 2023 Abraham George Smith
+Copyright (C) 2022-2023 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,11 +25,11 @@ import numpy as np
 import random
 import pyqtgraph as pg
 from pyqtgraph.Qt import mkQApp
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
+from PyQt6 import QtWidgets
+from PyQt6 import QtCore
 from skimage.io import imread
 from progress_widget import BaseProgressWidget
-from interaction_time import events_from_client_log 
+from interaction_time import events_from_client_log
 from interaction_time import get_annot_duration_s
 
 

@@ -17,10 +17,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # pylint: disable=I1101, C0111, E0611, R0902
 """ Canvas where image and annotations can be drawn """
 from math import hypot
-from PyQt5 import QtWidgets
-from PyQt5 import QtGui
-from PyQt5 import QtCore
-from PyQt5.QtCore import Qt
+from PyQt6 import QtWidgets
+from PyQt6 import QtGui
+from PyQt6 import QtCore
+from PyQt6.QtCore import Qt
 
 
 class GraphicsScene(QtWidgets.QGraphicsScene):

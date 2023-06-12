@@ -1,7 +1,7 @@
 """
 Show visibility status of segmentation, image and annotation.
 
-Copyright (C) 2020 Abraham George Smith
+Copyright (C) 2020-2023 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # pylint: disable=E0611, C0111, C0111, R0903, I1101
-from PyQt5 import QtWidgets
+from PyQt6 import QtWidgets
 
 class VisibilityWidget(QtWidgets.QWidget):
 

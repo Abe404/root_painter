@@ -18,8 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #pylint: disable=I1101,C0111,W0201,R0903,E0611, R0902, R0914
 import os
 import numpy as np
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
+from PyQt6 import QtWidgets
+from PyQt6 import QtCore
 from progress_widget import BaseProgressWidget
 from skimage.io import imread, imsave
 from skimage import img_as_ubyte, img_as_float

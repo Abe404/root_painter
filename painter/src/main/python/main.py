@@ -21,7 +21,7 @@ import os
 from pathlib import Path
 import json
 import traceback
-from PyQt5 import QtWidgets
+from PyQt6 import QtWidgets
 
 from root_painter import RootPainter
 

@@ -21,7 +21,7 @@ import glob
 import sys
 
 import numpy as np
-from PyQt5 import QtGui
+from PyQt6 import QtGui
 from skimage import color
 from skimage.io import imread, imsave
 from skimage import img_as_ubyte

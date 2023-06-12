@@ -20,7 +20,7 @@ import os
 
 from im_utils import save_corrected_segmentation, all_image_paths_in_dir
 from progress_widget import BaseProgressWidget
-from PyQt5 import QtCore, QtWidgets
+from PyQt6 import QtCore, QtWidgets
 import traceback
 
 

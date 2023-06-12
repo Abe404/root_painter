@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Abraham George Smith
+Copyright (C) 2021-2023 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

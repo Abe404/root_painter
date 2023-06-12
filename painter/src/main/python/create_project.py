@@ -23,8 +23,8 @@ import shutil
 import json
 
 from pathlib import Path, PurePosixPath
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
+from PyQt6 import QtWidgets
+from PyQt6 import QtCore
 
 from im_utils import is_image
 import file_utils

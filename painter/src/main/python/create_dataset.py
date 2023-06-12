@@ -24,8 +24,8 @@ from random import shuffle
 import traceback
 
 import numpy as np
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
+from PyQt6 import QtWidgets
+from PyQt6 import QtCore
 from skimage.io import imread, imsave
 from skimage.color import rgba2rgb
 from im_utils import is_image

@@ -36,10 +36,10 @@ import threading
 import traceback
 
 from skimage.io import use_plugin
-from PyQt5 import QtWidgets
-from PyQt5 import QtGui
-from PyQt5 import QtCore
-from PyQt5.QtCore import Qt
+from PyQt6 import QtWidgets
+from PyQt6 import QtGui
+from PyQt6 import QtCore
+from PyQt6.QtCore import Qt
 from PIL import Image
 
 from about import AboutWindow, LicenseWindow

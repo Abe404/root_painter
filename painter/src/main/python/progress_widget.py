@@ -1,5 +1,5 @@
 """
-Copyright (C) 2020 Abraham George Smith
+Copyright (C) 2020-2023 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,13 +22,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 import time
-from PyQt5 import QtWidgets
+from PyQt6 import QtWidgets
 from humanfriendly import format_timespan
 
 
 class DoneMessageWindow(QtWidgets.QWidget):
 
-    def __init__(self, parent, task, errors=[]):        
+    def __init__(self, parent, task, errors=[]):
         super().__init__()
         self.layout = QtWidgets.QVBoxLayout(self)
         self.label = QtWidgets.QLabel(self)

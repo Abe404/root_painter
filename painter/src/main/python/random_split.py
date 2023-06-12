@@ -1,5 +1,5 @@
 """
-Copyright (C) 2022 Abraham George Smith
+Copyright (C) 2022-2023 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,8 +25,8 @@ import traceback
 import shutil
 
 import numpy as np
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
+from PyQt6 import QtWidgets
+from PyQt6 import QtCore
 
 from progress_widget import BaseProgressWidget
 import im_utils

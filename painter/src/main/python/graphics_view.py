@@ -18,10 +18,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 #pylint: disable=I1101,E0611,C0111
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
-from PyQt5 import QtGui
-from PyQt5.QtCore import Qt
+from PyQt6 import QtWidgets
+from PyQt6 import QtCore
+from PyQt6 import QtGui
+from PyQt6.QtCore import Qt
 
 class CustomGraphicsView(QtWidgets.QGraphicsView):
     """

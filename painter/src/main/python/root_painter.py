@@ -440,14 +440,12 @@ class RootPainter(QtWidgets.QMainWindow):
         self.segment_image(to_segment_fnames)
 
     def show_open_project_widget(self):
-        options = QtWidgets.QFileDialog.Options()
         default_loc = self.sync_dir / 'projects'
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
             "Load project file",
             str(default_loc),
-            "Segmentation project file (*.seg_proj)",
-            options=options)
+            "Segmentation project file (*.seg_proj)")
 
         if file_path:
             self.open_project(file_path)

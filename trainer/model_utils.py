@@ -120,7 +120,7 @@ def get_val_metrics(cnn, val_annot_dir, dataset_dir, in_w, out_w, bs):
         image_path = glob.glob(image_path_part + '.*')[0]
         image = im_utils.load_image(image_path)
         image, pad_settings = im_utils.pad_to_min(image, min_w=572, min_h=572)
-        predicted = unet_segment(cnn, image, bs, in_w,
+        predicted = unet_segment(cnn, image, in_w,
                                  out_w, threshold=0.5)
         predicted = im_utils.crop_from_pad_settings(predicted, pad_settings)
 
@@ -166,8 +166,7 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w,
     # then add predictions from the previous models to form an ensemble
     for model_path in model_paths:
         cnn = load_model(model_path)
-        preds = unet_segment(cnn, image,
-                             bs, in_w, out_w, threshold=None)
+        preds = unet_segment(cnn, image, in_w, out_w, threshold=None)
         if pred_sum is not None:
             pred_sum += preds
         else:

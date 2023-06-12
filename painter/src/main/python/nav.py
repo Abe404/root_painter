@@ -41,7 +41,7 @@ class NavWidget(QtWidgets.QWidget):
 
         # && to escape it and show single &
         self.prev_image_button = QtWidgets.QPushButton('< Previous')
-        self.prev_image_button.setFocusPolicy(Qt.NoFocus)
+        self.prev_image_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.prev_image_button.clicked.connect(self.show_prev_image)
         nav_layout.addWidget(self.prev_image_button)
         self.nav_label = QtWidgets.QLabel()
@@ -49,7 +49,7 @@ class NavWidget(QtWidgets.QWidget):
 
         # && to escape it and show single &
         self.next_image_button = QtWidgets.QPushButton('Save && Next >')
-        self.next_image_button.setFocusPolicy(Qt.NoFocus)
+        self.next_image_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.next_image_button.clicked.connect(self.show_next_image)
         nav_layout.addWidget(self.next_image_button)
 

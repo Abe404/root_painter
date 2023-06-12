@@ -470,14 +470,14 @@ class RootPainter(QtWidgets.QMainWindow):
         self.project_menu = menu_bar.addMenu("Project")
 
         # Open project
-        self.open_project_action = QtWidgets.QAction(QtGui.QIcon(""), "Open project", self)
+        self.open_project_action = QtGui.QAction(QtGui.QIcon(""), "Open project", self)
         self.open_project_action.setShortcut("Ctrl+O")
 
         self.project_menu.addAction(self.open_project_action)
         self.open_project_action.triggered.connect(self.show_open_project_widget)
 
         # Create project
-        self.create_project_action = QtWidgets.QAction(QtGui.QIcon(""), "Create project", self)
+        self.create_project_action = QtGui.QAction(QtGui.QIcon(""), "Create project", self)
         self.create_project_action.setShortcut("Ctrl+C")
         self.project_menu.addAction(self.create_project_action)
         self.create_project_action.triggered.connect(self.show_create_project_widget)
@@ -485,7 +485,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # Network Menu
         self.network_menu = menu_bar.addMenu('Network')
         # # segment folder
-        self.segment_folder_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        self.segment_folder_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                                     'Segment folder', self)
 
         def show_segment_folder():
@@ -558,39 +558,39 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def add_extras_menu(self, menu_bar, project_open=False):
         extras_menu = menu_bar.addMenu('Extras')
-        comp_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extract composites', self)
+        comp_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'Extract composites', self)
         comp_btn.triggered.connect(self.show_extract_comp)
         extras_menu.addAction(comp_btn)
 
-        conv_to_rve_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        conv_to_rve_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                             'Convert segmentations for RhizoVision Explorer',
                                              self)
         conv_to_rve_btn.triggered.connect(self.show_conv_to_rve)
         extras_menu.addAction(conv_to_rve_btn)
 
-        conv_to_annot_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        conv_to_annot_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                             'Convert segmentations to annotations',
                                              self)
         conv_to_annot_btn.triggered.connect(self.show_conv_to_annot)
         extras_menu.addAction(conv_to_annot_btn)
 
-        specify_sync_dir_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        specify_sync_dir_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                                  'Specify sync directory',
                                                  self)
         specify_sync_dir_btn.triggered.connect(self.specify_sync_directory)
         extras_menu.addAction(specify_sync_dir_btn)
 
-        open_sync_dir_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        open_sync_dir_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                                  'Open sync directory',
                                                  self)
         open_sync_dir_btn.triggered.connect(self.open_sync_directory)
         extras_menu.addAction(open_sync_dir_btn)
 
-        mask_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Mask images', self)
+        mask_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'Mask images', self)
         mask_btn.triggered.connect(self.show_mask_images)
         extras_menu.addAction(mask_btn)
 
-        assign_corrections_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Assign Corrections', self)
+        assign_corrections_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'Assign Corrections', self)
         assign_corrections_btn.triggered.connect(self.show_assign_corrections)
         extras_menu.addAction(assign_corrections_btn)
 
@@ -598,7 +598,7 @@ class RootPainter(QtWidgets.QMainWindow):
             self.random_split_widget = RandomSplitWidget()
             self.random_split_widget.show()
 
-        random_split_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        random_split_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                 'Create random split',
                                  self)
         random_split_btn.triggered.connect(show_random_split)
@@ -608,7 +608,7 @@ class RootPainter(QtWidgets.QMainWindow):
             self.resize_images_widget = ResizeWidget()
             self.resize_images_widget.show()
 
-        resize_images_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        resize_images_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                 'Resize images',
                                  self)
         resize_images_btn.triggered.connect(show_resize_images)
@@ -628,7 +628,7 @@ class RootPainter(QtWidgets.QMainWindow):
             if file_path:
                 self.metrics_plot.view_plot_from_csv(file_path)
 
-        view_metrics_csv_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        view_metrics_csv_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                                  'View Metrics Plot from CSV',
                                                   self)
         self.metrics_plot = MetricsPlot()
@@ -645,7 +645,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # extras_menu.addAction(view_metrics_csv_btn)
 
         if project_open:
-            metrics_plot_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+            metrics_plot_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                                              'Show metrics plot',
                                                               self)
             self.metrics_plot = MetricsPlot()
@@ -662,7 +662,7 @@ class RootPainter(QtWidgets.QMainWindow):
             metrics_plot_btn.triggered.connect(open_metric_plot)
             extras_menu.addAction(metrics_plot_btn)
 
-            metrics_csv_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+            metrics_csv_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                                             'Export metrics CSV',
                                                              self)
             self.metrics_plot = MetricsPlot()
@@ -672,7 +672,7 @@ class RootPainter(QtWidgets.QMainWindow):
             metrics_csv_btn.triggered.connect(open_metric_export)
             extras_menu.addAction(metrics_csv_btn)
 
-            extend_dataset_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
+            extend_dataset_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'Extend dataset', self)
             def update_dataset_after_check():
                 was_extended, file_names = check_extend_dataset(self,
                                                                 self.dataset_dir,
@@ -693,11 +693,11 @@ class RootPainter(QtWidgets.QMainWindow):
 
     def add_about_menu(self, menu_bar):
         about_menu = menu_bar.addMenu('About')
-        license_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'License', self)
+        license_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'License', self)
         license_btn.triggered.connect(self.show_license_window)
         about_menu.addAction(license_btn)
 
-        about_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'RootPainter', self)
+        about_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'RootPainter', self)
         about_btn.triggered.connect(self.show_about_window)
         about_menu.addAction(about_btn)
 
@@ -870,19 +870,19 @@ class RootPainter(QtWidgets.QMainWindow):
 
         self.project_menu = menu_bar.addMenu("Project")
 
-        self.close_project_action = QtWidgets.QAction(QtGui.QIcon(""), "Close project", self)
+        self.close_project_action = QtGui.QAction(QtGui.QIcon(""), "Close project", self)
         self.project_menu.addAction(self.close_project_action)
         self.close_project_action.triggered.connect(self.close_project_window)
 
         edit_menu = menu_bar.addMenu("Edit")
         # Undo
-        undo_action = QtWidgets.QAction(QtGui.QIcon(""), "Undo", self)
+        undo_action = QtGui.QAction(QtGui.QIcon(""), "Undo", self)
         undo_action.setShortcut("Z")
         edit_menu.addAction(undo_action)
         undo_action.triggered.connect(self.scene.undo)
 
         # Redo
-        redo_action = QtWidgets.QAction(QtGui.QIcon(""), "Redo", self)
+        redo_action = QtGui.QAction(QtGui.QIcon(""), "Redo", self)
         redo_action.setShortcut("Ctrl+Shift+Z")
         edit_menu.addAction(redo_action)
         redo_action.triggered.connect(self.scene.redo)
@@ -890,45 +890,45 @@ class RootPainter(QtWidgets.QMainWindow):
         options_menu = menu_bar.addMenu("Options")
 
         # pre segment count
-        pre_segment_count_action = QtWidgets.QAction(QtGui.QIcon(""), "Pre-Segment", self)
+        pre_segment_count_action = QtGui.QAction(QtGui.QIcon(""), "Pre-Segment", self)
         options_menu.addAction(pre_segment_count_action)
         pre_segment_count_action.triggered.connect(self.open_pre_segment_count_dialog)
 
         # contrast enhance
-        contrast_enhance_count_action = QtWidgets.QAction(QtGui.QIcon(""), "Contrast enhance", self)
+        contrast_enhance_count_action = QtGui.QAction(QtGui.QIcon(""), "Contrast enhance", self)
         options_menu.addAction(contrast_enhance_count_action)
         contrast_enhance_count_action.triggered.connect(self.open_contrast_enhance_dialog)
 
         # brush size
-        brush_edit_action = QtWidgets.QAction(QtGui.QIcon(""), "Change brush size", self)
+        brush_edit_action = QtGui.QAction(QtGui.QIcon(""), "Change brush size", self)
         options_menu.addAction(brush_edit_action)
         brush_edit_action.triggered.connect(self.show_brush_size_edit)
 
 
         # change brush colors
-        change_foreground_color_action = QtWidgets.QAction(QtGui.QIcon(""),
+        change_foreground_color_action = QtGui.QAction(QtGui.QIcon(""),
                                                            "Foreground brush colour",
                                                            self)
         options_menu.addAction(change_foreground_color_action)
         change_foreground_color_action.triggered.connect(self.change_foreground_color)
-        change_background_color_action = QtWidgets.QAction(QtGui.QIcon(""),
+        change_background_color_action = QtGui.QAction(QtGui.QIcon(""),
                                                            "Background brush colour",
                                                            self)
         options_menu.addAction(change_background_color_action)
         change_background_color_action.triggered.connect(self.change_background_color)
 
         brush_menu = menu_bar.addMenu("Brushes")
-        foreground_color_action = QtWidgets.QAction(QtGui.QIcon(""), "Foreground", self)
+        foreground_color_action = QtGui.QAction(QtGui.QIcon(""), "Foreground", self)
         foreground_color_action.setShortcut("Q")
         brush_menu.addAction(foreground_color_action)
         foreground_color_action.triggered.connect(self.set_foreground_color)
 
-        background_color_action = QtWidgets.QAction(QtGui.QIcon(""), "Background", self)
+        background_color_action = QtGui.QAction(QtGui.QIcon(""), "Background", self)
         background_color_action.setShortcut("W")
         brush_menu.addAction(background_color_action)
         background_color_action.triggered.connect(self.set_background_color)
 
-        eraser_color_action = QtWidgets.QAction(QtGui.QIcon(""), "Eraser", self)
+        eraser_color_action = QtGui.QAction(QtGui.QIcon(""), "Eraser", self)
         eraser_color_action.setShortcut("E")
         brush_menu.addAction(eraser_color_action)
         eraser_color_action.triggered.connect(self.set_eraser_color)
@@ -936,34 +936,34 @@ class RootPainter(QtWidgets.QMainWindow):
         ## View menu
         # Fit to view
         view_menu = menu_bar.addMenu('View')
-        fit_to_view_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Fit to View', self)
+        fit_to_view_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'Fit to View', self)
         fit_to_view_btn.setShortcut('Ctrl+F')
         fit_to_view_btn.setStatusTip('Fit image to view')
         fit_to_view_btn.triggered.connect(self.graphics_view.fit_to_view)
         view_menu.addAction(fit_to_view_btn)
 
         # Actual size
-        actual_size_view_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Actual size', self)
+        actual_size_view_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'Actual size', self)
         actual_size_view_btn.setShortcut('Ctrl+A')
         actual_size_view_btn.setStatusTip('Show image at actual size')
         actual_size_view_btn.triggered.connect(self.graphics_view.show_actual_size)
         view_menu.addAction(actual_size_view_btn)
 
-        toggle_seg_visibility_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        toggle_seg_visibility_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                                       'Toggle segmentation visibility', self)
         toggle_seg_visibility_btn.setShortcut('S')
         toggle_seg_visibility_btn.setStatusTip('Show or hide segmentation')
         toggle_seg_visibility_btn.triggered.connect(self.show_hide_seg)
         view_menu.addAction(toggle_seg_visibility_btn)
 
-        toggle_annot_visibility_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        toggle_annot_visibility_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                                         'Toggle annotation visibility', self)
         toggle_annot_visibility_btn.setShortcut('A')
         toggle_annot_visibility_btn.setStatusTip('Show or hide annotation')
         toggle_annot_visibility_btn.triggered.connect(self.show_hide_annot)
         view_menu.addAction(toggle_annot_visibility_btn)
 
-        toggle_image_visibility_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        toggle_image_visibility_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                                         'Toggle image visibility', self)
         toggle_image_visibility_btn.setShortcut('I')
         toggle_image_visibility_btn.setStatusTip('Show or hide image')
@@ -971,7 +971,7 @@ class RootPainter(QtWidgets.QMainWindow):
         view_menu.addAction(toggle_image_visibility_btn)
 
 
-        show_image_context_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        show_image_context_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                                    'View image context',
                                                     self)
 
@@ -1013,13 +1013,13 @@ class RootPainter(QtWidgets.QMainWindow):
             self.graphics_view.zoom /= 1.1
             self.graphics_view.update_zoom()
 
-        zoom_in_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Zoom in', self)
+        zoom_in_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'Zoom in', self)
         zoom_in_btn.setShortcut('+')
         zoom_in_btn.setStatusTip('Zoom in')
         zoom_in_btn.triggered.connect(zoom_in)
         view_menu.addAction(zoom_in_btn)
 
-        zoom_out_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Zoom out', self)
+        zoom_out_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'Zoom out', self)
         zoom_out_btn.setShortcut('-')
         zoom_out_btn.setStatusTip('Zoom out')
         zoom_out_btn.triggered.connect(zoom_out)
@@ -1029,17 +1029,17 @@ class RootPainter(QtWidgets.QMainWindow):
         network_menu = menu_bar.addMenu('Network')
 
         # start training
-        start_training_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Start training', self)
+        start_training_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'Start training', self)
         start_training_btn.triggered.connect(self.start_training)
         network_menu.addAction(start_training_btn)
 
         # stop training
-        stop_training_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Stop training', self)
+        stop_training_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'Stop training', self)
         stop_training_btn.triggered.connect(self.stop_training)
         network_menu.addAction(stop_training_btn)
 
         # # segment folder
-        segment_folder_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Segment folder', self)
+        segment_folder_btn = QtGui.QAction(QtGui.QIcon('missing.png'), 'Segment folder', self)
 
         def show_segment_folder():
             self.segment_folder_widget = SegmentFolderWidget(self.sync_dir,
@@ -1049,7 +1049,7 @@ class RootPainter(QtWidgets.QMainWindow):
         network_menu.addAction(segment_folder_btn)
 
         # segment current image
-        # segment_image_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        # segment_image_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
         #                                       'Segment current image', self)
         # segment_image_btn.triggered.connect(self.segment_current_image)
         # network_menu.addAction(segment_image_btn)
@@ -1062,7 +1062,7 @@ class RootPainter(QtWidgets.QMainWindow):
         # Measurements
         measurements_menu = menu_bar.addMenu('Measurements')
         # object count
-        object_count_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        object_count_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                              'Extract count', self)
         def show_extract_count():
             self.extract_count_widget = ExtractCountWidget()
@@ -1071,7 +1071,7 @@ class RootPainter(QtWidgets.QMainWindow):
         measurements_menu.addAction(object_count_btn)
 
         # length
-        length_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        length_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                        'Extract length', self)
         def show_extract_length():
             self.extract_length_widget = ExtractLengthWidget()
@@ -1080,7 +1080,7 @@ class RootPainter(QtWidgets.QMainWindow):
         measurements_menu.addAction(length_btn)
 
         # region props
-        region_props_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+        region_props_btn = QtGui.QAction(QtGui.QIcon('missing.png'),
                                              'Extract region properties', self)
         def show_extract_region_props():
             self.extract_regions_widget = ExtractRegionsWidget()

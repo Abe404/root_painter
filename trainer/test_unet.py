@@ -32,7 +32,9 @@ def test_inference():
     softmaxed = softmaxed[0] # single image.
     softmaxed = softmaxed.numpy()
     im = img_as_uint(softmaxed)
-    imsave('test_temp_output/out.png', im)
+    imsave('test_temp_output/out.png', im, check_contrast=False)
+
+
 
 
 def test_training():
@@ -73,4 +75,52 @@ def test_training():
         im = img_as_uint(im)
         imsave('test_temp_output/out_' + str(step).zfill(3) + '.png', im,
                check_contrast=False)
-    assert loss < 1e-7
+        if loss < 1e-7:
+            return # test passes. loss is low enough
+    raise Exception('loss too high, loss = ' + loss.item())
+
+
+def test_training_with_mask():
+    """ test that network can be trained,
+        and can approximate a square.
+        This time also using a mask of the 'defined' region """
+
+    import torch
+    from model_utils import get_device
+    import numpy as np
+    from torch.nn.functional import softmax
+    from loss import combined_loss as criterion
+    from torch.nn.functional import cross_entropy, binary_cross_entropy
+    from skimage.io import imsave
+    from skimage import img_as_uint
+    device = get_device()
+    unet = UNetGNRes()
+    unet.to(device)
+    optimizer = torch.optim.SGD(unet.parameters(), lr=0.01,
+                                momentum=0.99, nesterov=True)
+    test_input = np.zeros((1, 3, 572, 572))
+    test_input[:, :, 100:-100,100:-100] = 1.0
+    test_input = torch.from_numpy(test_input)
+    test_input = test_input.float().to(device)
+    target = (test_input[:, 0, 36:-36, 36:-36] > 0.5)
+    target = target.float().to(device)
+    defined = np.zeros((1, 500, 500))
+    defined[:, :250] = 1
+    defined = torch.from_numpy(defined).float().to(device)
+    for step in range(300):
+        optimizer.zero_grad()
+        output = unet(test_input)
+        imsave('test_temp_output/targ.png', img_as_uint(target.float().cpu().numpy()), check_contrast=False)
+        softmaxed = softmax(output, 1)[:, 1] # just fg probability
+        loss = binary_cross_entropy(softmaxed, target, weight=defined)
+        loss.backward()
+        optimizer.step()
+        im = softmaxed.detach().cpu().numpy()[0]
+        im = img_as_uint(im)
+        imsave('test_temp_output/out_' + str(step).zfill(3) + '.png', im,
+               check_contrast=False)
+        if loss < 1e-7:
+            return # test passes. loss is low enough
+    raise Exception('loss too high, loss = ' + str(loss.item()))
+
+

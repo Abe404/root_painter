@@ -1124,17 +1124,18 @@ class RootPainter(QtWidgets.QMainWindow):
         self.send_instruction('start_training', content)
 
     def seg_checkbox_change(self, state):
-        checked = (state == QtCore.Qt.CheckState.Checked)
+        checked = (state == 2) # two means checked
         if checked is not self.seg_visible:
+            print('show hide seg because', checked, 'is not', self.seg_visible)
             self.show_hide_seg()
 
     def annot_checkbox_change(self, state):
-        checked = (state == QtCore.Qt.CheckState.Checked)
+        checked = (state == 2)
         if checked is not self.annot_visible:
             self.show_hide_annot()
 
     def im_checkbox_change(self, state):
-        checked = (state == QtCore.Qt.CheckState.Checked)
+        checked = (state == 2)
         if checked is not self.image_visible:
             self.show_hide_image()
 
@@ -1147,6 +1148,7 @@ class RootPainter(QtWidgets.QMainWindow):
             self.seg_pixmap_holder.setPixmap(self.seg_pixmap)
             self.seg_visible = True
         self.vis_widget.seg_checkbox.setChecked(self.seg_visible)
+
 
     def show_hide_image(self):
         # show or hide the current image.

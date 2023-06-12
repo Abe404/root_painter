@@ -342,10 +342,10 @@ class RootPainter(QtWidgets.QMainWindow):
 
         # Used to replace the segmentation or annotation when they are not visible.
         self.blank_pixmap = QtGui.QPixmap(self.im_width, self.im_height)
-        self.blank_pixmap.fill(Qt.transparent)
+        self.blank_pixmap.fill(QtGui.QColorConstants.Transparent)
 
         self.black_pixmap = QtGui.QPixmap(self.im_width, self.im_height)
-        self.black_pixmap.fill(Qt.black)
+        self.black_pixmap.fill(QtGui.QColorConstants.Black)
 
         if self.image_pixmap_holder:
             self.image_pixmap_holder.setPixmap(image_pixmap)
@@ -368,7 +368,7 @@ class RootPainter(QtWidgets.QMainWindow):
             self.seg_mtime = None
             # otherwise use blank
             self.seg_pixmap = QtGui.QPixmap(self.im_width, self.im_height)
-            self.seg_pixmap.fill(Qt.transparent)
+            self.seg_pixmap.fill(QtGui.QColorConstants.Transparent)
             painter = QtGui.QPainter()
             painter.begin(self.seg_pixmap)
             font = QtGui.QFont()
@@ -405,7 +405,7 @@ class RootPainter(QtWidgets.QMainWindow):
         else:
             # otherwise use blank
             self.annot_pixmap = QtGui.QPixmap(self.im_width, self.im_height)
-            self.annot_pixmap.fill(Qt.transparent)
+            self.annot_pixmap.fill(QtGui.QColorConstants.Transparent)
         if self.annot_pixmap_holder:
             self.annot_pixmap_holder.setPixmap(self.annot_pixmap)
         else:
@@ -1225,7 +1225,7 @@ class RootPainter(QtWidgets.QMainWindow):
 
         canvas_w = max(brush_w, 30)
         pm = QtGui.QPixmap(round(canvas_w), round(canvas_w))
-        pm.fill(Qt.transparent)
+        pm.fill(QtGui.QColorConstants.Transparent)
         painter = QtGui.QPainter(pm)
 
         painter.drawPixmap(round(canvas_w), round(canvas_w), pm)

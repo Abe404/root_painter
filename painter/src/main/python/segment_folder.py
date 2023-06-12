@@ -178,7 +178,7 @@ class SegmentFolderWidget(QtWidgets.QWidget):
 
     def select_input_dir(self):
         self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.input_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
 
         def output_selected():
             self.input_dir = self.input_dialog.selectedFiles()[0]
@@ -189,7 +189,7 @@ class SegmentFolderWidget(QtWidgets.QWidget):
 
     def select_output_dir(self):
         self.output_dialog = QtWidgets.QFileDialog(self)
-        self.output_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.output_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
         def output_selected():
             self.output_dir = self.output_dialog.selectedFiles()[0]
             self.out_dir_label.setText('Output directory: ' + self.output_dir)
@@ -200,11 +200,9 @@ class SegmentFolderWidget(QtWidgets.QWidget):
 
 
     def select_model(self):
-        options = QtWidgets.QFileDialog.Options()
         file_paths, _ = QtWidgets.QFileDialog.getOpenFileNames(self,
                                                                "Specify model file", "",
-                                                               "Pickle Files (*.pkl)",
-                                                               options=options)
+                                                               "Pickle Files (*.pkl)")
         if file_paths:
             file_paths = [os.path.abspath(f) for f in file_paths]
             if len(file_paths) == 1:

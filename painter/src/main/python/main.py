@@ -35,7 +35,7 @@ def init_root_painter():
             msg = QtWidgets.QMessageBox()
             output = "Sync directory not specified. Please specify a sync directory."
             msg.setText(output)
-            msg.exec_()
+            msg.exec()
             dir_path = QtWidgets.QFileDialog.getExistingDirectory()
             if not dir_path:
                 exit()
@@ -56,7 +56,7 @@ def init_root_painter():
         main_window.closed.connect(reopen)
         main_window.show()
 
-        exit_code = app.exec_()
+        exit_code = app.exec()
     except Exception as e:
         msg = QtWidgets.QMessageBox()
         output = f"""

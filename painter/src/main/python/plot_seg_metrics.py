@@ -826,7 +826,7 @@ def demo_plot_test():
                             'annot_bg': 100})
 
     _proxy = pg.SignalProxy(plot.view.scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)
-    app.exec_()
+    app.exec()
 
 if __name__ == '__main__':
     demo_plot_test()

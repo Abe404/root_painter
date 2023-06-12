@@ -165,7 +165,7 @@ class RootPainter(QtWidgets.QMainWindow):
             output = (f"Dataset directory {specified_dataset_dir} was not found. "
                       f"Please specify the location of the dataset for this project.")
             msg.setText(output)
-            msg.exec_()
+            msg.exec()
             dir_path = QtWidgets.QFileDialog.getExistingDirectory()
             if not dir_path:
                 exit()
@@ -988,7 +988,7 @@ class RootPainter(QtWidgets.QMainWindow):
                 output = ("Original image directory not yet specified. "
                          "Please specify the original image directory.")
                 msg.setText(output)
-                msg.exec_()
+                msg.exec()
                 self.original_image_dir = QtWidgets.QFileDialog.getExistingDirectory()
                 if not self.original_image_dir:
                     return

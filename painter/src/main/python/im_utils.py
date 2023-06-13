@@ -131,7 +131,7 @@ def save_masked_image(seg_dir, image_dir, output_dir, fname):
         # can be used to mask larger images (for example in localisation stages)
         if im.shape[:2] != seg.shape[:2]:
             seg = resize(seg, (im.shape[0], im.shape[1], 3), order=0)
-        im[:][seg[:, :, 2] == 0] = 0 # make background black.
+        im[:][seg == 0] = 0 # make background black.
         imsave(os.path.join(output_dir, im_fname), im, quality=95)
 
 def save_corrected_segmentation(annot_fpath, seg_dir, output_dir):

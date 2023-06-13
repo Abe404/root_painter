@@ -1,13 +1,15 @@
 PyQt6==6.5.1
-numpy==1.22.1
+numpy==1.24.3
 setuptools==65.5.1
 natsort==8.0.2
 scikit-image==0.21.0
 PyWavelets==1.2.0
 Pillow==9.3.0
 scipy==1.9.3
-imagecodecs==2021.11.20
+imagecodecs==2023.3.16
 matplotlib==3.5.2
 pyqtgraph==0.13.3
 qimage2ndarray==1.10.0
 humanfriendly==10.0
+pytest-qt==4.2.0
+pytest==7.3.2

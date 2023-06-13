@@ -24,7 +24,6 @@ def test_mask_operation(qtbot):
     mask_widget.validate()
     mask_widget.submit_btn.click()
 
-    print(mask_widget.out_dir)
     def check_output():
         return len(os.listdir(mask_widget.out_dir)) == len(os.listdir(mask_widget.seg_dir))
 

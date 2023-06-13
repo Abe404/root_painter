@@ -23,5 +23,10 @@ def test_mask_operation(qtbot):
     mask_widget.out_dir = os.path.join(proj_dir, 'results/masked')
     mask_widget.validate()
     mask_widget.submit_btn.click()
-    # qtbot.waitUntil(check_label)
+
+    print(mask_widget.out_dir)
+    def check_output():
+        return len(os.listdir(mask_widget.out_dir)) == len(os.listdir(mask_widget.seg_dir))
+
+    qtbot.waitUntil(check_output, timeout=20000)
 

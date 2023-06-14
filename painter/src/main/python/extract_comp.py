@@ -92,9 +92,9 @@ class ExtractCompWidget(QtWidgets.QWidget):
         layout.addWidget(seg_dir_label)
         self.seg_dir_label = seg_dir_label
 
-        specify_seg_btn = QtWidgets.QPushButton('Specify segmentation directory')
-        specify_seg_btn.clicked.connect(self.select_seg_dir)
-        layout.addWidget(specify_seg_btn)
+        self.specify_seg_btn = QtWidgets.QPushButton('Specify segmentation directory')
+        self.specify_seg_btn.clicked.connect(self.select_seg_dir)
+        layout.addWidget(self.specify_seg_btn)
 
         # Add specify photo directory button
         im_dir_label = QtWidgets.QLabel()
@@ -159,7 +159,7 @@ class ExtractCompWidget(QtWidgets.QWidget):
 
     def select_seg_dir(self):
         self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.input_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
         def input_selected():
             self.seg_dir = self.input_dialog.selectedFiles()[0]
             self.seg_dir_label.setText('Segmentation directory: ' + self.seg_dir)
@@ -169,7 +169,7 @@ class ExtractCompWidget(QtWidgets.QWidget):
 
     def select_im_dir(self):
         self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.input_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
 
         def input_selected():
             self.im_dir = self.input_dialog.selectedFiles()[0]
@@ -180,7 +180,7 @@ class ExtractCompWidget(QtWidgets.QWidget):
 
     def select_comp_dir(self):
         self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.input_dialog.setFileMode(QtWidgets.QFileDialog.FileModel.Directory)
         def input_selected():
             self.comp_dir = self.input_dialog.selectedFiles()[0]
             self.comp_dir_label.setText('Composites directory: ' + self.comp_dir)

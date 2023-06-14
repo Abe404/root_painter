@@ -135,3 +135,12 @@ def test_extract_composites(qtbot):
     qtbot.waitUntil(check_output, timeout=20000)
 
 
+def test_specify_seg_btn_for_rve_widget(qtbot):
+    """ test we can click the specify_seg_btn without an error """
+    from convert_seg import ConvertSegWidget
+    from convert_seg import convert_seg_to_rve
+    # initialise the mask im widget
+    widget = ConvertSegWidget(convert_seg_to_rve,
+                              'RhizoVision Explorer compatible format')
+    widget.show()
+    qtbot.mouseClick(widget.specify_seg_btn, QtCore.Qt.MouseButton.LeftButton)

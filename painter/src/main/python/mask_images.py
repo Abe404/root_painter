@@ -51,6 +51,10 @@ class ProgressWidget(BaseProgressWidget):
         self.seg_dir = seg_dir
         self.im_dir = im_dir
         self.out_dir = out_dir
+
+        if not os.path.isdir(self.out_dir):
+            os.makedirs(self.out_dir)
+
         self.thread = Thread(seg_dir, im_dir, out_dir)
         seg_fnames = os.listdir(str(self.seg_dir))
         seg_fnames = [f for f in seg_fnames if os.path.splitext(f)[1] == '.png']

@@ -161,7 +161,7 @@ class ConvertSegWidget(QtWidgets.QWidget):
 
     def select_seg_dir(self):
         self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.input_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
         def input_selected():
             self.seg_dir = self.input_dialog.selectedFiles()[0]
             self.seg_dir_label.setText('Segmentation directory: ' + self.seg_dir)
@@ -171,7 +171,7 @@ class ConvertSegWidget(QtWidgets.QWidget):
 
     def select_out_dir(self):
         self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.input_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
         def input_selected():
             self.out_dir = self.input_dialog.selectedFiles()[0]
             self.out_dir_label.setText('Output directory: ' + self.out_dir)

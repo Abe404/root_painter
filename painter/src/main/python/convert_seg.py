@@ -110,9 +110,9 @@ class ConvertSegWidget(QtWidgets.QWidget):
         layout.addWidget(seg_dir_label)
         self.seg_dir_label = seg_dir_label
 
-        specify_seg_btn = QtWidgets.QPushButton('Specify segmentation directory')
-        specify_seg_btn.clicked.connect(self.select_seg_dir)
-        layout.addWidget(specify_seg_btn)
+        self.specify_seg_btn = QtWidgets.QPushButton('Specify segmentation directory')
+        self.specify_seg_btn.clicked.connect(self.select_seg_dir)
+        layout.addWidget(self.specify_seg_btn)
 
         # Add specify comp directory button
         out_dir_label = QtWidgets.QLabel()

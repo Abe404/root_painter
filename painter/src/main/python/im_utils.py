@@ -132,7 +132,7 @@ def save_masked_image(seg_dir, image_dir, output_dir, fname):
         if im.shape[:2] != seg.shape[:2]:
             seg = resize(seg, (im.shape[0], im.shape[1], 3), order=0)
         im[:][seg == 0] = 0 # make background black.
-        imsave(os.path.join(output_dir, im_fname), im, quality=95)
+        imsave(os.path.join(output_dir, im_fname), im, quality=95, check_contrast=False)
 
 def save_corrected_segmentation(annot_fpath, seg_dir, output_dir):
     """assign the annotations (corrections) to the segmentations. This is useful

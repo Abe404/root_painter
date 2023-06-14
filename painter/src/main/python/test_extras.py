@@ -96,6 +96,15 @@ def test_mask_operation(qtbot):
     qtbot.waitUntil(check_output, timeout=20000)
 
 
+def test_specify_seg_comp(qtbot):
+    """ test we can click the specify_seg_btn without an error """
+    from extract_comp import ExtractCompWidget
+    # initialise the mask im widget
+    widget = ExtractCompWidget()
+    widget.show()
+    qtbot.mouseClick(widget.specify_seg_btn, QtCore.Qt.MouseButton.LeftButton)
+
+
 def test_extract_composites(qtbot):
     from extract_comp import ExtractCompWidget
 

@@ -37,6 +37,10 @@ class ConvertThread(QtCore.QThread):
     def run(self):
         seg_fnames = os.listdir(str(self.seg_dir))
         seg_fnames = [f for f in seg_fnames if os.path.splitext(f)[1] == '.png']
+
+        if not os.path.isdir(self.out_dir):
+            os.makedirs(self.out_dir)
+
         for i, f in enumerate(seg_fnames):
             self.progress_change.emit(i+1, len(seg_fnames))
             if os.path.isfile(os.path.join(self.seg_dir, os.path.splitext(f)[0] + '.png')):

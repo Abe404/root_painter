@@ -170,9 +170,9 @@ def test_extract_rve(qtbot):
     widget.submit_btn.click()
 
     def check_output():
-        if not os.path.isdir(widget.comp_dir):
+        if not os.path.isdir(widget.out_dir):
             return False
-        return (len(os.listdir(widget.comp_dir)) == 
+        return (len(os.listdir(widget.out_dir)) == 
                 len(os.listdir(widget.seg_dir)))
 
     qtbot.waitUntil(check_output, timeout=20000)

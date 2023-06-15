@@ -307,3 +307,50 @@ def test_resize_images(qtbot):
                 len(in_files))
 
     qtbot.waitUntil(check_output, timeout=timeout_ms)
+
+
+
+def test_extract_length(qtbot):
+    from extract_length import ExtractLengthWidget
+    widget = ExtractLengthWidget()
+    widget.show()
+    results_dir = os.path.join(sync_dir, 'projects', 'biopores_corrective_a', 'results')
+    seg_dir = os.path.join(results_dir, 'seg_model_33')
+    out_csv = os.path.join(results_dir, 'seg_model_33_length.csv')
+
+    # If already exists then delete it.
+    # We want to test creating it 
+    if os.path.isfile(out_csv):
+        os.remove(out_csv)
+
+    widget.input_dir = seg_dir
+    widget.output_csv = out_csv
+    widget.validate()
+    widget.submit_btn.click()
+
+
+    def check_output():
+        if not os.path.isfile(widget.output_csv):
+            return False
+            
+        # csv could contain length measurement for each file in input
+        csv_lines = open(widget.output_csv, 'r').readlines()[1:]
+        csv_files = []
+        for l in csv_lines:
+            parts = l.strip().split(',')
+            f, l = parts
+            csv_files.append(f)
+            l = int(l) # should be possible to cast to int
+
+        in_files = os.listdir(widget.input_dir)
+        return (len(in_files) == 
+                len(csv_files))
+
+    qtbot.waitUntil(check_output, timeout=timeout_ms)
+
+
+# def test_extract_count():
+# def test_extract_region_props():
+
+
+

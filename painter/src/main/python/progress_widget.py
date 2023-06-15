@@ -93,12 +93,13 @@ class BaseProgressWidget(QtWidgets.QWidget):
             # first image could take a while due to the initial delay in syncing
             # so start estimating remaining time from second image onwards.
             self.start_time = time.time() 
-            self.info_label.setText(f'{self.task} {value}/{total}. '
+            self.info_label.setText(f'{self.task} {value}/{total}. \n'
                                     'Estimating time remaining..')
         else:
             # value-1 because start_time is once the first image has completed.
             seconds_remaining = self.get_seconds_remaining(value-1, total)
-            self.info_label.setText(f'{self.task} {value}/{total}. '
+            seconds_remaining = max(1, round(seconds_remaining))
+            self.info_label.setText(f'{self.task} {value}/{total}. \n'
                                     'Estimated time remaining: '
                                     f'{format_timespan(seconds_remaining)}')
         self.progress_bar.setValue(value)

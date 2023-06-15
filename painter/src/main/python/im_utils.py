@@ -144,8 +144,11 @@ def save_corrected_segmentation(annot_fpath, seg_dir, output_dir):
     bg = annot[:, :, 1]
     seg[bg > 0] = [0,0,0,0]
     seg[fg > 0] = [0, 1.0, 1.0, 0.7]
-    imsave(os.path.join(output_dir, fname), seg)
 
+    # Convert to int to avoid errors such as 'Cannot handle this data type: (1, 1, 4), <f8'
+    seg = (seg * 255).astype(np.uint8) # https://stackoverflow.com/a/55319979
+
+    imsave(os.path.join(output_dir, fname), seg, check_contrast=False)
 
 def resize_image(im, resize_percent):
     # assume that image is RGB

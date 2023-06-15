@@ -15,6 +15,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 #pylint: disable=I1101,C0111,W0201,R0903,E0611, R0902, R0914, R0915, R0911
 import os
+import numpy as np
 from pathlib import Path
 
 from PyQt6 import QtWidgets
@@ -58,6 +59,10 @@ class CreationThread(QtCore.QThread):
                                        os.path.splitext(fname)[0] + '.jpg')
             image = im_utils.load_image(fpath)
             resized = im_utils.resize_image(image, self.resize_percent)
+
+            # Convert to int to avoid errors such as 'Cannot handle this data type: (1, 1, 4), <f8'
+            resized = (resized * 255).astype(np.uint8) # https://stackoverflow.com/a/55319979
+
             imsave(output_path, resized, quality=95)
             progress += 1
             self.progress_change.emit(progress, len(self.all_image_paths))
@@ -148,6 +153,9 @@ class ResizeWidget(QtWidgets.QWidget):
             self.create_btn.setEnabled(False)
             return
 
+        im_fnames = [f for f in os.listdir(self.source_dir) if im_utils.is_image(f)]
+        self.image_paths = [os.path.join(self.source_dir, f) for f in im_fnames]
+
         if not self.image_paths:
             message = ('Source image directory must contain image files')
             self.info_label.setText(message)
@@ -163,6 +171,9 @@ class ResizeWidget(QtWidgets.QWidget):
         output_dir = Path(self.output_dir)
         resize_percent = self.resize_percent_edit_widget.value()
         all_image_paths = self.image_paths
+
+        os.makedirs(output_dir, exist_ok=True)
+
         self.progress_widget = CreationProgressWidget()
         self.progress_widget.run(all_image_paths, output_dir, resize_percent)
         self.close()
@@ -176,8 +187,6 @@ class ResizeWidget(QtWidgets.QWidget):
         def output_selected():
             self.source_dir = self.image_dialog.selectedFiles()[0]
             self.directory_label.setText('Image directory: ' + self.source_dir)
-            im_fnames = [f for f in os.listdir(self.source_dir) if im_utils.is_image(f)]
-            self.image_paths = [os.path.join(self.source_dir, f) for f in im_fnames]
             self.validate()
 
         self.image_dialog.fileSelected.connect(output_selected)

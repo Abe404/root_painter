@@ -103,6 +103,11 @@ As outlined in this [forum discussion answer](https://forum.qt.io/topic/93247/qt
 sudo apt-get install libxcb-xinerama0
 ```
 
+If that doesn't work another solution I have found at [this post on github](https://github.com/NVlabs/instant-ngp/discussions/300#discussioncomment-4169112) has also worked.
+```
+sudo apt-get install '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev
+```
+
 
 #### Question - How can I use RootPainter for a multiclass segmentation task? 
 

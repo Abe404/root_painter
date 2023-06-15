@@ -163,7 +163,7 @@ class AssignCorrectionsWidget(QtWidgets.QWidget):
 
     def select_annot_dir(self):
         self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.input_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
 
         def input_selected():
             self.annot_dir = self.input_dialog.selectedFiles()[0]
@@ -175,7 +175,7 @@ class AssignCorrectionsWidget(QtWidgets.QWidget):
 
     def select_seg_dir(self):
         self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.input_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
 
         def input_selected():
             self.seg_dir = self.input_dialog.selectedFiles()[0]
@@ -187,7 +187,7 @@ class AssignCorrectionsWidget(QtWidgets.QWidget):
 
     def select_im_dir(self):
         self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.input_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
 
         def input_selected():
             self.im_dir = self.input_dialog.selectedFiles()[0]
@@ -199,7 +199,7 @@ class AssignCorrectionsWidget(QtWidgets.QWidget):
 
     def select_out_dir(self):
         self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.input_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
 
         def input_selected():
             self.out_dir = self.input_dialog.selectedFiles()[0]

@@ -5,6 +5,7 @@ from PyQt6 import QtCore
 
 # sync directory for use with tests
 sync_dir = os.path.join(os.getcwd(), 'test_rp_sync')
+timeout_ms = 20000
 
 
 def dl_dir_from_zip(url, output_path):
@@ -17,23 +18,20 @@ def dl_dir_from_zip(url, output_path):
         print('downloading', url)
         urllib.request.urlretrieve(url, 'temp.zip')
         with zipfile.ZipFile("temp.zip", "r") as zip_ref:
-            zip_ref.extractall(output_path)
+            zip_ref.extractall('temp_zip_output')
 
         # remove the junk osx metadata that was in the zip file
-        junk_osx_dir = os.path.join(output_path, '__MACOSX')
+        junk_osx_dir = os.path.join('temp_zip_output', '__MACOSX')
 
         if os.path.isdir(junk_osx_dir):
             shutil.rmtree(junk_osx_dir)
 
         os.remove(os.path.join(os.getcwd(), 'temp.zip'))
         
-        # remove the parent folder - we just want the files in the target folder.
-        parent_folder = url.split('/')[-1].replace('.zip', '')
-        all_files = glob.glob(os.path.join(output_path, parent_folder, '*.*'), recursive=True)
-        for file_path in all_files:
-            dst_path = os.path.join(output_path, os.path.basename(file_path))
-            shutil.move(file_path, dst_path)
-        shutil.rmtree(os.path.join(output_path, parent_folder))
+        zip_dir = os.listdir(os.path.join('temp_zip_output'))[0]
+        zip_path = os.path.join('temp_zip_output', zip_dir)
+        shutil.move(zip_path, output_path)
+        shutil.rmtree('temp_zip_output')
 
 
 def setup_function():
@@ -49,13 +47,20 @@ def setup_function():
     bp_dataset_dir = os.path.join(datasets_dir, 'biopores_750_training')
     dl_dir_from_zip(biopore_url, bp_dataset_dir)
 
-    # prepare segmentations
     results_dir = os.path.join(sync_dir, 'projects', 'biopores_corrective_a', 'results')
     if not os.path.isdir(results_dir):
         os.makedirs(results_dir)
+
+    # prepare segmentations
     biopore_seg_url = 'https://zenodo.org/record/8037046/files/user_a_corrective_biopores_750_training_seg_model_33.zip'
     seg_dir = os.path.join(results_dir, 'seg_model_33')
     dl_dir_from_zip(biopore_seg_url, seg_dir)
+
+
+    # prepare annotations
+    biopore_annot_url = 'https://zenodo.org/record/8041842/files/user_a_corrective_biopores_750_training_annotation.zip'
+    annot_dir = os.path.join(sync_dir, 'projects', 'biopores_corrective_a', 'annotations')
+    dl_dir_from_zip(biopore_annot_url, annot_dir)
 
 
 def test_specify_seg_for_mask_widget(qtbot):
@@ -92,7 +97,7 @@ def test_mask_operation(qtbot):
             return False
         return len(os.listdir(mask_widget.out_dir)) == len(os.listdir(mask_widget.seg_dir))
 
-    qtbot.waitUntil(check_output, timeout=20000)
+    qtbot.waitUntil(check_output, timeout=timeout_ms)
 
 
 def test_specify_seg_comp(qtbot):
@@ -131,7 +136,7 @@ def test_extract_composites(qtbot):
         return (len(os.listdir(extract_comp_widget.comp_dir)) == 
                 len(os.listdir(extract_comp_widget.seg_dir)))
 
-    qtbot.waitUntil(check_output, timeout=20000)
+    qtbot.waitUntil(check_output, timeout=timeout_ms)
 
 
 def test_specify_seg_btn_for_rve_widget(qtbot):
@@ -172,7 +177,7 @@ def test_extract_rve(qtbot):
         return (len(os.listdir(widget.out_dir)) == 
                 len(os.listdir(widget.seg_dir)))
 
-    qtbot.waitUntil(check_output, timeout=20000)
+    qtbot.waitUntil(check_output, timeout=timeout_ms)
 
 
 
@@ -202,13 +207,45 @@ def test_convert_seg_to_annotations(qtbot):
         return (len(os.listdir(widget.out_dir)) == 
                 len(os.listdir(widget.seg_dir)))
 
-    qtbot.waitUntil(check_output, timeout=20000)
+    qtbot.waitUntil(check_output, timeout=timeout_ms)
 
 
-# def test_assign_corrections():
-#     pass
-# 
-# 
+def test_assign_corrections(qtbot):
+    from assign_corrections import AssignCorrectionsWidget
+    widget = AssignCorrectionsWidget()
+    widget.show()
+
+    results_dir = os.path.join(sync_dir, 'projects', 'biopores_corrective_a', 'results')
+    annot_dir = os.path.join(sync_dir, 'projects', 'biopores_corrective_a', 'annotations')
+    seg_dir = os.path.join(results_dir, 'seg_model_33')
+    out_dir = os.path.join(results_dir, 'corrected_seg')
+
+    # If the dir already exists then delete it.
+    # We want to test creating it and making the output.
+    if os.path.isdir(out_dir):
+        shutil.rmtree(out_dir)
+
+    widget.annot_dir = annot_dir
+    widget.seg_dir = seg_dir
+    widget.out_dir = out_dir
+    widget.validate()
+    widget.submit_btn.click()
+
+    def check_output():
+        if not os.path.isdir(widget.out_dir):
+            return False
+
+        out_files = os.listdir(widget.out_dir)
+        in_files = os.listdir(widget.annot_dir)
+        in_files = [i for i in in_files if os.path.splitext(i)[1] == '.png']
+
+        return (len(out_files) == 
+                len(in_files))
+
+    qtbot.waitUntil(check_output, timeout=timeout_ms)
+
+
+ 
 # def test_create_random_split():
 #     pass
 # 

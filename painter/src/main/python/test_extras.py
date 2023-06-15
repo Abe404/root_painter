@@ -146,10 +146,8 @@ def test_specify_seg_btn_for_rve_widget(qtbot):
 
 
 def test_extract_rve(qtbot):
-
     from convert_seg import ConvertSegWidget
     from convert_seg import convert_seg_to_rve
-    # initialise the mask im widget
     widget = ConvertSegWidget(convert_seg_to_rve,
                               'RhizoVision Explorer compatible format')
     widget.show()
@@ -175,3 +173,45 @@ def test_extract_rve(qtbot):
                 len(os.listdir(widget.seg_dir)))
 
     qtbot.waitUntil(check_output, timeout=20000)
+
+
+
+def test_convert_seg_to_annotations(qtbot):
+    from convert_seg import ConvertSegWidget
+    from convert_seg import convert_seg_to_annot
+    widget = ConvertSegWidget(convert_seg_to_annot, 'annotations')
+    widget.show()
+
+    results_dir = os.path.join(sync_dir, 'projects', 'biopores_corrective_a', 'results')
+    seg_dir = os.path.join(results_dir, 'seg_model_33')
+    out_dir = os.path.join(results_dir, 'annot_from_seg_model_33')
+
+    # If the dir already exists then delete it.
+    # We want to test creating it and making the output.
+    if os.path.isdir(out_dir):
+        shutil.rmtree(out_dir)
+
+    widget.seg_dir = seg_dir
+    widget.out_dir = out_dir
+    widget.validate()
+    widget.submit_btn.click()
+
+    def check_output():
+        if not os.path.isdir(widget.out_dir):
+            return False
+        return (len(os.listdir(widget.out_dir)) == 
+                len(os.listdir(widget.seg_dir)))
+
+    qtbot.waitUntil(check_output, timeout=20000)
+
+
+# def test_assign_corrections():
+#     pass
+# 
+# 
+# def test_create_random_split():
+#     pass
+# 
+# 
+# def test_resize_images():
+#     pass

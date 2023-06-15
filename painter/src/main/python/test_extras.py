@@ -281,5 +281,29 @@ def test_create_random_split(qtbot):
     qtbot.waitUntil(check_output, timeout=timeout_ms)
 
  
-#def test_resize_images():
-#    pass
+def test_resize_images(qtbot):
+    from resize_images import ResizeWidget
+    widget = ResizeWidget()
+    widget.show()
+    dataset_dir = os.path.join(sync_dir, 'datasets', 'biopores_750_training')
+    out_dir = os.path.join(sync_dir, 'datasets', 'bp_resized')
+
+    # If the dir already exists then delete it.
+    # We want to test creating it and making the output.
+    if os.path.isdir(out_dir):
+        shutil.rmtree(out_dir)
+
+    widget.source_dir = dataset_dir
+    widget.output_dir = out_dir
+    widget.validate()
+    widget.create_btn.click()
+
+    def check_output():
+        if not os.path.isdir(widget.output_dir):
+            return False
+        out_files = os.listdir(widget.output_dir)
+        in_files = os.listdir(widget.source_dir)
+        return (len(out_files) == 
+                len(in_files))
+
+    qtbot.waitUntil(check_output, timeout=timeout_ms)

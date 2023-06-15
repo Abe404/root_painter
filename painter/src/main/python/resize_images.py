@@ -171,7 +171,7 @@ class ResizeWidget(QtWidgets.QWidget):
 
     def select_image_dir(self):
         self.image_dialog = QtWidgets.QFileDialog(self)
-        self.image_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.image_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
 
         def output_selected():
             self.source_dir = self.image_dialog.selectedFiles()[0]
@@ -186,7 +186,7 @@ class ResizeWidget(QtWidgets.QWidget):
 
     def select_output_dir(self):
         self.out_dialog = QtWidgets.QFileDialog(self)
-        self.out_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.out_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
 
         def output_selected():
             self.output_dir = self.out_dialog.selectedFiles()[0]

@@ -45,7 +45,9 @@ def test_training():
     import numpy as np
     from torch.nn.functional import softmax
     from loss import combined_loss as criterion
-    from torch.nn.functional import cross_entropy
+
+    # this seems to work well and is simpler, but further testing is required.
+    # from torch.nn.functional import cross_entropy
     from skimage.io import imsave
     from skimage import img_as_uint
 
@@ -77,6 +79,7 @@ def test_training():
                check_contrast=False)
         # if loss < 1e-7: this requires model update see unetv2
         if loss < 1e-3:
+            print('reached loss of ', loss.item(), 'after', step, 'steps')
             return # test passes. loss is low enough
     raise Exception('loss too high, loss = ' + loss.item())
 
@@ -91,7 +94,9 @@ def test_training_with_mask():
     import numpy as np
     from torch.nn.functional import softmax
     from loss import combined_loss as criterion
-    from torch.nn.functional import cross_entropy, binary_cross_entropy
+
+    # would like to experiment with switching to these but more experiments required.
+    #from torch.nn.functional import cross_entropy, binary_cross_entropy
     from skimage.io import imsave
     from skimage import img_as_uint
     device = get_device()
@@ -113,7 +118,13 @@ def test_training_with_mask():
         output = unet(test_input)
         imsave('test_temp_output/targ.png', img_as_uint(target.float().cpu().numpy()), check_contrast=False)
         softmaxed = softmax(output, 1)[:, 1] # just fg probability
-        loss = binary_cross_entropy(softmaxed, target, weight=defined)
+        # I wiould like to experiment with switching to this as it is much simpler
+        # but more experiments required.
+        # TODO: also consider torch.sigmoid at the end of the network output
+        #       and avoid softmax
+        #loss = binary_cross_entropy(softmaxed, target, weight=defined)
+
+        loss = criterion(softmaxed, target, defined)
         loss.backward()
         optimizer.step()
         im = softmaxed.detach().cpu().numpy()[0]
@@ -122,6 +133,7 @@ def test_training_with_mask():
                check_contrast=False)
         # if loss < 1e-7: this requires model update see unetv2
         if loss < 1e-3:
+            print('reached loss of ', loss.item(), 'after', step, 'steps')
             return # test passes. loss is low enough
     raise Exception('loss too high, loss = ' + str(loss.item()))
 

@@ -172,6 +172,9 @@ class RandomSplitWidget(QtWidgets.QWidget):
             self.create_btn.setEnabled(False)
             return
 
+        im_fnames = [f for f in os.listdir(self.source_dir) if im_utils.is_image(f)]
+        self.image_paths = [os.path.join(self.source_dir, f) for f in im_fnames]
+
         if not self.image_paths:
             message = ('Source image directory must contain image files')
             self.info_label.setText(message)
@@ -186,7 +189,10 @@ class RandomSplitWidget(QtWidgets.QWidget):
     def try_submit(self):
         output_dir = Path(self.output_dir)
         split_percent = self.split_percent_edit_widget.value()
+
         all_images = self.image_paths
+
+        os.makedirs(output_dir, exist_ok=True)
         self.progress_widget = CreationProgressWidget()
         self.progress_widget.run(all_images, output_dir, split_percent)
         self.close()
@@ -200,8 +206,6 @@ class RandomSplitWidget(QtWidgets.QWidget):
         def output_selected():
             self.source_dir = self.image_dialog.selectedFiles()[0]
             self.directory_label.setText('Image directory: ' + self.source_dir)
-            im_fnames = [f for f in os.listdir(self.source_dir) if im_utils.is_image(f)]
-            self.image_paths = [os.path.join(self.source_dir, f) for f in im_fnames]
             self.validate()
 
         self.image_dialog.fileSelected.connect(output_selected)

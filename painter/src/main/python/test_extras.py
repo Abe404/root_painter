@@ -3,21 +3,12 @@ import os
 import shutil
 from PyQt6 import QtCore
 
-
+# sync directory for use with tests
 sync_dir = os.path.join(os.getcwd(), 'test_rp_sync')
 
 
-def test_specify_seg(qtbot):
-    """ test we can click the specify_seg_btn without an error """
-    from mask_images import MaskImWidget
-    # initialise the mask im widget
-    mask_im_widget = MaskImWidget()
-    mask_im_widget.show()
-    qtbot.mouseClick(mask_im_widget.specify_seg_btn, QtCore.Qt.MouseButton.LeftButton)
-
-
-
 def dl_dir_from_zip(url, output_path):
+    """ download a zip from url and place contents in output_path """
     import urllib.request
     import zipfile
     import glob
@@ -45,7 +36,6 @@ def dl_dir_from_zip(url, output_path):
         shutil.rmtree(os.path.join(output_path, parent_folder))
 
 
-
 def setup_function():
     import urllib.request
     import zipfile
@@ -66,6 +56,15 @@ def setup_function():
     biopore_seg_url = 'https://zenodo.org/record/8037046/files/user_a_corrective_biopores_750_training_seg_model_33.zip'
     seg_dir = os.path.join(results_dir, 'seg_model_33')
     dl_dir_from_zip(biopore_seg_url, seg_dir)
+
+
+def test_specify_seg_for_mask_widget(qtbot):
+    """ test we can click the specify_seg_btn without an error """
+    from mask_images import MaskImWidget
+    # initialise the mask im widget
+    mask_im_widget = MaskImWidget()
+    mask_im_widget.show()
+    qtbot.mouseClick(mask_im_widget.specify_seg_btn, QtCore.Qt.MouseButton.LeftButton)
 
 
 def test_mask_operation(qtbot):

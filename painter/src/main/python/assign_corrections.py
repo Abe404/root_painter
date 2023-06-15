@@ -37,6 +37,7 @@ class Thread(QtCore.QThread):
     def run(self):
         annot_fpaths = all_image_paths_in_dir(self.annot_dir)
         annot_fpaths = [f for f in annot_fpaths if os.path.splitext(f)[1] == ".png"]
+
         for i, f in enumerate(annot_fpaths):
             self.progress_change.emit(i + 1, len(annot_fpaths))
             if os.path.isfile(f):
@@ -48,6 +49,7 @@ class Thread(QtCore.QThread):
                     print('Exception handling', f)
                     print(e)
                     traceback.print_exc()
+
         self.done.emit()
 
 
@@ -59,6 +61,9 @@ class ProgressWidget(BaseProgressWidget):
         self.annot_dir = annot_dir
         self.seg_dir = seg_dir
         self.out_dir = out_dir
+
+        os.makedirs(out_dir, exist_ok=True)
+
         self.thread = Thread(annot_dir, seg_dir, out_dir)
         annot_fpaths = all_image_paths_in_dir(self.annot_dir)
         annot_fpaths = [f for f in annot_fpaths if os.path.splitext(f)[1] == ".png"]

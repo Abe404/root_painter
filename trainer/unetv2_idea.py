@@ -1,3 +1,10 @@
+"""
+The idea with this implementation was to remove some of the later group norm layers.
+I believe this may help the network better fit sharp corners but further tests are required.
+"""
+
+
+
 # pylint: disable=C0111, W0221, R0902
 """
 U-Net architecture based on:
@@ -89,7 +96,6 @@ class UpBlock(nn.Module):
             nn.Conv2d(in_channels, in_channels,
                       kernel_size=3, padding=0),
             nn.ReLU(),
-            nn.GroupNorm(32, in_channels)
         )
 
     def forward(self, x, down_out):
@@ -123,8 +129,8 @@ class UNetGNRes(nn.Module):
         self.up4 = UpBlock(64)
         self.conv_out = nn.Sequential(
             nn.Conv2d(64, 2, kernel_size=1, padding=0),
-            nn.ReLU(),
-            nn.GroupNorm(2, 2)
+            nn.ReLU()
+            #nn.GroupNorm(2, 2)
         )
 
     def forward(self, x):
@@ -139,3 +145,24 @@ class UNetGNRes(nn.Module):
         out = self.up4(out, out1)
         out = self.conv_out(out)
         return out
+
+
+if __name__ == '__main__':
+    import torch
+    from torch.nn.functional import softmax
+    from skimage.io import imsave
+    import numpy as np
+    unet = UNetGNRes()
+    unet.eval()
+    # test_input = np.random.rand(1, 3, 572, 572)
+    test_input = np.zeros((1, 3, 572, 572))
+    test_input = torch.from_numpy(test_input)
+    test_input.cuda()
+    test_input = test_input.float()
+    output = unet(test_input)
+    output = output.detach()
+    print('output.shape', output.shape)
+    softmaxed = softmax(output, 1)[:, 1, :] # just fg probability
+    softmaxed = softmaxed[0] # single image.
+    print('softmaxed shape = ', softmaxed.shape)
+    imsave('out.png', softmaxed)

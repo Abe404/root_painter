@@ -185,18 +185,6 @@ class AssignCorrectionsWidget(QtWidgets.QWidget):
         self.input_dialog.fileSelected.connect(input_selected)
         self.input_dialog.open()
 
-    def select_im_dir(self):
-        self.input_dialog = QtWidgets.QFileDialog(self)
-        self.input_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
-
-        def input_selected():
-            self.im_dir = self.input_dialog.selectedFiles()[0]
-            self.im_dir_label.setText("Image directory: " + self.im_dir)
-            self.validate()
-
-        self.input_dialog.fileSelected.connect(input_selected)
-        self.input_dialog.open()
-
     def select_out_dir(self):
         self.input_dialog = QtWidgets.QFileDialog(self)
         self.input_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)

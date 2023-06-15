@@ -68,7 +68,7 @@ def test_training():
     for step in range(300):
         optimizer.zero_grad()
         output = unet(test_input)
-        loss = loss_fn(output, target) # all zeros output
+        loss = loss_fn(output, target.long()) # all zeros output
         # print('loss', loss.item())
         loss.backward()
         optimizer.step()

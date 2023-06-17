@@ -20,26 +20,19 @@ from torch.nn.functional import softmax
 from torch.nn.functional import binary_cross_entropy
 
 
-def dice_loss(predictions, labels, defined):
+def dice_loss(preds, labels):
     """ based on loss function from V-Net paper """
-    labels = labels.float() * defined
-    preds = predictions.contiguous().view(-1) 
-    preds = preds * defined.view(-1)
-    labels = labels.view(-1)
     intersection = torch.sum(torch.mul(preds, labels))
     union = torch.sum(preds) + torch.sum(labels)
     return 1 - ((2 * intersection) / (union))
 
-
-def combined_loss(predictions, labels, defined):
+def combined_loss(predictions, labels):
     """ mix of dice and cross entropy """
     # if they are bigger than 1 you get a strange gpu error
     # without a stack track so you will have no idea why.
     assert torch.max(labels) <= 1
+    cx = (0.3 * binary_cross_entropy(predictions, labels))
     if torch.sum(labels) > 0:
-        return (dice_loss(predictions, labels, defined) +
-                (0.3 * binary_cross_entropy(predictions, labels, weight=defined)))
-    # When no roots use only cross entropy
-    # as dice is undefined.
-
-    return 0.3 * binary_cross_entropy(predictions, labels, weight=defined)
+        dl = dice_loss(predictions, labels)
+        return dl + cx
+    return cx

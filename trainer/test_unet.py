@@ -109,11 +109,11 @@ def test_training_with_mask():
     test_input = torch.from_numpy(test_input)
     test_input = test_input.float().to(device)
     target = (test_input[:, 0, 36:-36, 36:-36] > 0.5)
+    target = torch.unsqueeze(target, dim=0) # class dimension for compatability with network output
     target = target.float().to(device)
 
-
     imsave('test_temp_output/targ.png',
-           img_as_uint(target.float().cpu().numpy()),
+           img_as_uint(torch.squeeze(target).float().cpu().numpy()),
            check_contrast=False)
 
     defined = np.zeros((1, 500, 500))
@@ -123,14 +123,12 @@ def test_training_with_mask():
     target = torch.mul(target, defined)
     for step in range(30000):
         optimizer.zero_grad()
-        output = unet(test_input)
-        softmaxed = softmax(output, 1)[:, 1] # just fg probability
-        softmaxed_masked  = torch.mul(softmaxed, defined)
-        loss = criterion(softmaxed_masked, target)
+        preds = unet(test_input)
+        loss = criterion(preds, target, defined)
         print('loss', loss.item())
         loss.backward()
         optimizer.step()
-        im = softmaxed.detach().cpu().numpy()[0]
+        im = preds.detach().cpu().numpy()[0]
         im = img_as_uint(im)
         imsave('test_temp_output/out_' + str(step).zfill(3) + '.png', im,
                check_contrast=False)

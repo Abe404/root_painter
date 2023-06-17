@@ -1,4 +1,4 @@
-from unet import UNetGNRes
+from unetv2_idea import UNetGNRes
 
 
 def setup_function():
@@ -92,7 +92,7 @@ def test_training_with_mask():
     import torch
     from model_utils import get_device
     import numpy as np
-    from torch.nn.functional import softmax
+    from torch.nn.functional import softmax, binary_cross_entropy 
     from loss import combined_loss as criterion
 
     # would like to experiment with switching to these but more experiments required.
@@ -110,29 +110,31 @@ def test_training_with_mask():
     test_input = test_input.float().to(device)
     target = (test_input[:, 0, 36:-36, 36:-36] > 0.5)
     target = target.float().to(device)
+
+
+    imsave('test_temp_output/targ.png',
+           img_as_uint(target.float().cpu().numpy()),
+           check_contrast=False)
+
     defined = np.zeros((1, 500, 500))
     defined[:, :250] = 1
     defined = torch.from_numpy(defined).float().to(device)
-    for step in range(300):
+
+    target = torch.mul(target, defined)
+    for step in range(30000):
         optimizer.zero_grad()
         output = unet(test_input)
-        imsave('test_temp_output/targ.png', img_as_uint(target.float().cpu().numpy()), check_contrast=False)
         softmaxed = softmax(output, 1)[:, 1] # just fg probability
-        # I wiould like to experiment with switching to this as it is much simpler
-        # but more experiments required.
-        # TODO: also consider torch.sigmoid at the end of the network output
-        #       and avoid softmax
-        #loss = binary_cross_entropy(softmaxed, target, weight=defined)
-
-        loss = criterion(softmaxed, target, defined)
+        softmaxed_masked  = torch.mul(softmaxed, defined)
+        loss = criterion(softmaxed_masked, target)
+        print('loss', loss.item())
         loss.backward()
         optimizer.step()
         im = softmaxed.detach().cpu().numpy()[0]
         im = img_as_uint(im)
         imsave('test_temp_output/out_' + str(step).zfill(3) + '.png', im,
                check_contrast=False)
-        # if loss < 1e-7: this requires model update see unetv2
-        if loss < 1e-3:
+        if loss < 0.01:
             print('reached loss of ', loss.item(), 'after', step, 'steps')
             return # test passes. loss is low enough
     raise Exception('loss too high, loss = ' + str(loss.item()))

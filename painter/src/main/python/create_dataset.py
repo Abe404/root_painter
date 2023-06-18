@@ -205,9 +205,9 @@ class CreateDatasetWidget(QtWidgets.QWidget):
         layout.addWidget(directory_label)
         self.directory_label = directory_label
 
-        specify_image_dir_btn = QtWidgets.QPushButton('Specify source image directory')
-        specify_image_dir_btn.clicked.connect(self.select_image_dir)
-        layout.addWidget(specify_image_dir_btn)
+        self.specify_image_dir_btn = QtWidgets.QPushButton('Specify source image directory')
+        self.specify_image_dir_btn.clicked.connect(self.select_image_dir)
+        layout.addWidget(self.specify_image_dir_btn)
 
 
         # User can select all images or sample randomly
@@ -323,6 +323,8 @@ class CreateDatasetWidget(QtWidgets.QWidget):
             self.create_btn.setEnabled(False)
             return
 
+        self.image_paths = im_utils.all_image_paths_in_dir(self.source_dir)
+
         if not self.image_paths:
             message = ('Source image directory must contain image files '
                        ' with png, jpg, jpeg, tif'
@@ -373,12 +375,11 @@ class CreateDatasetWidget(QtWidgets.QWidget):
 
     def select_image_dir(self):
         self.image_dialog = QtWidgets.QFileDialog(self)
-        self.image_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.image_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
 
         def output_selected():
             self.source_dir = self.image_dialog.selectedFiles()[0]
             self.directory_label.setText('Image directory: ' + self.source_dir)
-            self.image_paths = im_utils.all_image_paths_in_dir(self.source_dir)
             self.validate()
 
         self.image_dialog.fileSelected.connect(output_selected)

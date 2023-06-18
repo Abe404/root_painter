@@ -46,7 +46,7 @@ def setup_function():
     dl_dir_from_zip(biopore_url, bp_dataset_dir)
 
 
-def test_specify_seg_for_mask_widget(qtbot):
+def test_create_project(qtbot):
     from create_project import CreateProjectWidget
     # initialise the widget
     widget = CreateProjectWidget(sync_dir)

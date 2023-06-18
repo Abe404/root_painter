@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+import shutil
 
 def dl_dir_from_zip(url, output_path):
     """ download a zip from url and place contents in output_path """

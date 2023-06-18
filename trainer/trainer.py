@@ -33,11 +33,9 @@ import multiprocessing
 import numpy as np
 import torch
 from torch.nn.functional import softmax
-from torch.utils.data import DataLoader
 from loss import combined_loss as criterion
 from torch.nn.functional import binary_cross_entropy
 
-from datasets import TrainDataset
 from metrics import get_metrics, get_metrics_str, get_metric_csv_row
 from model_utils import ensemble_segment
 from model_utils import create_first_model_with_random_weights

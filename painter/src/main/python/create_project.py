@@ -41,7 +41,7 @@ class CreateProjectWidget(QtWidgets.QWidget):
         self.proj_name = None
         self.selected_model = None
         self.use_random_weights = True
-        self.sync_dir = sync_dir
+        self.sync_dir = Path(sync_dir)
         self.initUI()
 
     def initUI(self):
@@ -66,9 +66,9 @@ class CreateProjectWidget(QtWidgets.QWidget):
         self.layout.addWidget(directory_label)
         self.directory_label = directory_label
 
-        specify_image_dir_btn = QtWidgets.QPushButton('Specify image directory')
-        specify_image_dir_btn.clicked.connect(self.select_photo_dir)
-        self.layout.addWidget(specify_image_dir_btn)
+        self.specify_image_dir_btn = QtWidgets.QPushButton('Specify image directory')
+        self.specify_image_dir_btn.clicked.connect(self.select_photo_dir)
+        self.layout.addWidget(self.specify_image_dir_btn)
 
     def add_radio_widget(self):
         radio_widget = QtWidgets.QWidget()
@@ -174,7 +174,7 @@ class CreateProjectWidget(QtWidgets.QWidget):
     def select_photo_dir(self):
         self.photo_dialog = QtWidgets.QFileDialog(self, directory=os.path.join(self.sync_dir, 'datasets'))
 
-        self.photo_dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+        self.photo_dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
         def output_selected():
             self.selected_dir = self.photo_dialog.selectedFiles()[0]
             self.directory_label.setText('Image directory: ' + self.selected_dir)

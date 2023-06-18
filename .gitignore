@@ -1,5 +1,6 @@
 .DS_Store
 test_temp_output/
+test_rp_sync
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

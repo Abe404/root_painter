@@ -23,9 +23,9 @@ from test_utils import dl_dir_from_zip
 
 sync_dir = os.path.join(os.getcwd(), 'test_rp_sync')
 datasets_dir = os.path.join(sync_dir, 'datasets')
-bp_full_dataset_dir = os.path.join(datasets_dir, 'biopores_750_training')
-bp_train_dataset_dir = os.path.join(datasets_dir, 'biopores_750_training')
-
+bp_full_dataset_dir = os.path.join(datasets_dir, 'fp_full')
+output_name = 'bp_train'
+out_dataset_location = os.path.join(sync_dir, 'datasets', output_name)
 timeout_ms = 20000
 
 
@@ -38,6 +38,11 @@ def setup_function():
     projects_location = os.path.join(sync_dir, 'projects')
     shutil.rmtree(projects_location)
     os.makedirs(projects_location)
+
+    # remove the training dataset from the output. We want to test it is possible to create this.
+    if os.path.isdir(out_dataset_location):
+        shutil.rmtree(out_dataset_location)
+
 
     # prepare biopores training dataset
     if not os.path.isdir(datasets_dir):
@@ -56,14 +61,12 @@ def test_create_training_dataset(qtbot):
     qtbot.mouseClick(widget.specify_image_dir_btn, QtCore.Qt.MouseButton.LeftButton)
     # can't actually reproduce user interaction with the QFileDialog so just set the directory
     widget.source_dir = bp_full_dataset_dir
-    name = 'TestDataset9000'
-    widget.name_edit_widget.name = name
+    widget.name_edit_widget.name = output_name
     widget.validate()  
     widget.create_btn.click()
       
     def check_output():
         import json
-        out_dataset_location = os.path.join(sync_dir, 'datasets', name)
         if not os.path.isdir(out_dataset_location):
             return False
         

@@ -1,7 +1,7 @@
 """
 Handle training and segmentation for a specific project
 
-Copyright (C) 2020 Abraham George Smith
+Copyright (C) 2020-2023 Abraham George Smith
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

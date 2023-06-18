@@ -28,7 +28,10 @@ from skimage import img_as_float32
 import im_utils
 from unet import UNetGNRes
 from metrics import get_metrics
+from datasets import TrainDataset
+from torch.utils.data import DataLoader
 from file_utils import ls
+from loss import combined_loss as criterion
 
 def get_device():
     if torch.backends.mps.is_available():
@@ -164,9 +167,10 @@ def epoch(model, train_annot_dir, val_annot_dir,
           num_workers, optimizer, step_callback, stop_fn):
     """ One training epoch """
     
-    train_set = dataset.TrainDataset(train_annot_dir,
-                                     dataset_dir,
-                                     in_w, out_w)
+    
+    train_set = TrainDataset(train_annot_dir,
+                             dataset_dir,
+                             in_w, out_w)
     
     train_loader = DataLoader(train_set, batch_size, shuffle=True,
                               # 12 workers is good for performance
@@ -176,6 +180,7 @@ def epoch(model, train_annot_dir, val_annot_dir,
                               # and don't go above the number of cpus, provided by cpu_count.
                               num_workers=num_workers,
                               drop_last=False, pin_memory=True)
+    model.to(device)
     model.train()
     tps = 0
     fps = 0
@@ -193,10 +198,12 @@ def epoch(model, train_annot_dir, val_annot_dir,
         optimizer.zero_grad()
         outputs = model(photo_tiles)
         softmaxed = softmax(outputs, 1)[:, 1] # just fg probabiliy
-        loss = binary_cross_entropy(softmaxed, foreground_tiles, weight=defined_tiles)
+        loss = criterion(softmaxed, foreground_tiles, defined_tiles)
         loss.backward()
         optimizer.step()
-        step_callback()
+
+        if step_callback:
+            step_callback()
 
         # make the predictions match in undefined areas so metrics in these
         # regions are not taken into account.
@@ -224,10 +231,9 @@ def epoch(model, train_annot_dir, val_annot_dir,
                 f"{len(train_loader.dataset)} "
                 f" loss={round(loss.item(), 3)}",
                 end='', flush=True)
-
-        if stop_fn():
+        if stop_fn and stop_fn():
             return None
-        return (tps, fps, tns, fns, defined_total)
+    return (tps, fps, tns, fns, defined_total)
 
 
 def ensemble_segment(model_paths, image, bs, in_w, out_w,

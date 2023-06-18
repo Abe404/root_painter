@@ -195,9 +195,6 @@ class Trainer():
             self.epochs_without_progress = 0
             self.msg_dir = self.train_config['message_dir']
             model_dir = self.train_config['model_dir']
-            self.train_set = TrainDataset(self.train_config['train_annot_dir'],
-                                          self.train_config['dataset_dir'],
-                                          self.in_w, self.out_w)
             model_paths = model_utils.get_latest_model_paths(model_dir, 1)
             if model_paths:
                 self.model = model_utils.load_model(model_paths[0])
@@ -229,6 +226,7 @@ class Trainer():
     def train_one_epoch(self):
         train_annot_dir = self.train_config['train_annot_dir']
         val_annot_dir = self.train_config['val_annot_dir']
+
         if not [is_photo(a) for a in ls(train_annot_dir)]:
             return
         if not [is_photo(a) for a in ls(val_annot_dir)]:
@@ -238,77 +236,31 @@ class Trainer():
             self.first_loop = False
             self.write_message('Training started')
             self.log('Starting Training')
+        
+        # called on every train step
+        step_callback = self.check_for_instructions
 
-        train_loader = DataLoader(self.train_set, self.bs, shuffle=True,
-                                  # 12 workers is good for performance
-                                  # on 2 RTX2080 Tis (but depends on CPU also)
-                                  # 0 workers is good for debugging
-                                  # don't go above max_workers (user specified but default 12) 
-                                  # and don't go above the number of cpus, provided by cpu_count.
-                                  num_workers=self.num_workers,
-                                  drop_last=False, pin_memory=True)
+        def stop_fn()
+            # return true to stop.
+            return not self.training
+
         epoch_start = time.time()
-        self.model.train()
-        tps = 0
-        fps = 0
-        tns = 0
-        fns = 0
-        defined_total = 0
-        loss_sum = 0
-        for step, (photo_tiles,
-                   foreground_tiles,
-                   defined_tiles) in enumerate(train_loader):
 
-            self.check_for_instructions()
-            photo_tiles = photo_tiles.to(device)
-            foreground_tiles = foreground_tiles.to(device).float()
-            defined_tiles = defined_tiles.to(device)
-            self.optimizer.zero_grad()
-            outputs = self.model(photo_tiles)
-            softmaxed = softmax(outputs, 1)[:, 1] # just fg probabiliy
-            loss = binary_cross_entropy(softmaxed, foreground_tiles, weight=defined_tiles)
-            loss.backward()
-            self.optimizer.step()
+        train_result = model_utils.epoch(self.model, train_annot_dir, val_annot_dir,
+                                         self.train_config['dataset_dir'],
+                                         self.in_w, self.out_w, self.bs,
+                                         self.num_workers, self.optimizer,
+                                         step_callback, stop_fn)
 
-            # make the predictions match in undefined areas so metrics in these
-            # regions are not taken into account.
-            softmaxed *= defined_tiles 
-            predicted = softmaxed > 0.5
-
-            # we only want to calculate metrics on the
-            # part of the predictions for which annotations are defined
-            # so remove all predictions and foreground labels where
-            # we didn't have any annotation.
-
-            defined_list = defined_tiles.view(-1)
-            preds_list = predicted.view(-1)[defined_list > 0]
-            foregrounds_list = foreground_tiles.view(-1)[defined_list > 0]
-
-            # # calculate all the false positives, false negatives etc
-            tps += torch.sum((foregrounds_list == 1) * (preds_list == 1)).cpu().numpy()
-            tns += torch.sum((foregrounds_list == 0) * (preds_list == 0)).cpu().numpy()
-            fps += torch.sum((foregrounds_list == 0) * (preds_list == 1)).cpu().numpy()
-            fns += torch.sum((foregrounds_list == 1) * (preds_list == 0)).cpu().numpy()
-            defined_total += torch.sum(defined_list > 0).cpu().numpy()
-            loss_sum += loss.item() # float
-
-            # https://github.com/googlecolab/colabtools/issues/166
-            print(f"\rTraining: {(step+1) * self.bs}/"
-                  f"{len(train_loader.dataset)} "
-                  f" loss={round(loss.item(), 3)}",
-                  end='', flush=True)
-
-            self.check_for_instructions() # could update training parameter
-            if not self.training:
-                return
-
-        duration = round(time.time() - epoch_start, 3)
-        print('epoch train duration', duration)
-        self.log_metrics('train', get_metrics(tps, fps, tns, fns,
-                                              defined_total, duration))
-        before_val_time = time.time()
-        self.validation()
-        print('epoch validation duration', time.time() - before_val_time)
+        if train_result: # could be None if training stopped early 
+            (tps, fps, tns, fns, defined_total) = train_result 
+            duration = round(time.time() - epoch_start, 3)
+            print('epoch train duration', duration)
+            self.log_metrics('train', get_metrics(tps, fps, tns, fns,
+                                                defined_total, duration))
+            before_val_time = time.time()
+            self.validation()
+            print('epoch validation duration', time.time() - before_val_time)
 
     def log_metrics(self, name, metrics):
         fname = datetime.today().strftime('%Y-%m-%d')

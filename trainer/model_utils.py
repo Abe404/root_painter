@@ -28,8 +28,6 @@ from skimage import img_as_float32
 import im_utils
 from unet import UNetGNRes
 from metrics import get_metrics
-from datasets import TrainDataset
-from torch.utils.data import DataLoader
 from file_utils import ls
 from loss import combined_loss as criterion
 
@@ -162,24 +160,52 @@ def save_if_better(model_dir, cur_model, prev_model_path,
 
 
 
-def epoch(model, train_annot_dir, val_annot_dir,
-          dataset_dir, in_w, out_w, batch_size,
-          num_workers, optimizer, step_callback, stop_fn):
+
+
+
+
+
+# https://github.com/huggingface/pytorch-image-models/blob/d72ac0db259275233877be8c1d4872163954dfbb/timm/data/loader.py#L209-L238
+class MultiEpochsDataLoader(torch.utils.data.DataLoader):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._DataLoader__initialized = False
+        self.batch_sampler = _RepeatSampler(self.batch_sampler)
+        self._DataLoader__initialized = True
+        self.iterator = super().__iter__()
+
+    def __len__(self):
+        return len(self.batch_sampler.sampler)
+
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield next(self.iterator)
+
+
+class _RepeatSampler(object):
+    """ Sampler that repeats forever.
+
+    Args:
+        sampler (Sampler)
+    """
+
+
+    def __init__(self, sampler):
+        self.sampler = sampler
+
+
+    def __iter__(self):
+        while True:
+            yield from iter(self.sampler)
+
+
+def epoch(model, train_loader, batch_size,
+          optimizer, step_callback, stop_fn):
     """ One training epoch """
     
     
-    train_set = TrainDataset(train_annot_dir,
-                             dataset_dir,
-                             in_w, out_w)
-    
-    train_loader = DataLoader(train_set, batch_size, shuffle=True,
-                              # 12 workers is good for performance
-                              # on 2 RTX2080 Tis (but depends on CPU also)
-                              # 0 workers is good for debugging
-                              # don't go above max_workers (user specified but default 12) 
-                              # and don't go above the number of cpus, provided by cpu_count.
-                              num_workers=num_workers,
-                              drop_last=False, pin_memory=True)
     model.to(device)
     model.train()
     tps = 0
@@ -233,6 +259,8 @@ def epoch(model, train_annot_dir, val_annot_dir,
                 end='', flush=True)
         if stop_fn and stop_fn():
             return None
+        print('epeoch step end inside loop', time.time())
+    print('epoch end outside loop', time.time())
     return (tps, fps, tns, fns, defined_total)
 
 

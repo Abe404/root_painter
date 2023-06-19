@@ -18,6 +18,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import os
 import torch
+import time
+from datasets import TrainDataset
+from torch.utils.data import DataLoader
+
 
 # sync directory for use with tests
 sync_dir = os.path.join(os.getcwd(), 'test_rp_sync')
@@ -59,15 +63,67 @@ def test_corrective_biopore_training():
     batch_size = 6
     train_annot_dir = os.path.join(annot_dir, 'train')
     val_annot_dir = os.path.join(annot_dir, 'val')
+    start_time = time.time()
 
-    train_result = model_utils.epoch(model, train_annot_dir, val_annot_dir,
-                                     bp_dataset_dir, in_w, out_w, batch_size,
-                                     num_workers=8, optimizer=optimizer,
-                                     step_callback=None, stop_fn=None)
+
+    train_set = TrainDataset(train_annot_dir,
+                             bp_dataset_dir,
+                             in_w, out_w)
+    
+    train_loader = model_utils.MultiEpochsDataLoader(train_set, batch_size, shuffle=False,
+        # 12 workers is good for performance
+        # on 2 RTX2080 Tis (but depends on CPU also)
+        # 0 workers is good for debugging
+        # don't go above max_workers (user specified but default 12) 
+        # and don't go above the number of cpus, provided by cpu_count.
+        num_workers=6,
+        drop_last=False, pin_memory=True)
+
+    print('start epoch')
+    train_result = model_utils.epoch(model, train_loader, batch_size,
+                                     optimizer=optimizer, step_callback=None, stop_fn=None)
+
+
+    print('epoch end - insdie test, starting get val_metrics', time.time() - start_time)
     val_metrics = model_utils.get_val_metrics(model, val_annot_dir, bp_dataset_dir,
                                               in_w, out_w, bs=batch_size)
+    end_time = time.time()
+    print('')
+    print('epoch1 duration = ', end_time - start_time)
+    print('metrics f1', val_metrics['f1'], 'accuracy', val_metrics['accuracy'])
+
+
+    start_time = time.time()
+    print('start epoch2 - ', time.time())
+    train_result = model_utils.epoch(model, train_loader, batch_size,
+                                     optimizer=optimizer, step_callback=None, stop_fn=None)
+    print('epoch end - insdie test, starting get val_metrics', time.time() - start_time)
+    val_metrics = model_utils.get_val_metrics(model, val_annot_dir, bp_dataset_dir,
+                                              in_w, out_w, bs=batch_size)
+    end_time = time.time()
+    print('')
+    print('epoch2 duration = ', end_time - start_time)
     print('metrics f1', val_metrics['f1'], 'accuracy', val_metrics['accuracy'])
     
+
+
+    start_time = time.time()
+    print('start epoch3 - ', time.time())
+    train_result = model_utils.epoch(model, train_loader, batch_size,
+                                     optimizer=optimizer, step_callback=None, stop_fn=None)
+    print('epoch end - insdie test, starting get val_metrics', time.time() - start_time)
+    val_metrics = model_utils.get_val_metrics(model, val_annot_dir, bp_dataset_dir,
+                                              in_w, out_w, bs=batch_size)
+    end_time = time.time()
+    print('')
+    print('epoch3 duration = ', end_time - start_time)
+    print('metrics f1', val_metrics['f1'], 'accuracy', val_metrics['accuracy'])
+    
+
+
+
+
+
 
 def corrective_nodules_training():
     # a specific validation set f1 score can be obtained in a specific number of update steps

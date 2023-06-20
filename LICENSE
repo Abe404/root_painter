@@ -1,6 +1,8 @@
-The code in this repository is licensed under the GPLV3 except for one file (see below)
+The code in this repository is licensed under the GPLV3 except for two files (see below)
 
-## For everything except painter/src/main/python/eccentricity.py
+## For everything except 
+# - painter/src/main/python/eccentricity.py and 
+# - trainer/multi_epoch/multi_epoch_loader.py
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -47,3 +49,8 @@ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
 IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
+
+## For trainer/multi_epoch/multi_epoch_loader.py
+The code in this file is copied from https://github.com/huggingface/pytorch-image-model
+I have added the apache open source license associated with this code to
+trainer/multi_epoch/LICENSE

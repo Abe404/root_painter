@@ -1,7 +1,11 @@
 """
 Copied from: https://github.com/huggingface/pytorch-image-models/blob/d72ac0db259275233877be8c1d4872163954dfbb/timm/data/loader.py#L209-L238
 See LICENSE file in the same folder as this file.
+
+Modifications include only taking the MultiEpochsDataLoader and _RepeatSampler code and ignoring everything else.
 """
+
+import torch
 
 class MultiEpochsDataLoader(torch.utils.data.DataLoader):
 

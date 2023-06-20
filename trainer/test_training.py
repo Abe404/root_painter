@@ -80,10 +80,15 @@ def test_corrective_biopore_training():
         num_workers=6,
         drop_last=False, pin_memory=True)
 
+    print('loader setup time',  time.time() - start_time)
     train_result = model_utils.epoch(model, train_loader, batch_size,
                                      optimizer=optimizer, step_callback=None, stop_fn=None)
+
+    print('train epoch complete time', time.time() - start_time)
     val_metrics = model_utils.get_val_metrics(model, val_annot_dir, bp_dataset_dir,
                                               in_w, out_w, bs=batch_size)
+
+    print('val epoch complete time', time.time() - start_time)
     # pass - epoch runs without error.
 
 

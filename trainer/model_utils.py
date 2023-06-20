@@ -181,8 +181,7 @@ def epoch(model, train_loader, batch_size,
         defined_tiles = defined_tiles.to(device)
         optimizer.zero_grad()
         outputs = model(photo_tiles)
-        softmaxed = softmax(outputs, 1)[:, 1] # just fg probabiliy
-        loss = criterion(softmaxed, foreground_tiles, defined_tiles)
+        loss = criterion(outputs, foreground_tiles, defined_tiles)
         loss.backward()
         optimizer.step()
 
@@ -191,8 +190,8 @@ def epoch(model, train_loader, batch_size,
 
         # make the predictions match in undefined areas so metrics in these
         # regions are not taken into account.
-        softmaxed *= defined_tiles 
-        predicted = softmaxed > 0.5
+        outputs *= defined_tiles 
+        predicted = outputs > 0.5
 
         # we only want to calculate metrics on the
         # part of the predictions for which annotations are defined
@@ -217,8 +216,6 @@ def epoch(model, train_loader, batch_size,
                 end='', flush=True)
         if stop_fn and stop_fn():
             return None
-        print('epeoch step end inside loop', time.time())
-    print('epoch end outside loop', time.time())
     return (tps, fps, tns, fns, defined_total)
 
 
@@ -268,7 +265,6 @@ def unet_segment(cnn, image, in_w, out_w, threshold=0.5):
         tile = torch.unsqueeze(tile, dim=0) # add batch dimension for network
         tile = tile.to(device)
         out_tile = cnn(tile)
-        out_tile = softmax(out_tile, 1)[:, 1] # just the foreground probability.
 
         if threshold is not None:
             out_tile = out_tile > threshold

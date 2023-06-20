@@ -26,9 +26,10 @@ def dice_loss(preds, labels):
     union = torch.sum(preds) + torch.sum(labels)
     return 1 - ((2 * intersection) / (union))
 
-def combined_loss(preds, labels, mask):
+def combined_loss(preds, labels, mask=None):
     """ mix of dice and cross entropy """
-    preds  = torch.mul(preds, mask) # weighted by defined region of annotation
+    if mask is not None:
+        preds  = torch.mul(preds, mask) # weighted by defined region of annotation
 
     # if they are bigger than 1 you get a strange gpu error
     # without a stack track so you will have no idea why.

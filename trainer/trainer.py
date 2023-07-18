@@ -36,6 +36,9 @@ from torch.nn.functional import softmax
 from loss import combined_loss as criterion
 from torch.nn.functional import binary_cross_entropy
 
+
+from multi_epoch.multi_epoch_loader import MultiEpochsDataLoader
+from datasets import TrainDataset
 from metrics import get_metrics, get_metrics_str, get_metric_csv_row
 from model_utils import ensemble_segment
 from model_utils import create_first_model_with_random_weights
@@ -186,6 +189,7 @@ class Trainer():
             message = 'Training stopped'
             self.write_message(message)
             self.log(message)
+            print('Training stopped')
 
     def start_training(self, config):
         if not self.training:
@@ -201,7 +205,22 @@ class Trainer():
             self.optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01,
                                              momentum=0.99, nesterov=True)
             self.model.train()
+
+            train_set = TrainDataset(self.train_config['train_annot_dir'],
+                                     self.train_config['dataset_dir'],
+                                     self.in_w, self.out_w)
+           
+            self.train_loader = MultiEpochsDataLoader(
+                train_set, self.bs, shuffle=False,
+                # 12 workers is good for performance
+                # on 2 RTX2080 Tis (but depends on CPU also)
+                # 0 workers is good for debugging
+                # don't go above max_workers (user specified but default 12) 
+                # and don't go above the number of cpus, provided by cpu_count.
+                num_workers=self.num_workers,
+                drop_last=False, pin_memory=True)
             self.training = True
+
 
     def reset_progress_if_annots_changed(self):
         train_annot_dir = self.train_config['train_annot_dir']
@@ -244,11 +263,10 @@ class Trainer():
 
         epoch_start = time.time()
 
-        train_result = model_utils.epoch(self.model, train_annot_dir, val_annot_dir,
-                                         self.train_config['dataset_dir'],
-                                         self.in_w, self.out_w, self.bs,
-                                         self.num_workers, self.optimizer,
-                                         step_callback, stop_fn)
+
+        train_result = model_utils.epoch(self.model, self.train_loader, self.bs,
+                                         optimizer=self.optimizer, step_callback=step_callback,
+                                         stop_fn=stop_fn)
 
         if train_result: # could be None if training stopped early 
             (tps, fps, tns, fns, defined_total) = train_result 

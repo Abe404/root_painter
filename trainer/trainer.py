@@ -33,7 +33,6 @@ import multiprocessing
 import numpy as np
 import torch
 from torch.nn.functional import softmax
-from loss import combined_loss as criterion
 from torch.nn.functional import binary_cross_entropy
 
 

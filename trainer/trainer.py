@@ -238,7 +238,7 @@ class Trainer():
         # called on every train step
         step_callback = self.check_for_instructions
 
-        def stop_fn()
+        def stop_fn():
             # return true to stop.
             return not self.training
 

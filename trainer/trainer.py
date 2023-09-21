@@ -80,7 +80,7 @@ class Trainer():
         self.num_workers=min(multiprocessing.cpu_count(), max_workers)
         print(self.num_workers, 'workers assigned for data loader')
         print('GPU Available', torch.cuda.is_available())
-        if torch.cuda_is_available():
+        if torch.cuda.is_available():
             for i in range(torch.cuda.device_count()):
                 total_mem += torch.cuda.get_device_properties(i).total_memory
             self.bs = total_mem // mem_per_item

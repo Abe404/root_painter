@@ -23,6 +23,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import torch.nn as nn
+from PIL import Image
 
 
 def get_valid_patch_sizes():
@@ -151,7 +152,8 @@ if __name__ == '__main__':
     # test_input = np.random.rand(1, 3, 572, 572)
     test_input = np.zeros((1, 3, 572, 572))
     test_input = torch.from_numpy(test_input)
-    test_input.cuda()
+    if torch.cuda.is_available():
+        test_input.cuda()
     test_input = test_input.float()
     output = unet(test_input)
     output = output.detach()
@@ -159,7 +161,11 @@ if __name__ == '__main__':
     softmaxed = softmax(output, 1)[:, 1, :] # just fg probability
     softmaxed = softmaxed[0] # single image.
     print('softmaxed shape = ', softmaxed.shape)
-    imsave('out.png', softmaxed)
+
+    im = Image.fromarray(np.array(softmaxed) * 256)
+    if im.mode != 'RGB':
+        im = im.convert('RGB')
+    im.save('out.png')
 
        
 

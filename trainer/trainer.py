@@ -80,10 +80,13 @@ class Trainer():
         self.num_workers=min(multiprocessing.cpu_count(), max_workers)
         print(self.num_workers, 'workers assigned for data loader')
         print('GPU Available', torch.cuda.is_available())
-        for i in range(torch.cuda.device_count()):
-            total_mem += torch.cuda.get_device_properties(i).total_memory
-        self.bs = total_mem // mem_per_item
-        self.bs = min(12, self.bs)
+        if torch.cuda_is_available():
+            for i in range(torch.cuda.device_count()):
+                total_mem += torch.cuda.get_device_properties(i).total_memory
+            self.bs = total_mem // mem_per_item
+            self.bs = min(12, self.bs)
+        else:
+            self.bs = 1 # cpu is batch size of 1
         print('Batch size', self.bs)
         self.optimizer = None
         # used to check for updates

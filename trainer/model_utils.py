@@ -44,7 +44,9 @@ def load_model(model_path):
     except:
         model = torch.nn.DataParallel(model)
         model.load_state_dict(torch.load(model_path))
-    model.cuda()
+
+    if torch.cuda.is_available():
+        model.cuda()
     return model
 
 def create_first_model_with_random_weights(model_dir):
@@ -56,7 +58,9 @@ def create_first_model_with_random_weights(model_dir):
     model = torch.nn.DataParallel(model)
     model_path = os.path.join(model_dir, model_name)
     torch.save(model.state_dict(), model_path)
-    model.cuda()
+
+    if torch.cuda.is_available():
+        model.cuda()
     return model
 
 
@@ -201,7 +205,8 @@ def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
                 tile_idx += 1
                 tiles_to_process.append(tile)
         tiles_for_gpu = torch.from_numpy(np.array(tiles_to_process))
-        tiles_for_gpu.cuda()
+        if torch.cuda.is_available():
+            tiles_for_gpu.cuda()
         tiles_for_gpu = tiles_for_gpu.float()
         batches.append(tiles_for_gpu)
 

@@ -26,7 +26,7 @@ setup(
     "numpy==1.24.2",
     "scipy==1.10.0",
     "Pillow==9.3.0",
-    "imagecodecs==2021.8.26",
+    "imagecodecs==2023.9.18",
     "torch==1.13.1",
     "torchvision==0.14.1"
   ],

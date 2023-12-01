@@ -1,6 +1,6 @@
 ## RootPainter
 
-RootPainter is a GUI-based software tool for the rapid training of deep neural networks for use in biological image analysis. 
+RootPainter is a GUI-based software tool for the rapid training of deep neural networks for use in image analysis. 
 RootPainter uses a client-server architecture, allowing users with a typical laptop to utilise a GPU on a more computationally powerful server.  
 
 A detailed description is available in the paper published in the New Phytologist  [RootPainter: Deep Learning Segmentation of Biological Images with Corrective Annotation](https://doi.org/10.1111/nph.18387)

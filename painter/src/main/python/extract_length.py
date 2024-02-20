@@ -28,7 +28,7 @@ def save_length_to_csv(seg_dir, fname, writer, headers):
     seg_im = np.array(seg_im)
     seg_im = seg_im[:, :, 2].astype(bool).astype(int)
     skel = skeletonize(seg_im)
-    skel = skel.astype(np.int)
+    skel = skel.astype(int)
     skel_pixels = np.sum(skel)
     name = fname.replace('.png', '')
     writer.writerow([name, skel_pixels])

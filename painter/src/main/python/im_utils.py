@@ -32,6 +32,9 @@ from skimage.color import rgb2gray
 import qimage2ndarray
 from PIL import Image, ImageOps
 
+# https://github.com/Abe404/root_painter/discussions/131#discussioncomment-8596334
+Image.MAX_IMAGE_PIXELS = 1e10 
+
 def is_image(fname):
     extensions = {".jpg", ".png", ".jpeg", '.tif', '.tiff'}
     return any(fname.lower().endswith(ext) for ext in extensions)

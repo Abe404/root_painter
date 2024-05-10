@@ -30,6 +30,12 @@ from unet import UNetGNRes
 from metrics import get_metrics
 from file_utils import ls
 
+
+def get_device():
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device('cuda')
+
 def get_latest_model_paths(model_dir, k):
     fnames = ls(model_dir)
     fnames = sorted(fnames)[-k:]

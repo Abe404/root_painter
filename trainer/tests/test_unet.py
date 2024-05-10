@@ -3,6 +3,14 @@ Basic tests for the UNetGNRes U-Net implementation.
 Can the network be trained to approximate and target.
 """
 
+import sys
+import os
+
+# Add the parent directory to sys.path
+parent_dir = os.path.abspath('../')
+sys.path.insert(0, parent_dir)
+
+# Now you can import the module located in the parent directory
 from unet import UNetGNRes
 
 

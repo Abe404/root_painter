@@ -71,7 +71,7 @@ def test_training():
     test_input[:, :, 100:-100,100:-100] = 1.0
     test_input = torch.from_numpy(test_input)
     test_input = test_input.float().to(device)
-    target = (test_input[:, 0, 36:-36, 36:-36] > 0.5)
+    target = (test_input[:, 0, 36:-36, 36:-36] > 0.5).long()
     im = img_as_uint(target.cpu().numpy())
     for step in range(300):
         optimizer.zero_grad()
@@ -128,7 +128,6 @@ def test_training_with_mask():
     defined[:, :250] = 1
     defined = torch.from_numpy(defined).float().to(device)
 
-    target = torch.mul(target, defined)
     for step in range(30000):
         optimizer.zero_grad()
 
@@ -136,7 +135,7 @@ def test_training_with_mask():
 
         if defined is not None:
             preds = torch.mul(preds, defined) # weighted by defined region of annotation
-            target = torch.mul(target, defined) # weighted by defined region of annotation
+            target = torch.mul(target, defined).long() # weighted by defined region of annotation
 
         loss = criterion(preds, target)
 

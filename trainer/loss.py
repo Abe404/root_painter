@@ -43,3 +43,26 @@ def combined_loss(predictions, labels):
     # When no roots use only cross entropy
     # as dice is undefined.
     return 0.3 * cross_entropy(predictions, labels)
+
+
+## Ideas for next versions of these loss functions. 
+
+def dice_loss2(preds, labels):
+    """ based on loss function from V-Net paper """
+    intersection = torch.sum(torch.mul(preds, labels))
+    union = torch.sum(preds) + torch.sum(labels)
+    return 1 - ((2 * intersection) / (union))
+
+def combined_loss2(preds, labels, mask=None):
+    """ mix of dice and cross entropy """
+    if mask is not None:
+        preds  = torch.mul(preds, mask) # weighted by defined region of annotation
+
+    # if they are bigger than 1 you get a strange gpu error
+    # without a stack track so you will have no idea why.
+    assert torch.max(labels) <= 1
+    cx = (0.3 * binary_cross_entropy(preds, labels))
+    if torch.sum(labels) > 0:
+        dl = dice_loss(preds, labels)
+        return dl + cx
+    return cx

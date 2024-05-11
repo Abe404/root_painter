@@ -11,6 +11,7 @@ parent_dir = os.path.abspath('../')
 sys.path.insert(0, parent_dir)
 
 # Now you can import the module located in the parent directory
+from torch.nn.functional import softmax
 from unet import UNetGNRes
 
 
@@ -29,7 +30,6 @@ def test_inference():
     from model_utils import get_device
     from PIL import Image
     device = get_device()
-    from torch.nn.functional import softmax
     from skimage.io import imsave
     import numpy as np
     from skimage import img_as_uint
@@ -41,6 +41,7 @@ def test_inference():
     test_input = test_input.float().to(device)
     output = unet(test_input)
     output = output.detach().cpu()
+    output = softmax(output, 1)[:, 1] # just fg probability
     output = output[0] # single image.
     output = output.numpy()
     im = img_as_uint(output)
@@ -76,11 +77,12 @@ def test_training():
         optimizer.zero_grad()
         output = unet(test_input)
         loss = criterion(output, target) # all zeros output
-        # print('loss', loss.item())
         loss.backward()
         optimizer.step()
-        im = output.detach().cpu().numpy()[0]
-        im = img_as_uint(im)
+        output = softmax(output, 1)[:, 1] # just fg probability
+        output = output.detach().cpu().numpy()
+        output = output[0] # single image.
+        im = img_as_uint(output)
         imsave('test_temp_output/out_' + str(step).zfill(3) + '.png', im,
                check_contrast=False)
         # if loss < 1e-7: this requires model update see unetv2
@@ -114,6 +116,7 @@ def test_training_with_mask():
     test_input[:, :, 100:-100,100:-100] = 1.0
     test_input = torch.from_numpy(test_input)
     test_input = test_input.float().to(device)
+
     target = (test_input[:, 0, 36:-36, 36:-36] > 0.5)
     target = target.float().to(device)
 
@@ -128,14 +131,22 @@ def test_training_with_mask():
     target = torch.mul(target, defined)
     for step in range(30000):
         optimizer.zero_grad()
+
         preds = unet(test_input)
 
-        loss = criterion(preds, target, defined)
+        if defined is not None:
+            preds = torch.mul(preds, defined) # weighted by defined region of annotation
+            target = torch.mul(target, defined) # weighted by defined region of annotation
+
+        loss = criterion(preds, target)
+
         print('loss', loss.item())
         loss.backward()
         optimizer.step()
-        im = preds.detach().cpu().numpy()[0]
-        im = img_as_uint(im)
+        output = softmax(preds, 1)[:, 1] # just fg probability
+        output = output.detach().cpu().numpy()
+        output = output[0] # single image.
+        im = img_as_uint(output)
         imsave('test_temp_output/out_' + str(step).zfill(3) + '.png', im,
                check_contrast=False)
         if loss < 0.01:

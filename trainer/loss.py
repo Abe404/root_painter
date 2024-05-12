@@ -49,6 +49,11 @@ def combined_loss(predictions, labels):
 
 def dice_loss2(preds, labels):
     """ based on loss function from V-Net paper """
+    assert torch.max(labels) <= 1
+    assert torch.min(labels) >= 0
+    assert torch.max(preds) <= 1
+    assert torch.min(preds) >= 0
+
     intersection = torch.sum(torch.mul(preds, labels))
     union = torch.sum(preds) + torch.sum(labels)
     return 1 - ((2 * intersection) / (union))

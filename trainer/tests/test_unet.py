@@ -5,7 +5,6 @@ Can the network be trained to approximate and target.
 
 import sys
 import os
-
 # Add the parent directory to sys.path
 parent_dir = os.path.abspath('../')
 sys.path.insert(0, parent_dir)
@@ -14,6 +13,30 @@ sys.path.insert(0, parent_dir)
 from torch.nn.functional import softmax
 from unet import UNetGNRes
 
+def get_acc(pred, true):
+    import numpy as np
+
+    if hasattr(pred, 'cpu'):
+        pred = pred.cpu()
+    if hasattr(true, 'cpu'):
+        true = true.cpu()
+
+ 
+    if hasattr(pred, 'numpy'):
+        pred = pred.numpy()
+    if hasattr(true, 'numpy'):
+        true = true.numpy()
+
+    assert np.min(pred) >= 0
+    assert np.max(pred) <= 1
+
+    assert np.min(true) >= 0
+    assert np.max(true) <= 1
+
+    output_bool = pred.reshape(-1) >= 0.5
+    target_bool = true.reshape(-1) >= 0.5
+    return (np.sum(output_bool == target_bool) / true.size)
+ 
 
 def setup_function():
     import os
@@ -55,9 +78,7 @@ def test_training():
     from model_utils import get_device
     import numpy as np
     from loss import combined_loss as criterion
-
-    # this seems to work well and is simpler, but further testing is required.
-    # from torch.nn.functional import cross_entropy
+# this seems to work well and is simpler, but further testing is required.  # from torch.nn.functional import cross_entropy
     from skimage.io import imsave
     from skimage import img_as_uint
 
@@ -92,7 +113,7 @@ def test_training():
     raise Exception('loss too high, loss = ' + str(loss.item()))
 
 
-def test_training_with_mask():
+def test_mask_training():
     """ test that network can be trained,
         and can approximate a square.
         This time also using a mask of the 'defined' region """
@@ -128,28 +149,26 @@ def test_training_with_mask():
     defined[:, :250] = 1
     defined = torch.from_numpy(defined).float().to(device)
 
+    from loss import dice_loss, dice_loss2
     for step in range(30000):
         optimizer.zero_grad()
-
         preds = unet(test_input)
-
-        if defined is not None:
-            preds = torch.mul(preds, defined) # weighted by defined region of annotation
-            target = torch.mul(target, defined).long() # weighted by defined region of annotation
-
-        loss = criterion(preds, target)
-
-        print('loss', loss.item())
+        preds[:, 0] *= defined
+        target[0] *= defined[0]
+        loss = criterion(preds, target.long())
         loss.backward()
         optimizer.step()
         output = softmax(preds, 1)[:, 1] # just fg probability
         output = output.detach().cpu().numpy()
-        output = output[0] # single image.
+        output = output[0] # singke image.
         im = img_as_uint(output)
         imsave('test_temp_output/out_' + str(step).zfill(3) + '.png', im,
                check_contrast=False)
-        if loss < 0.01:
-            print('reached loss of ', loss.item(), 'after', step, 'steps')
+        acc = get_acc(output, target)
+        print(acc, end=',')
+        if get_acc(output, target) == 1:
+            print('reached acc of ', acc, 'after', step, 'steps')
             return # test passes. loss is low enough
-    raise Exception('loss too high, loss = ' + str(loss.item()))
+    raise Exception('acc low, acc = ' + str(acc))
+
 

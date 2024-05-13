@@ -27,8 +27,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # pylint: disable=C0111, R0913
 import numpy as np
-from scipy.ndimage.filters import gaussian_filter
-from scipy.ndimage.interpolation import map_coordinates
+from scipy.ndimage import gaussian_filter
+from scipy.ndimage import map_coordinates
+from scipy.ndimage import gaussian_filter
 from skimage.transform import resize
 import im_utils
 

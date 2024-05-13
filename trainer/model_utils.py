@@ -29,12 +29,16 @@ import im_utils
 from unet import UNetGNRes
 from metrics import get_metrics
 from file_utils import ls
+from loss import combined_loss as criterion
 
 
 def get_device():
     if torch.backends.mps.is_available():
         return torch.device("mps")
     return torch.device('cuda')
+
+
+device = get_device() # used in epoch function etc.
 
 def get_latest_model_paths(model_dir, k):
     fnames = ls(model_dir)
@@ -196,6 +200,76 @@ def ensemble_segment(model_paths, image, bs, in_w, out_w,
     predicted = predicted.astype(int)
     return predicted
 
+
+def epoch(model, train_loader, batch_size,
+          optimizer, step_callback, stop_fn):
+    """ One training epoch """
+    
+    model.to(device)
+    model.train()
+    tps = 0
+    fps = 0
+    tns = 0
+    fns = 0
+    defined_total = 0
+
+    for step, (photo_tiles,
+               foreground_tiles,
+               defined_tiles) in enumerate(train_loader):
+
+        photo_tiles = photo_tiles.to(device)
+        foreground_tiles = foreground_tiles.to(device).float()
+        defined_tiles = defined_tiles.to(device)
+        optimizer.zero_grad()
+
+        outputs = model(photo_tiles)
+        softmaxed = softmax(outputs, 1)
+
+        # just the foreground probability. (remove soon)
+        foreground_probs = softmaxed[:, 1, :]
+
+        outputs[:, 0] *= defined_tiles
+        outputs[:, 1] *= defined_tiles
+
+        loss = criterion(outputs, foreground_tiles.long())
+
+        loss.backward()
+        optimizer.step()
+
+        if step_callback:
+            step_callback()
+
+        # This bit assumes we do softmax on the model output (not yet implemented)
+        # make the predictions match in undefined areas so metrics in these
+        # regions are not taken into account.
+        #outputs *= defined_tiles 
+        #predicted = outputs > 0.5
+
+        # we only want to calculate metrics on the
+        # part of the predictions for which annotations are defined
+        # so remove all predictions and foreground labels where
+        # we didn't have any annotation.
+
+        defined_list = defined_tiles.reshape(-1)
+        preds_list = foreground_probs.reshape(-1)[defined_list > 0]
+        foregrounds_list = foreground_tiles.reshape(-1)[defined_list > 0]
+
+        # # calculate all the false positives, false negatives etc
+        tps += torch.sum((foregrounds_list == 1) * (preds_list == 1)).cpu().numpy()
+        tns += torch.sum((foregrounds_list == 0) * (preds_list == 0)).cpu().numpy()
+        fps += torch.sum((foregrounds_list == 0) * (preds_list == 1)).cpu().numpy()
+        fns += torch.sum((foregrounds_list == 1) * (preds_list == 0)).cpu().numpy()
+        defined_total += torch.sum(defined_list > 0).cpu().numpy()
+
+        # https://github.com/googlecolab/colabtools/issues/166
+        print(f"\rTraining: {(step+1) * batch_size}/"
+                f"{len(train_loader.dataset)} "
+                f" loss={round(loss.item(), 3)}",
+                end='', flush=True)
+        if stop_fn and stop_fn():
+            return None
+    return (tps, fps, tns, fns, defined_total)
+
 def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
     """
     Threshold set to None means probabilities returned without thresholding.
@@ -226,7 +300,7 @@ def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
 
     output_tiles = []
     for gpu_tiles in batches:
-        outputs = cnn(gpu_tiles)
+        outputs = cnn(gpu_tiles.cuda())
         softmaxed = softmax(outputs, 1)
         foreground_probs = softmaxed[:, 1, :]  # just the foreground probability.
         if threshold is not None:

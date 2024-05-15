@@ -251,7 +251,7 @@ def epoch(model, train_loader, batch_size,
         # we didn't have any annotation.
 
         defined_list = defined_tiles.reshape(-1)
-        preds_list = foreground_probs.reshape(-1)[defined_list > 0]
+        preds_list = foreground_probs.reshape(-1)[defined_list > 0] > 0.5
         foregrounds_list = foreground_tiles.reshape(-1)[defined_list > 0]
 
         # # calculate all the false positives, false negatives etc
@@ -260,7 +260,6 @@ def epoch(model, train_loader, batch_size,
         fps += torch.sum((foregrounds_list == 0) * (preds_list == 1)).cpu().numpy()
         fns += torch.sum((foregrounds_list == 1) * (preds_list == 0)).cpu().numpy()
         defined_total += torch.sum(defined_list > 0).cpu().numpy()
-
         # https://github.com/googlecolab/colabtools/issues/166
         print(f"\rTraining: {(step+1) * batch_size}/"
                 f"{len(train_loader.dataset)} "

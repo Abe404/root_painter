@@ -29,7 +29,7 @@ import time
 from datasets import TrainDataset
 from torch.utils.data import DataLoader
 from multi_epoch.multi_epoch_loader import MultiEpochsDataLoader
-
+from test_utils import get_acc
 
 # sync directory for use with tests
 sync_dir = os.path.join(os.getcwd(), 'tests', 'test_rp_sync')
@@ -94,9 +94,14 @@ def test_corrective_biopore_training():
     print('train epoch complete time', time.time() - start_time)
     val_metrics = model_utils.get_val_metrics(model, val_annot_dir, bp_dataset_dir,
                                               in_w, out_w, bs=batch_size)
-
     print('val epoch complete time', time.time() - start_time)
+    print('val_metrics', val_metrics)
+
+    log_metrics(val_metrics, val_metrics_fpath, 'val')
+    log_metrics(train_metrics, train_metrics_fpath, 'train')
+
     # pass - epoch runs without error.
+    # TODO: log 
 
 
 def dense_roots_training():

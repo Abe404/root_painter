@@ -12,31 +12,7 @@ sys.path.insert(0, parent_dir)
 # Now you can import the module located in the parent directory
 from torch.nn.functional import softmax
 from unet import UNetGNRes
-
-def get_acc(pred, true):
-    import numpy as np
-
-    if hasattr(pred, 'cpu'):
-        pred = pred.cpu()
-    if hasattr(true, 'cpu'):
-        true = true.cpu()
-
- 
-    if hasattr(pred, 'numpy'):
-        pred = pred.numpy()
-    if hasattr(true, 'numpy'):
-        true = true.numpy()
-
-    assert np.min(pred) >= 0
-    assert np.max(pred) <= 1
-
-    assert np.min(true) >= 0
-    assert np.max(true) <= 1
-
-    output_bool = pred.reshape(-1) >= 0.5
-    target_bool = true.reshape(-1) >= 0.5
-    return (np.sum(output_bool == target_bool) / true.size)
- 
+from test_utils import get_acc
 
 def setup_function():
     import os

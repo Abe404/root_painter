@@ -18,7 +18,53 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
+import sys
 import shutil
+
+# Add the parent directory to sys.path
+parent_dir = os.path.abspath('../')
+sys.path.insert(0, parent_dir)
+
+
+from metrics import get_metrics_str, get_metric_csv_row
+
+def log_metrics(metrics, fpath):
+    if not os.path.isfile(fpath):
+        # write headers if file didn't exist
+        print('date_time,true_positives,false_positives,true_negatives,'
+              'false_negatives,precision,recall,f1,defined,duration',
+              file=open(fpath, 'w+'))
+    with open(fpath, 'a+') as log_file:
+            log_file.write(get_metric_csv_row(metrics))
+            log_file.flush()
+
+
+
+def get_acc(pred, true):
+    import numpy as np
+
+    if hasattr(pred, 'cpu'):
+        pred = pred.cpu()
+    if hasattr(true, 'cpu'):
+        true = true.cpu()
+
+ 
+    if hasattr(pred, 'numpy'):
+        pred = pred.numpy()
+    if hasattr(true, 'numpy'):
+        true = true.numpy()
+
+    assert np.min(pred) >= 0
+    assert np.max(pred) <= 1
+
+    assert np.min(true) >= 0
+    assert np.max(true) <= 1
+
+    output_bool = pred.reshape(-1) >= 0.5
+    target_bool = true.reshape(-1) >= 0.5
+    return (np.sum(output_bool == target_bool) / true.size)
+ 
+
 
 def dl_dir_from_zip(url, output_path):
     """ download a zip from url and place contents in output_path """

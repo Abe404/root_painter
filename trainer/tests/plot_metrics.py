@@ -1,50 +1,136 @@
-# 
-# python plot_metrics.py train_metrics.csv val_metrics.csv f1
-#
-import pandas as pd
 import matplotlib.pyplot as plt
 import argparse
 import os
+import glob
+from datetime import datetime
 
-def plot_metrics(train_file, val_file, metric, x_axis):
-    # Read the data from the CSV files
-    train_df = pd.read_csv(train_file)
-    val_df = pd.read_csv(val_file)
+def find_matching_files(directory, term1, term2):
+    # Find all unique start identifiers for which both train and val files exist
+    train_files = glob.glob(os.path.join(directory, '*_train_*.csv'))
+    val_files = glob.glob(os.path.join(directory, '*_val_*.csv'))
+    
+    term1_train_files = []
+    term1_val_files = []
+    term2_train_files = []
+    term2_val_files = []
+    
+    for train_file in train_files:
+        start_id = os.path.basename(train_file).split('_')[0]
+        val_file = glob.glob(os.path.join(directory, f'{start_id}_val_*.csv'))
+        
+        if val_file:
+            val_file = val_file[0]  # There should be only one match
+            if term2 in train_file:
+                term2_train_files.append(train_file)
+                term2_val_files.append(val_file)
+            elif term1 in train_file:
+                term1_train_files.append(train_file)
+                term1_val_files.append(val_file)
+    
+    return term1_train_files, term1_val_files, term2_train_files, term2_val_files
 
-    # Add epoch column
-    train_df['epoch'] = train_df.index + 1
-    val_df['epoch'] = val_df.index + 1
+def calculate_duration(start_time_str, date_time_str):
+    start_time = datetime.fromtimestamp(float(start_time_str))
+    date_time = datetime.strptime(date_time_str, "%Y-%m-%d-%H:%M:%S")
+    duration = (date_time - start_time).total_seconds() / 60.0  # Convert to minutes
+    return duration
 
-    # Convert duration to minutes if necessary
-    if x_axis == 'duration':
-        train_df['duration'] = train_df['duration'].astype(float)
-        val_df['duration'] = val_df['duration'].astype(float)
+def read_csv(file_path, x_axis, start_time_str, metric):
+    x_values = []
+    y_values = []
+    with open(file_path, 'r') as f:
+        header = f.readline().strip().split(',')
+        idx = {col: i for i, col in enumerate(header)}
+        for line in f:
+            values = line.strip().split(',')
+            if x_axis == 'duration':
+                x_value = calculate_duration(start_time_str, values[idx['date_time']])
+            else:
+                x_value = int(values[idx[x_axis]])
+            y_value = float(values[idx[metric]])
+            x_values.append(x_value)
+            y_values.append(y_value)
+    return x_values, y_values
 
-    # Extract labels from file names without the .csv extension
-    train_label = ' '.join(os.path.basename(train_file).replace('.csv', '').split('_')[1:]) + ' ' + metric
-    val_label = ' '.join(os.path.basename(val_file).replace('.csv', '').split('_')[1:]) + ' ' + metric
+def calculate_mean(x_values, y_values_list):
+    mean_y_values = []
+    for i in range(len(x_values[0])):
+        y_values_at_i = [y_values[i] for y_values in y_values_list if i < len(y_values)]
+        mean_y_values.append(sum(y_values_at_i) / len(y_values_at_i))
+    return mean_y_values
 
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(train_df[x_axis], train_df[metric], marker='o', linestyle='-', label=train_label)
-    plt.plot(val_df[x_axis], val_df[metric], marker='o', linestyle='-', label=val_label)
+def plot_metrics(term1_train_files, term1_val_files, term2_train_files, term2_val_files, metric, x_axis, output_file, display_mode, term1_label, term2_label):
+    plt.figure(figsize=(12, 8))
+    added_labels = {}
+
+    def plot_file_set(train_files, val_files, train_color, val_color, linestyle, label_prefix):
+        all_train_x_values, all_train_y_values = [], []
+        all_val_x_values, all_val_y_values = [], []
+
+        for train_file, val_file in zip(train_files, val_files):
+            start_time_str = os.path.basename(train_file).split('_')[0]
+
+            # Read data
+            train_x_values, train_y_values = read_csv(train_file, x_axis, start_time_str, metric)
+            val_x_values, val_y_values = read_csv(val_file, x_axis, start_time_str, metric)
+
+            # Store values for mean calculation
+            all_train_x_values.append(train_x_values)
+            all_train_y_values.append(train_y_values)
+            all_val_x_values.append(val_x_values)
+            all_val_y_values.append(val_y_values)
+
+            # Plotting individual runs
+            train_label = f'{label_prefix} Train'
+            val_label = f'{label_prefix} Val'
+            plt.plot(train_x_values, train_y_values, marker='o', linestyle=linestyle, color=train_color, alpha=0.6, linewidth=1, label=train_label if train_label not in added_labels else "")
+            plt.plot(val_x_values, val_y_values, marker='o', linestyle=linestyle, color=val_color, alpha=0.6, linewidth=1, label=val_label if val_label not in added_labels else "")
+
+            # Mark labels as added
+            added_labels[train_label] = True
+            added_labels[val_label] = True
+
+        return all_train_x_values, all_train_y_values, all_val_x_values, all_val_y_values
+
+    def plot_mean_val(x_values_list, y_values_list, color, linestyle, label):
+        if not y_values_list:
+            return
+
+        x_values = x_values_list[0]
+        mean_y_values = calculate_mean(x_values_list, y_values_list)
+        plt.plot(x_values, mean_y_values, linestyle=linestyle, color=color, label=label, linewidth=2)
+
+    if display_mode in ['both', term1_label]:
+        term1_train_x, term1_train_y, term1_val_x, term1_val_y = plot_file_set(term1_train_files, term1_val_files, 'blue', 'red', '-', term1_label)
+        plot_mean_val(term1_val_x, term1_val_y, 'black', '-', f'{term1_label} Val Mean')
+
+    if display_mode in ['both', term2_label]:
+        term2_train_x, term2_train_y, term2_val_x, term2_val_y = plot_file_set(term2_train_files, term2_val_files, 'purple', 'orange', '--', term2_label)
+        plot_mean_val(term2_val_x, term2_val_y, 'black', '--', f'{term2_label} Val Mean')
+
     plt.title(f'{metric} over {x_axis.capitalize()}')
-    plt.xlabel(x_axis.capitalize())
+    x_axis_label = f'{x_axis.capitalize()} (minutes)' if x_axis == 'duration' else x_axis.capitalize()
+    plt.xlabel(x_axis_label)
     plt.ylabel(metric)
+    plt.ylim([0, 1])  # Set y-axis limit for consistent comparison
     plt.legend()
     plt.grid(True)
-    plt.show()
+    
+    # Save the plot as a PNG file
+    plt.savefig(output_file)
+    plt.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Plot training and validation metrics over epochs or duration.')
-    parser.add_argument('train_file', type=str, help='Path to the training metrics file')
-    parser.add_argument('val_file', type=str, help='Path to the validation metrics file')
+    parser.add_argument('directory', type=str, help='Directory containing the metrics files')
     parser.add_argument('metric', type=str, help='Metric to plot (e.g., f1, precision, recall)')
     parser.add_argument('x_axis', type=str, choices=['epoch', 'duration'], help='X-axis to plot (epoch or duration)')
+    parser.add_argument('term1_string', type=str, help='String to identify first term approach (e.g., "baseline")')
+    parser.add_argument('term2_string', type=str, help='String to identify second term approach (e.g., "adamw")')
+    parser.add_argument('output_file', type=str, help='Output file to save the plot as PNG')
+    parser.add_argument('display_mode', type=str)
 
     args = parser.parse_args()
 
-    plot_metrics(args.train_file, args.val_file, args.metric, args.x_axis)
-
-
-
+    term1_train_files, term1_val_files, term2_train_files, term2_val_files = find_matching_files(args.directory, args.term1_string, args.term2_string)
+    plot_metrics(term1_train_files, term1_val_files, term2_train_files, term2_val_files, args.metric, args.x_axis, args.output_file, args.display_mode, args.term1_string, args.term2_string)

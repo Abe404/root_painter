@@ -63,56 +63,61 @@ def test_corrective_biopore_training():
     # and wall clock time?
     import model_utils
     from unet import UNetGNRes
-    model = UNetGNRes()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01,
-                                momentum=0.99, nesterov=True)
-    in_w = 572
-    out_w = in_w - 72
-    batch_size = 6
-    train_annot_dir = os.path.join(annot_dir, 'train')
-    val_annot_dir = os.path.join(annot_dir, 'val')
-    start_time = time.time()
+    runs = 6
+    for run in range(1, runs+1):
+        model = UNetGNRes()
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.01,
+                                    momentum=0.99, nesterov=True)
+        # optimizer = torch.optim.AdamW(model.parameters())
 
-
-    train_set = TrainDataset(train_annot_dir,
-                             bp_dataset_dir,
-                             in_w, out_w)
-
-    t = str(time.time())
-    val_metrics_path = os.path.join('test_temp_output', t + '_val_bp_cor.csv')
-    train_metrics_path = os.path.join('test_temp_output', t + '_train_bp_cor.csv')
-    train_loader = MultiEpochsDataLoader(train_set, batch_size, shuffle=False,
-        # 12 workers is good for performance
-        # on 2 RTX2080 Tis (but depends on CPU also)
-        # 0 workers is good for debugging
-        # don't go above max_workers (user specified but default 12) 
-        # and don't go above the number of cpus, provided by cpu_count.
-        num_workers=6,
-        drop_last=False, pin_memory=True)
-
-    print('loader setup time',  time.time() - start_time)
-
-    for i in range(20):
-        print('starting epoch', i+1)
+        in_w = 572
+        out_w = in_w - 72
+        batch_size = 6
+        train_annot_dir = os.path.join(annot_dir, 'train')
+        val_annot_dir = os.path.join(annot_dir, 'val')
         start_time = time.time()
-        train_result = model_utils.epoch(model, train_loader, batch_size,
-                                         optimizer=optimizer, step_callback=None, stop_fn=None)
-         
-        duration = time.time() - start_time
-        print('train epoch complete time', duration)
-        tps, fps, tns, fns, defined_sum = train_result
-        total = tps + fps + tns + fns
-        assert total > 0
-        train_metrics = get_metrics(tps, fps, tns, fns, defined_sum, duration)
-        val_metrics = model_utils.get_val_metrics(model, val_annot_dir, bp_dataset_dir,
-                                                  in_w, out_w, bs=batch_size)
-        print('val epoch complete time', time.time() - start_time)
-        print('val_metrics', val_metrics)
 
-        log_metrics(val_metrics, val_metrics_path)
-        log_metrics(train_metrics, train_metrics_path)
 
-    # pass - epoch runs without error.
+        train_set = TrainDataset(train_annot_dir,
+                                 bp_dataset_dir,
+                                 in_w, out_w)
+
+        t = str(time.time())
+        val_metrics_path = os.path.join('metrics', t + '_val_bp_cor_baseline.csv')
+        train_metrics_path = os.path.join('metrics', t + '_train_bp_cor_baseline.csv')
+        train_loader = MultiEpochsDataLoader(train_set, batch_size, shuffle=False,
+            # 12 workers is good for performance
+            # on 2 RTX2080 Tis (but depends on CPU also)
+            # 0 workers is good for debugging
+            # don't go above max_workers (user specified but default 12) 
+            # and don't go above the number of cpus, provided by cpu_count.
+            num_workers=6,
+            drop_last=False, pin_memory=True)
+
+        print('loader setup time',  time.time() - start_time)
+        epochs = 60
+        for i in range(60):
+            print('starting epoch', i+1, 'run', run)
+
+            start_time = time.time()
+            train_result = model_utils.epoch(model, train_loader, batch_size,
+                                             optimizer=optimizer, step_callback=None, stop_fn=None)
+             
+            duration = time.time() - start_time
+            print('train epoch complete time', duration)
+            tps, fps, tns, fns, defined_sum = train_result
+            total = tps + fps + tns + fns
+            assert total > 0
+            train_metrics = get_metrics(tps, fps, tns, fns, defined_sum, duration)
+            val_metrics = model_utils.get_val_metrics(model, val_annot_dir, bp_dataset_dir,
+                                                      in_w, out_w, bs=batch_size)
+            print('val epoch complete time', time.time() - start_time)
+            print('val_metrics', val_metrics)
+
+            log_metrics(val_metrics, val_metrics_path)
+            log_metrics(train_metrics, train_metrics_path)
+
+        # pass - epoch runs without error.
 
 
 def dense_roots_training():

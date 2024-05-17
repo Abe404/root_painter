@@ -1,27 +1,18 @@
 #!/bin/bash
 
-# Directory containing the metrics files
-METRICS_DIR="./metrics"
+#python plot_metrics.py ./metrics f1 duration all_runs_f1_over_duration.png
+#python plot_metrics.py ./metrics f1 epoch all_runs_f1_over_epoch.png
 
-# Find all unique start identifiers for which both train and val files exist
-start_identifiers=$(ls ${METRICS_DIR}/*_train_*.csv | awk -F'[_]' '{print $1}' | sort | uniq)
 
-# Loop through each start identifier and check for matching train and val files
-for start_id in $start_identifiers; do
-    echo "Processing start identifier: $start_id"
-    train_file=$(ls ${start_id}_train_*.csv 2>/dev/null)
-    val_file=$(ls ${start_id}_val_*.csv 2>/dev/null)
-    echo "Train file: $train_file"
-    echo "Val file: $val_file"
 
-    if [[ -n "$train_file" && -n "$val_file" ]]; then
-        # Metric to plot (can be passed as an argument or hardcoded)
-        metric=${1:-f1}
+#python plot_metrics7.py ./metrics f1 duration adamw all_runs_f1_over_epoch.png
 
-        # X-axis to plot (can be passed as an argument or hardcoded)
-        x_axis=${2:-epoch}
+#python plot_metrics10.py ./metrics f1 duration adamw all_runs_f1_over_duration.png both
+#python plot_metrics10.py ./metrics f1 duration adamw all_runs_f1_over_duration_adamw.png alternative
+#python plot_metrics10.py ./metrics f1 duration adamw all_runs_f1_over_duration_sgd.png standard
 
-        # Run the plot_metrics.py script with the matching files
-        python plot_metrics.py "$train_file" "$val_file" "$metric" "$x_axis"
-    fi
-done
+
+python plot_metrics13.py ./metrics f1 duration baseline adamw both_runs_f1_over_duration.png both
+python plot_metrics13.py ./metrics f1 duration baseline adamw baseline_runs_f1_over_duration.png baseline
+python plot_metrics13.py ./metrics f1 duration baseline adamw adamw_runs_f1_over_duration.png adamw
+xdg-open both_runs_f1_over_duration.png

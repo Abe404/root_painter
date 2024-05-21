@@ -139,8 +139,7 @@ class UNetGNRes(nn.Module):
         out = self.up3(out, out2)
         out = self.up4(out, out1)
         out = self.conv_out(out)
-        return out
-
+        return out[:, 1] # just fg channel
 
 if __name__ == '__main__':
     import torch

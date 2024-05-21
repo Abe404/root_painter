@@ -18,7 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import torch
 from torch.nn.functional import softmax
 from torch.nn.functional import cross_entropy
+from torch.nn.functional import binary_cross_entropy
+from torch.nn.functional import sigmoid
 
+
+bce = torch.nn.BCEWithLogitsLoss()
 
 def dice_loss(predictions, labels):
     """ based on loss function from V-Net paper """
@@ -58,16 +62,16 @@ def dice_loss2(preds, labels):
     union = torch.sum(preds) + torch.sum(labels)
     return 1 - ((2 * intersection) / (union))
 
+
 def combined_loss2(preds, labels, mask=None):
     """ mix of dice and cross entropy """
-    if mask is not None:
-        preds  = torch.mul(preds, mask) # weighted by defined region of annotation
-
     # if they are bigger than 1 you get a strange gpu error
     # without a stack track so you will have no idea why.
     assert torch.max(labels) <= 1
-    cx = (0.3 * binary_cross_entropy(preds, labels))
+    if mask is not None:
+        preds  = torch.mul(preds, mask) # weighted by defined region of annotation
+    cx = (0.3 * bce(preds, labels))
     if torch.sum(labels) > 0:
-        dl = dice_loss(preds, labels)
+        dl = dice_loss2(sigmoid(preds), labels)
         return dl + cx
     return cx

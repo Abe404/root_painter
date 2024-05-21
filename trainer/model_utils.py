@@ -23,13 +23,14 @@ import glob
 import numpy as np
 import torch
 from torch.nn.functional import softmax
+from torch.nn.functional import sigmoid
 from skimage.io import imread
 from skimage import img_as_float32
 import im_utils
 from unet import UNetGNRes
 from metrics import get_metrics
 from file_utils import ls
-from loss import combined_loss as criterion
+from loss import combined_loss2 as criterion
 
 
 def get_device():
@@ -135,8 +136,7 @@ def get_val_metrics(cnn, val_annot_dir, dataset_dir, in_w, out_w, bs):
         image_path = glob.glob(image_path_part + '.*')[0]
         image = im_utils.load_image(image_path)
         image, pad_settings = im_utils.pad_to_min(image, min_w=572, min_h=572)
-        predicted = unet_segment(cnn, image, bs, in_w,
-                                 out_w, threshold=0.5)
+        predicted = unet_segment(cnn, image, in_w, out_w, threshold=0.5)
         predicted = im_utils.crop_from_pad_settings(predicted, pad_settings)
 
         # mask defines which pixels are defined in the annotation.
@@ -221,29 +221,18 @@ def epoch(model, train_loader, batch_size,
         foreground_tiles = foreground_tiles.to(device).float()
         defined_tiles = defined_tiles.to(device)
         optimizer.zero_grad()
-
         outputs = model(photo_tiles)
-        softmaxed = softmax(outputs, 1)
 
-        # just the foreground probability. (remove soon)
-        foreground_probs = softmaxed[:, 1, :]
-
-        outputs[:, 0] *= defined_tiles
-        outputs[:, 1] *= defined_tiles
-
-        loss = criterion(outputs, foreground_tiles.long())
-
+        loss = criterion(outputs, foreground_tiles, defined_tiles)
         loss.backward()
         optimizer.step()
 
         if step_callback:
             step_callback()
-
-        # This bit assumes we do softmax on the model output (not yet implemented)
-        # make the predictions match in undefined areas so metrics in these
-        # regions are not taken into account.
-        #outputs *= defined_tiles 
-        #predicted = outputs > 0.5
+   
+        outputs = sigmoid(outputs) # convert to probabilities.
+        outputs *= defined_tiles
+        predicted = outputs > 0.5
 
         # we only want to calculate metrics on the
         # part of the predictions for which annotations are defined
@@ -251,7 +240,7 @@ def epoch(model, train_loader, batch_size,
         # we didn't have any annotation.
 
         defined_list = defined_tiles.reshape(-1)
-        preds_list = foreground_probs.reshape(-1)[defined_list > 0] > 0.5
+        preds_list = predicted.reshape(-1)[defined_list > 0]
         foregrounds_list = foreground_tiles.reshape(-1)[defined_list > 0]
 
         # # calculate all the false positives, false negatives etc
@@ -269,7 +258,7 @@ def epoch(model, train_loader, batch_size,
             return None
     return (tps, fps, tns, fns, defined_total)
 
-def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
+def unet_segment_old(cnn, image, bs, in_w, out_w, threshold=0.5):
     """
     Threshold set to None means probabilities returned without thresholding.
     """
@@ -300,8 +289,8 @@ def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
     output_tiles = []
     for gpu_tiles in batches:
         outputs = cnn(gpu_tiles.cuda())
-        softmaxed = softmax(outputs, 1)
-        foreground_probs = softmaxed[:, 1, :]  # just the foreground probability.
+        #softmaxed = softmax(outputs, 1)
+        foreground_probs = softmaxed[:, 0, :]  # just the foreground probability.
         if threshold is not None:
             predicted = foreground_probs > threshold
             predicted = predicted.view(-1).int()
@@ -318,4 +307,37 @@ def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
 
     reconstructed = im_utils.reconstruct_from_tiles(output_tiles, coords,
                                                     image.shape[:-1])
+    return reconstructed
+
+def unet_segment(cnn, image, in_w, out_w, threshold=0.5):
+    """
+    Threshold set to None means probabilities returned without thresholding.
+    """
+    assert image.shape[0] >= in_w, str(image.shape[0])
+    assert image.shape[1] >= in_w, str(image.shape[1])
+
+    tiles, coords = im_utils.get_tiles(image,
+                                       in_tile_shape=(in_w, in_w, 3),
+                                       out_tile_shape=(out_w, out_w))
+    output_tiles = []
+    for tile in tiles:
+        tile = img_as_float32(tile)
+        tile = im_utils.normalize_tile(tile)
+        tile = np.moveaxis(tile, -1, 0)
+        tile = torch.from_numpy(tile).float()
+        tile = torch.unsqueeze(tile, dim=0) # add batch dimension for network
+        tile = tile.to(device)
+        out_tile = sigmoid(cnn(tile))
+
+        if threshold is not None:
+            out_tile = out_tile > threshold
+            out_tile = out_tile.int()
+
+        out_tile = out_tile.data.cpu().numpy()
+        output_tiles.append(out_tile[0]) # remove batch dimension and class dimension and add to list
+
+    assert len(output_tiles) == len(coords), (
+        f'{len(output_tiles)} {len(coords)}')
+
+    reconstructed = im_utils.reconstruct_from_tiles(output_tiles, coords, image.shape[:-1])
     return reconstructed

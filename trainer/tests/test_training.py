@@ -63,7 +63,7 @@ def test_corrective_biopore_training():
     # and wall clock time?
     import model_utils
     from unet import UNetGNRes
-    runs = 6
+    runs = 5
     for run in range(1, runs+1):
         model = UNetGNRes()
         optimizer = torch.optim.SGD(model.parameters(), lr=0.01,
@@ -77,14 +77,14 @@ def test_corrective_biopore_training():
         val_annot_dir = os.path.join(annot_dir, 'val')
         start_time = time.time()
 
-
         train_set = TrainDataset(train_annot_dir,
                                  bp_dataset_dir,
                                  in_w, out_w)
 
         t = str(time.time())
-        val_metrics_path = os.path.join('metrics', t + '_val_bp_cor_baseline.csv')
-        train_metrics_path = os.path.join('metrics', t + '_train_bp_cor_baseline.csv')
+        mod = 'sigmoid_bce'
+        val_metrics_path = os.path.join('metrics', t + '_val_bp_cor_' + mod + '.csv')
+        train_metrics_path = os.path.join('metrics', t + '_train_bp_cor_' + mod + '.csv')
         train_loader = MultiEpochsDataLoader(train_set, batch_size, shuffle=False,
             # 12 workers is good for performance
             # on 2 RTX2080 Tis (but depends on CPU also)
@@ -101,7 +101,8 @@ def test_corrective_biopore_training():
 
             start_time = time.time()
             train_result = model_utils.epoch(model, train_loader, batch_size,
-                                             optimizer=optimizer, step_callback=None, stop_fn=None)
+                                             optimizer=optimizer,
+                                             step_callback=None, stop_fn=None)
              
             duration = time.time() - start_time
             print('train epoch complete time', duration)

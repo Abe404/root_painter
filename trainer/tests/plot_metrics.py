@@ -36,15 +36,18 @@ def calculate_duration(start_time_str, date_time_str):
     return duration
 
 def read_csv(file_path, x_axis, start_time_str, metric):
+    print('reading', file_path)
     x_values = []
     y_values = []
     with open(file_path, 'r') as f:
         header = f.readline().strip().split(',')
         idx = {col: i for i, col in enumerate(header)}
-        for line in f:
+        for i, line in enumerate(f):
             values = line.strip().split(',')
             if x_axis == 'duration':
                 x_value = calculate_duration(start_time_str, values[idx['date_time']])
+            elif x_axis == 'epoch':
+                x_value = i + 1
             else:
                 x_value = int(values[idx[x_axis]])
             y_value = float(values[idx[metric]])
@@ -113,6 +116,7 @@ def plot_metrics(term1_train_files, term1_val_files, term2_train_files, term2_va
     plt.xlabel(x_axis_label)
     plt.ylabel(metric)
     plt.ylim([0, 1])  # Set y-axis limit for consistent comparison
+    plt.yticks([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 0.9, 1.0])
     plt.legend()
     plt.grid(True)
     

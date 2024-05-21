@@ -151,4 +151,5 @@ def corrective_roots_training():
 
 
 if __name__ == '__main__':
+    setup_function()
     dense_roots_training()

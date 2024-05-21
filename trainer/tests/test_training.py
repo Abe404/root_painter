@@ -33,9 +33,11 @@ from metrics import get_metrics
 
 # sync directory for use with tests
 sync_dir = os.path.join(os.getcwd(), 'tests', 'test_rp_sync')
-annot_dir = os.path.join(sync_dir, 'projects', 'biopores_corrective_a', 'annotations')
+bp_annot_dir = os.path.join(sync_dir, 'projects', 'biopores_corrective_a', 'annotations')
+root_annot_dir = os.path.join(sync_dir, 'projects', 'roots_dense_a', 'annotations')
 datasets_dir = os.path.join(sync_dir, 'datasets')
 bp_dataset_dir = os.path.join(datasets_dir, 'biopores_750_training')
+root_dataset_dir = os.path.join(datasets_dir, 'towers_750_training')
 
 timeout_ms = 20000
 
@@ -49,16 +51,24 @@ def setup_function():
     # prepare biopores training dataset
     if not os.path.isdir(datasets_dir):
         os.makedirs(datasets_dir)
+
     biopore_url = 'https://zenodo.org/record/3754046/files/biopores_750_training.zip'
     # TODO: import copy function accross and import.
     dl_dir_from_zip(biopore_url, bp_dataset_dir)
     
     # download some annotations that can be used for training.
     biopore_annot_url = 'https://zenodo.org/record/8041842/files/user_a_corrective_biopores_750_training_annotation.zip'
-    dl_dir_from_zip(biopore_annot_url, annot_dir)
+    dl_dir_from_zip(biopore_annot_url, bp_annot_dir)
+
+    root_url = 'https://zenodo.org/record/3754046/files/towers_750_training.zip'
+    dl_dir_from_zip(root_url, root_dataset_dir)
+    root_annot_url = 'https://zenodo.org/record/8041842/files/user_a_dense_roots_750_training_annotation.zip'
+    dl_dir_from_zip(root_annot_url, root_annot_dir)
 
 
-def test_corrective_biopore_training():
+
+
+def training(dataset_dir, annot_dir, name):
     # a specific training set f1 score can be obtained in a specific number of update steps
     # and wall clock time?
     import model_utils
@@ -79,12 +89,12 @@ def test_corrective_biopore_training():
 
 
         train_set = TrainDataset(train_annot_dir,
-                                 bp_dataset_dir,
+                                 dataset_dir,
                                  in_w, out_w)
 
         t = str(time.time())
-        val_metrics_path = os.path.join('metrics', t + '_val_bp_cor_baseline.csv')
-        train_metrics_path = os.path.join('metrics', t + '_train_bp_cor_baseline.csv')
+        val_metrics_path = os.path.join('metrics', t + '_val_' + name + '.csv')
+        train_metrics_path = os.path.join('metrics', t + '_train_' + name + '.csv')
         train_loader = MultiEpochsDataLoader(train_set, batch_size, shuffle=False,
             # 12 workers is good for performance
             # on 2 RTX2080 Tis (but depends on CPU also)
@@ -109,7 +119,7 @@ def test_corrective_biopore_training():
             total = tps + fps + tns + fns
             assert total > 0
             train_metrics = get_metrics(tps, fps, tns, fns, defined_sum, duration)
-            val_metrics = model_utils.get_val_metrics(model, val_annot_dir, bp_dataset_dir,
+            val_metrics = model_utils.get_val_metrics(model, val_annot_dir, dataset_dir,
                                                       in_w, out_w, bs=batch_size)
             print('val epoch complete time', time.time() - start_time)
             print('val_metrics', val_metrics)
@@ -121,13 +131,13 @@ def test_corrective_biopore_training():
 
 
 def dense_roots_training():
-    pass
-
+    training(annot_dir=root_annot_dir, name='root_dense_baseline', dataset_dir=root_dataset_dir)
 
 def corrective_biopore_training():
-    # a specific validation set f1 score can be obtained in a specific number of update steps
-    # and wall clock time?
-    pass
+    name = 'bp_cor_baseline'
+    annot_dir = bp_annot_dir
+    training(name = 'bp_cor_baseline', annot_dir = bp_annot_dir, dataset_dir=bp_dataset_dir)
+    
 
 def corrective_nodules_training():
     # a specific validation set f1 score can be obtained in a specific number of update steps
@@ -138,3 +148,7 @@ def corrective_roots_training():
     # a specific validation set f1 score can be obtained in a specific number of update steps
     # and wall clock time?
     pass
+
+
+if __name__ == '__main__':
+    dense_roots_training()

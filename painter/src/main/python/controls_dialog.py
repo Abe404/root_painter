@@ -1,7 +1,5 @@
 """
-Copyright (C) 2022 Abraham George Smith
-Copyright (C) 2023 Rohan Howard Orton
-Copyright (C) 202$ Felipe Galindo
+Copyright (C) 2024 Felipe Galindo
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,7 +17,7 @@ import sys
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 
-# This class to create a new dialog window that shows the controls of the application
+# class to create a new dialog window that shows the controls of the application
 class ControlsDialog(QtWidgets.QDialog):
     closed = QtCore.pyqtSignal()
 

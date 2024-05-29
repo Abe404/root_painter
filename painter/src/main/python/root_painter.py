@@ -716,6 +716,19 @@ class RootPainter(QtWidgets.QMainWindow):
         self.setWindowTitle(f"RootPainter {proj_dirname}"
                             f" {os.path.basename(self.image_path)}")
 
+    def update_annotation_transparency(self, value):
+        if value < 10:
+            self.annot_pixmap_holder.setPixmap(self.blank_pixmap)
+            self.annot_visible = False
+        else:
+            opacity = value / 100.0
+            self.set_annotation_opacity(opacity)
+            if not self.annot_visible:
+                self.scene.annot_pixmap_holder.setPixmap(self.scene.annot_pixmap)
+                self.annot_visible = True
+
+        self.vis_widget.annot_checkbox.setChecked(self.annot_visible)
+
     def init_active_project_ui(self):
         # container for both nav and graphics view.
         container = QtWidgets.QWidget()
@@ -757,6 +770,8 @@ class RootPainter(QtWidgets.QMainWindow):
         self.vis_widget.annot_checkbox.stateChanged.connect(self.annot_checkbox_change)
         self.vis_widget.im_checkbox.stateChanged.connect(self.im_checkbox_change)
         bottom_bar_layout.addWidget(self.vis_widget)
+
+        self.vis_widget.transparency_slider.valueChanged.connect(self.update_annotation_transparency)
 
         # bottom bar right
         bottom_bar_r = QtWidgets.QWidget()
@@ -805,7 +820,7 @@ class RootPainter(QtWidgets.QMainWindow):
         self.controls_checkbox.stateChanged.connect(self.show_controls)
         info_container_right_layout.addWidget(self.controls_checkbox)
 
-         # Add keyboard shortcut to show controls
+        # Add keyboard shortcut to show controls
         shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("C"), self)
         shortcut.activated.connect(self.check_controls_checkbox)
 
@@ -1166,6 +1181,12 @@ class RootPainter(QtWidgets.QMainWindow):
         if checked is not self.image_visible:
             self.show_hide_image()
 
+    def set_annotation_opacity(self, opacity):
+        if hasattr(self, 'annot_pixmap_holder') and self.annot_pixmap_holder:
+            opacity_effect = QtWidgets.QGraphicsOpacityEffect()
+            opacity_effect.setOpacity(opacity)
+            self.annot_pixmap_holder.setGraphicsEffect(opacity_effect)
+
     def show_hide_seg(self):
         # show or hide the current segmentation.
         if self.seg_visible:
@@ -1190,8 +1211,8 @@ class RootPainter(QtWidgets.QMainWindow):
     def show_hide_annot(self):
         # show or hide the current annotations.
         # Could be useful to help inspect the background image
-        if self.annot_visible:
-            self.annot_pixmap_holder.setPixmap(self.blank_pixmap)
+        if self.annot_visible: 
+            self.annot_pixmap_holder.setPixmap(self.blank_pixmap) # annotation disabled, show blank
             self.annot_visible = False
         else:
             self.scene.annot_pixmap_holder.setPixmap(self.scene.annot_pixmap)

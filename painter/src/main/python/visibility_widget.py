@@ -2,6 +2,7 @@
 Show visibility status of segmentation, image and annotation.
 
 Copyright (C) 2020 Abraham George Smith
+Copyright (C) 2024 Felipe Galindo
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # pylint: disable=E0611, C0111, C0111, R0903, I1101
 from PyQt5 import QtWidgets
+from PyQt5 import QtCore
 
 class VisibilityWidget(QtWidgets.QWidget):
 
@@ -36,6 +38,20 @@ class VisibilityWidget(QtWidgets.QWidget):
         container_layout = QtWidgets.QVBoxLayout()
         self.setLayout(container_layout)
         container_layout.setContentsMargins(0, 0, 0, 0)
+
+        # add 'Transparency' label
+        transparency_label = QtWidgets.QLabel("Transparency:")
+        container_layout.addWidget(transparency_label)
+
+
+        # Add transparency slider
+        self.transparency_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.transparency_slider.setMinimum(0)
+        self.transparency_slider.setMaximum(100)
+        self.transparency_slider.setValue(50)
+        self.transparency_slider.setTickInterval(10)
+        self.transparency_slider.setTickPosition(QtWidgets.QSlider.TicksBelow)
+        container_layout.addWidget(self.transparency_slider)
 
         seg_checkbox = QtWidgets.QCheckBox("Segmentation (S)")
         container_layout.addWidget(seg_checkbox)

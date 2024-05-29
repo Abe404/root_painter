@@ -819,7 +819,7 @@ class RootPainter(QtWidgets.QMainWindow):
         self.controls_checkbox = QtWidgets.QCheckBox("Controls (C)")
         self.controls_checkbox.stateChanged.connect(self.show_controls)
         info_container_right_layout.addWidget(self.controls_checkbox)
-
+        
         # Add keyboard shortcut to show controls
         shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("C"), self)
         shortcut.activated.connect(self.check_controls_checkbox)

@@ -1175,6 +1175,8 @@ class RootPainter(QtWidgets.QMainWindow):
         checked = (state == QtCore.Qt.Checked)
         if checked is not self.annot_visible:
             self.show_hide_annot()
+        # Enable or disable panning based on the annotation checkbox state
+        self.graphics_view.enable_panning(not checked)
 
     def im_checkbox_change(self, state):
         checked = (state == QtCore.Qt.Checked)

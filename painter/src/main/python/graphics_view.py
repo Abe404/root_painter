@@ -21,7 +21,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from PyQt5 import QtGui
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QPinchGesture
+from PyQt5.QtCore import Qt, QEvent
 
 class CustomGraphicsView(QtWidgets.QGraphicsView):
     """
@@ -35,6 +36,7 @@ class CustomGraphicsView(QtWidgets.QGraphicsView):
         super().__init__()
         self.zoom = 1
         self.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+        self.grabGesture(Qt.PinchGesture)
 
     def update_zoom(self):
         """ Transform the view based on current zoom value """
@@ -75,3 +77,29 @@ class CustomGraphicsView(QtWidgets.QGraphicsView):
         fitin()
         QtCore.QTimer.singleShot(100, fitin)
         self.zoom_change.emit()
+
+    def event(self, event):
+        if event.type() == QEvent.Gesture:
+            return self.gestureEvent(event)
+        return super().event(event)
+
+    def gestureEvent(self, event):
+        pinch = event.gesture(Qt.PinchGesture)
+        if pinch:
+            self.pinchTriggered(pinch)
+        return True
+
+    def pinchTriggered(self, gesture):
+        changeFlags = gesture.changeFlags()
+        if changeFlags & QPinchGesture.ScaleFactorChanged:
+            self.zoom *= gesture.scaleFactor()
+            self.update_zoom()
+        return True
+
+    def wheelEvent(self, event):
+        scroll_up = event.angleDelta().y() > 0
+        if scroll_up:
+            self.zoom *= 1.1
+        else:
+            self.zoom /= 1.1
+        self.update_zoom()

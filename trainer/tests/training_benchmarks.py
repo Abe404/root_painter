@@ -62,7 +62,7 @@ def setup_function():
 
     root_url = 'https://zenodo.org/record/3754046/files/towers_750_training.zip'
     dl_dir_from_zip(root_url, root_dataset_dir)
-    root_annot_url = 'https://zenodo.org/record/8041842/files/user_a_dense_roots_750_training_annotation.zip'
+    root_annot_url = 'https://zenodo.org/record/11236258/files/user_a_dense_roots_750_training_annotation.zip'
     dl_dir_from_zip(root_annot_url, root_annot_dir)
 
 

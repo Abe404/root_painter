@@ -34,10 +34,12 @@ from metrics import get_metrics
 # sync directory for use with tests
 sync_dir = os.path.join(os.getcwd(), 'tests', 'test_rp_sync')
 bp_annot_dir = os.path.join(sync_dir, 'projects', 'biopores_corrective_a', 'annotations')
-root_annot_dir = os.path.join(sync_dir, 'projects', 'roots_dense_a', 'annotations')
+dense_root_annot_dir = os.path.join(sync_dir, 'projects', 'roots_dense_a', 'annotations')
+dense_nodule_annot_dir = os.path.join(sync_dir, 'projects', 'nodules_dense_a', 'annotations')
 datasets_dir = os.path.join(sync_dir, 'datasets')
 bp_dataset_dir = os.path.join(datasets_dir, 'biopores_750_training')
 root_dataset_dir = os.path.join(datasets_dir, 'towers_750_training')
+nodules_dataset_dir = os.path.join(datasets_dir, 'nodules_750_training')
 
 timeout_ms = 20000
 
@@ -62,8 +64,19 @@ def setup_function():
 
     root_url = 'https://zenodo.org/record/3754046/files/towers_750_training.zip'
     dl_dir_from_zip(root_url, root_dataset_dir)
-    root_annot_url = 'https://zenodo.org/record/11236258/files/user_a_dense_roots_750_training_annotation.zip'
-    dl_dir_from_zip(root_annot_url, root_annot_dir)
+
+    dense_root_annot_url = 'https://zenodo.org/record/11236258/files/user_a_dense_roots_750_training_annotation.zip'
+    dl_dir_from_zip(dense_root_annot_url, dense_root_annot_dir)
+
+    corrective_root_annot_url = 'https://zenodo.org/record/11236258/files/user_a_corrective_roots_750_training_annotation.zip'
+    dl_dir_from_zip(corrective_root_annot_url, corrective_root_annot_dir)
+
+    nodules_url = 'https://zenodo.org/record/3754046/files/nodules_750_training.zip'
+    dl_dir_from_zip(nodules_url, nodules_dataset_dir)
+
+    dense_nodules_annot_url = 'https://zenodo.org/record/11236258/files/user_a_dense_noduless_750_training_annotation.zip'
+    dl_dir_from_zip(dense_nodules_annot_url, dense_nodules_annot_dir)
+
 
 
 
@@ -131,25 +144,21 @@ def training(dataset_dir, annot_dir, name):
 
 
 def dense_roots_training():
-    training(annot_dir=root_annot_dir, name='root_dense_baseline', dataset_dir=root_dataset_dir)
+    training(annot_dir=dense_root_annot_dir, name='root_dense_baseline', dataset_dir=root_dataset_dir)
 
 def corrective_biopore_training():
     name = 'bp_cor_baseline'
     annot_dir = bp_annot_dir
     training(name = 'bp_cor_baseline', annot_dir = bp_annot_dir, dataset_dir=bp_dataset_dir)
     
-
-def corrective_nodules_training():
-    # a specific validation set f1 score can be obtained in a specific number of update steps
-    # and wall clock time?
-    pass
+def dense_nodules_training():
+    training(annot_dir=dense_nodules_annot_dir, name='nodules_dense_baseline', dataset_dir=nodules_dataset_dir)
 
 def corrective_roots_training():
-    # a specific validation set f1 score can be obtained in a specific number of update steps
-    # and wall clock time?
-    pass
-
+    training(annot_dir=corrective_root_annot_dir, name='root_corrective_baseline', dataset_dir=root_dataset_dir)
 
 if __name__ == '__main__':
     setup_function()
-    dense_roots_training()
+    corrective_roots_training()
+    dense_nodules_training():
+    #dense_roots_training()

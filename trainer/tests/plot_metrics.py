@@ -3,6 +3,7 @@ import argparse
 import os
 import glob
 from datetime import datetime
+import math
 
 def find_matching_files(directory, term1, term2):
     # Find all unique start identifiers for which both train and val files exist
@@ -52,6 +53,7 @@ def read_csv(file_path, x_axis, start_time_str, metric):
                 x_value = int(values[idx[x_axis]])
             y_value = float(values[idx[metric]])
             x_values.append(x_value)
+            y_value = 0 if math.isnan(y_value) else y_value 
             y_values.append(y_value)
     return x_values, y_values
 
@@ -98,7 +100,6 @@ def plot_metrics(term1_train_files, term1_val_files, term2_train_files, term2_va
     def plot_mean_val(x_values_list, y_values_list, color, linestyle, label):
         if not y_values_list:
             return
-
         x_values = x_values_list[0]
         mean_y_values = calculate_mean(x_values_list, y_values_list)
         plt.plot(x_values, mean_y_values, linestyle=linestyle, color=color, label=label, linewidth=2)

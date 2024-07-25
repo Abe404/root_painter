@@ -3,6 +3,6 @@ numpy==1.26.4
 imagecodecs==2024.1.1
 scipy==1.13.0
 Pillow==10.3.0
-torch==2.3.0
+torch==2.2.0
 torchvision==0.18.0
 pytest==8.2.0

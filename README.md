@@ -56,6 +56,8 @@ pip install root-painter-trainer
 start-trainer
 ```
 
+Note: if you are installing the RootPainter trainer (server) from scartch on windows 11 I suggest [these linked instructions](docs/windows_11_trainer_install.md).
+
 You will be prompted to input a location for the sync directory. This is the folder where files are shared between the client and server. I will use ~/root_painter_sync.
 RootPainter will then create some folders inside ~/root_painter_sync.
 The server should print the automatically selected batch size, which should be greater than 0. It will then start watching for instructions from the client.

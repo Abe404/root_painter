@@ -27,7 +27,7 @@ setup(
     "scipy==1.10.0",
     "Pillow==9.3.0",
     "imagecodecs==2021.8.26",
-    "torch==1.13.1",
+    "torch==2.2.0",
     "torchvision==0.14.1"
   ],
   classifiers=[

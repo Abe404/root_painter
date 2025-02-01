@@ -45,6 +45,8 @@ def init_root_painter():
                 }
                 json.dump(content, json_file, indent=4)
         sync_dir = Path(json.load(open(settings_path, 'r'))['sync_dir'])
+        # print the sync dir
+        print(f"sync_dir = {sync_dir}")
 
         def reopen():
             main_window = RootPainter(sync_dir)

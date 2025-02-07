@@ -35,7 +35,8 @@ from metrics import get_metrics
 sync_dir = os.path.join(os.getcwd(), 'tests', 'test_rp_sync')
 bp_annot_dir = os.path.join(sync_dir, 'projects', 'biopores_corrective_a', 'annotations')
 dense_root_annot_dir = os.path.join(sync_dir, 'projects', 'roots_dense_a', 'annotations')
-dense_nodule_annot_dir = os.path.join(sync_dir, 'projects', 'nodules_dense_a', 'annotations')
+corrective_root_annot_dir = os.path.join(sync_dir, 'projects', 'roots_corrective_a', 'annotations')
+dense_nodules_annot_dir = os.path.join(sync_dir, 'projects', 'nodules_dense_a', 'annotations')
 datasets_dir = os.path.join(sync_dir, 'datasets')
 bp_dataset_dir = os.path.join(datasets_dir, 'biopores_750_training')
 root_dataset_dir = os.path.join(datasets_dir, 'towers_750_training')
@@ -74,7 +75,7 @@ def setup_function():
     nodules_url = 'https://zenodo.org/record/3754046/files/nodules_750_training.zip'
     dl_dir_from_zip(nodules_url, nodules_dataset_dir)
 
-    dense_nodules_annot_url = 'https://zenodo.org/record/11236258/files/user_a_dense_noduless_750_training_annotation.zip'
+    dense_nodules_annot_url = 'https://zenodo.org/record/11236258/files/user_a_dense_nodules_750_training_annotation.zip'
     dl_dir_from_zip(dense_nodules_annot_url, dense_nodules_annot_dir)
 
 
@@ -160,5 +161,5 @@ def corrective_roots_training():
 if __name__ == '__main__':
     setup_function()
     corrective_roots_training()
-    dense_nodules_training():
+    dense_nodules_training()
     #dense_roots_training()

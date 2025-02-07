@@ -117,7 +117,7 @@ def plot_metrics(term1_train_files, term1_val_files, term2_train_files, term2_va
     plt.xlabel(x_axis_label)
     plt.ylabel(metric)
     plt.ylim([0, 1])  # Set y-axis limit for consistent comparison
-    plt.yticks([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 0.9, 1.0])
+    plt.yticks([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
     plt.legend()
     plt.grid(True)
     

@@ -1,3 +1,3 @@
 rm -rf dist/*
-python setup.py sdist
+python -m build --sdist
 twine upload dist/* --verbose

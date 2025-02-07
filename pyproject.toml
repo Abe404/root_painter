@@ -1,0 +1,38 @@
+[project]
+name = "root_painter_trainer"
+version = "0.2.27.0"
+description = "Trainer (server component) for RootPainter"
+readme = "README.md"
+authors = [
+    {name = "Abraham George Smith"},
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "Pillow==9.3.0",
+    "imagecodecs==2021.8.26",
+    "numpy==1.24.2",
+    "scikit-image==0.19.3",
+    "scipy==1.10.0",
+    "torch==1.13.1",
+    "torchvision==0.14.1",
+]
+license = {text = "GPL-2.0"}
+requires-python = ">=3.8,<3.11"
+
+[project.urls]
+Homepage = "https://github.com/Abe404/root_painter"
+
+[project.scripts]
+start-trainer = "root_painter_trainer:start"
+
+[tool.setuptools.package-dir]
+root_painter_trainer = "trainer"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

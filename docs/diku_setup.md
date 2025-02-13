@@ -27,14 +27,14 @@ cd root_painter/trainer
 
 4. To avoid alterating global packages. I suggest using a virtual environment. Create a virtual environment and activate it.
 ```
-python -m venv env
-source ./env/bin/activate
+python -m venv .venv
+source .venv/bin/activate
 ```
 
 5. Install dependencies in the virtual environment. (takes over 3 minutes)
 ```
 pip install torch==1.3.1 -f https://download.pytorch.org/whl/torch_stable.html
-pip install -r requirements.txt
+pip install .
 ```
 
 6. Run root painter to create the sync directory.

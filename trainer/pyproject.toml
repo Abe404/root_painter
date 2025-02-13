@@ -31,7 +31,7 @@ Homepage = "https://github.com/Abe404/root_painter"
 start-trainer = "root_painter_trainer:start"
 
 [tool.setuptools.package-dir]
-root_painter_trainer = "trainer"
+root_painter_trainer = "src"
 
 [build-system]
 requires = ["setuptools"]

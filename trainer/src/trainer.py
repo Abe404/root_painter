@@ -29,6 +29,7 @@ from functools import partial
 import copy
 import traceback
 import multiprocessing
+import shutil
 
 import numpy as np
 import torch
@@ -148,18 +149,20 @@ class Trainer():
                 new_config[k] = v
         return new_config
 
+
+
     def check_for_instructions(self):
+        executed_dir = os.path.join(self.sync_dir, 'executed_instructions')
+        os.makedirs(executed_dir, exist_ok=True)
         try:
             for fname in ls(self.instruction_dir):
                 fpath = os.path.join(self.instruction_dir, fname)
                 if not os.path.exists(fpath):
-                    continue  # File was deleted (or incomplete), skip
+                    continue  # File was deleted or incomplete, skip
                 if self.execute_instruction(fname):
-                    instruction_path = os.path.join(self.instruction_dir, fname)
                     if self.instruction_deleted_hook:
-                        self.instruction_deleted_hook(instruction_path)
-                    os.remove(instruction_path)
-
+                        self.instruction_deleted_hook(fpath)
+                    shutil.move(fpath, os.path.join(executed_dir, fname))
 
         except Exception as e:
             print('Exception checking for instruction', e)

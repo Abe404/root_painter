@@ -150,6 +150,89 @@ class Trainer():
         return new_config
 
 
+    def check_for_instructions(self):
+        try:
+            for fname in ls(self.instruction_dir):
+                fpath = os.path.join(self.instruction_dir, fname)
+                if not os.path.exists(fpath):
+                    continue
+                try:
+                    with open(fpath, 'r') as json_file:
+                        contents = json_file.read()
+                except:
+                    continue  # silently skip unreadable files
+                if self.execute_instruction(fname, contents):
+                    try:
+                        os.remove(fpath)
+                    except:
+                        pass  # silently ignore failed deletions
+                    if self.instruction_deleted_hook:
+                        self.instruction_deleted_hook(fpath)
+        except Exception as e:
+            self.log(f'Exception in check_for_instructions: {e}')
+
+
+    def execute_instruction(self, fname, contents):
+        name = fname.rpartition('_')[0]
+        if name in [i.__name__ for i in self.valid_instructions]:
+            try:
+                if not contents.strip():
+                    return False
+                config = self.fix_config_paths(json.loads(contents))
+                getattr(self, name)(config)
+            except Exception as e:
+                self.log(f'Exception parsing instruction,{e},{traceback.format_exc()}')
+                return False
+        else:
+            return False
+        return True
+
+
+
+    def check_for_instructions(self):
+        try:
+            for fname in ls(self.instruction_dir):
+                fpath = os.path.join(self.instruction_dir, fname)
+                if not os.path.exists(fpath):
+                    continue  # File was deleted or incomplete, skip
+                # Attempt to read file first
+                try:
+                    with open(fpath, 'r') as json_file:
+                        contents = json_file.read()
+                except Exception as e:
+                    # ("Skipping unreadable file '{fname}':", e)
+                    continue
+
+                if self.execute_instruction(fname, contents):
+                    if self.instruction_deleted_hook:
+                        self.instruction_deleted_hook(fpath)
+                    os.remove(fpath)
+
+        except Exception as e:
+            print('Exception checking for instruction', e)
+
+
+    def execute_instruction(self, fname, contents):
+        fpath = os.path.join(self.instruction_dir, fname)
+        name = fname.rpartition('_')[0]  # remove hash
+        if name in [i.__name__ for i in self.valid_instructions]:
+            print('execute_instruction', name)
+            try:
+                if contents.strip() == "":
+                    # ("Instruction file is empty, skipping:", name)
+                    return False
+                config = self.fix_config_paths(json.loads(contents))
+                getattr(self, name)(config)
+            except Exception as e:
+                print('Exception parsing instruction', e)
+                print(f'{traceback.format_exc()}')
+                self.log(f'Exception parsing instruction,{e},{traceback.format_exc()}')
+                return False
+        else:
+            raise Exception(f"Unhandled instruction: {name}")
+        return True
+
+
 
     def check_for_instructions(self):
         executed_dir = os.path.join(self.sync_dir, 'executed_instructions')

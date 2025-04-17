@@ -50,7 +50,11 @@ from unet import get_valid_patch_sizes
 
 class Trainer():
 
-    def __init__(self, sync_dir=None, patch_size=572, max_workers=12):
+    def __init__(self, sync_dir=None, patch_size=572,
+                 max_workers=12,
+                 instruction_deleted_hook=None):
+
+        self.instruction_deleted_hook = instruction_deleted_hook
 
         valid_sizes = get_valid_patch_sizes()
         assert patch_size in valid_sizes, (f'Specified patch size of {patch_size}'
@@ -146,7 +150,12 @@ class Trainer():
         try:
             for fname in ls(self.instruction_dir):
                 if self.execute_instruction(fname):
-                    os.remove(os.path.join(self.instruction_dir, fname))
+                    instruction_path = os.path.join(self.instruction_dir, fname)
+                    if self.instruction_deleted_hook:
+                        self.instruction_deleted_hook(instruction_path)
+                    os.remove(instruction_path)
+
+
         except Exception as e:
             print('Exception checking for instruction', e)
 

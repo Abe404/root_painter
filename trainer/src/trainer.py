@@ -215,12 +215,12 @@ class Trainer():
         fpath = os.path.join(self.instruction_dir, fname)
         name = fname.rpartition('_')[0]  # remove hash
         if name in [i.__name__ for i in self.valid_instructions]:
-            print('execute_instruction', name)
             try:
                 if contents.strip() == "":
                     # ("Instruction file is empty, skipping:", name)
                     return False
                 config = self.fix_config_paths(json.loads(contents))
+                print('execute_instruction', name)
                 getattr(self, name)(config)
             except Exception as e:
                 print('Exception parsing instruction', e)

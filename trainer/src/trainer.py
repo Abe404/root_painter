@@ -188,7 +188,6 @@ class Trainer():
         return True
 
 
-
     def check_for_instructions(self):
         try:
             for fname in ls(self.instruction_dir):
@@ -230,47 +229,6 @@ class Trainer():
                 return False
         else:
             raise Exception(f"Unhandled instruction: {name}")
-        return True
-
-
-
-    def check_for_instructions(self):
-        executed_dir = os.path.join(self.sync_dir, 'executed_instructions')
-        os.makedirs(executed_dir, exist_ok=True)
-        try:
-            for fname in ls(self.instruction_dir):
-                fpath = os.path.join(self.instruction_dir, fname)
-                if not os.path.exists(fpath):
-                    continue  # File was deleted or incomplete, skip
-                if self.execute_instruction(fname):
-                    if self.instruction_deleted_hook:
-                        self.instruction_deleted_hook(fpath)
-                    shutil.move(fpath, os.path.join(executed_dir, fname))
-
-        except Exception as e:
-            print('Exception checking for instruction', e)
-
-    def execute_instruction(self, fname):
-        fpath = os.path.join(self.instruction_dir, fname)
-        name = fname.rpartition('_')[0] # remove hash
-        if name in [i.__name__ for i in self.valid_instructions]:
-            print('execute_instruction', name)
-            try:
-                with open(fpath, 'r') as json_file:
-                    contents = json_file.read()
-                    if contents.strip() == "":
-                        print("Instruction file is empty, skipping:", name)
-                        return False
-                    config = self.fix_config_paths(json.loads(contents))
-                    getattr(self, name)(config)
-            except Exception as e:
-                print('Exception parsing instruction', e)
-                print(f'{traceback.format_exc()}')
-                self.log(f'Exception parsing instruction,{e},{traceback.format_exc()}')
-                return False
-        else:
-            #TODO put in a log and display error to the user.
-            raise Exception(f"unhandled instruction {name})")
         return True
 
     def stop_training(self, _):

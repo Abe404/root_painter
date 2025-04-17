@@ -54,10 +54,13 @@ class Trainer():
     def __init__(self, sync_dir=None, patch_size=572,
                  max_workers=12,
                  instruction_deleted_hook=None,
-                 segmentation_created_hook=None):
+                 segmentation_created_hook=None,
+                 model_saved_hook=None):
 
         self.instruction_deleted_hook = instruction_deleted_hook
         self.segmentation_created_hook = segmentation_created_hook
+        self.model_saved_hook = model_saved_hook
+
 
         valid_sizes = get_valid_patch_sizes()
         assert patch_size in valid_sizes, (f'Specified patch size of {patch_size}'
@@ -400,6 +403,10 @@ class Trainer():
                                    cur_metrics['f1'], prev_metrics['f1'])
         if was_saved:
             self.epochs_without_progress = 0
+            if self.model_saved_hook:
+                latest_model_path = model_utils.get_latest_model_paths(model_dir, 1)[0]
+                self.model_saved_hook(latest_model_path)
+
         else:
             self.epochs_without_progress += 1
 

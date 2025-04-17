@@ -149,6 +149,9 @@ class Trainer():
     def check_for_instructions(self):
         try:
             for fname in ls(self.instruction_dir):
+                fpath = os.path.join(self.instruction_dir, fname)
+                if not os.path.exists(fpath):
+                    continue  # File was deleted (or incomplete), skip
                 if self.execute_instruction(fname):
                     instruction_path = os.path.join(self.instruction_dir, fname)
                     if self.instruction_deleted_hook:
@@ -167,6 +170,9 @@ class Trainer():
             try:
                 with open(fpath, 'r') as json_file:
                     contents = json_file.read()
+                    if contents.strip() == "":
+                        print("Instruction file is empty, skipping:", name)
+                        return False
                     config = self.fix_config_paths(json.loads(contents))
                     getattr(self, name)(config)
             except Exception as e:

@@ -52,9 +52,11 @@ class Trainer():
 
     def __init__(self, sync_dir=None, patch_size=572,
                  max_workers=12,
-                 instruction_deleted_hook=None):
+                 instruction_deleted_hook=None,
+                 segmentation_created_hook=None):
 
         self.instruction_deleted_hook = instruction_deleted_hook
+        self.segmentation_created_hook = segmentation_created_hook
 
         valid_sizes = get_valid_patch_sizes()
         assert patch_size in valid_sizes, (f'Specified patch size of {patch_size}'
@@ -426,11 +428,11 @@ class Trainer():
         start = time.time()
         for fname in fnames:
             self.segment_file(in_dir, seg_dir, fname,
-                              model_paths, format_str, sync_save=len(fnames) == 1)
+                              model_paths, format_str)
         duration = time.time() - start
         print(f'Seconds to segment {len(fnames)} images: ', round(duration, 3))
         
-    def segment_file(self, in_dir, seg_dir, fname, model_paths, format_str, sync_save):
+    def segment_file(self, in_dir, seg_dir, fname, model_paths, format_str):
         fpath = os.path.join(in_dir, fname)
 
         # When the client navigates through images, there is a risk that 
@@ -505,14 +507,6 @@ class Trainer():
                     # Conver to uint8 to save as png without warning
                     seg_out  = (seg_alpha * 255).astype(np.uint8)
 
-
-                if sync_save:
-                    # other wise do sync because we don't want to delete the segment
-                    # instruction too early.
-                    save_then_move(out_path, seg_out, npy)
-                else:
-                    # TODO find a cleaner way to do this.
-                    # if more than one file then optimize speed over stability.
-                    x = threading.Thread(target=save_then_move,
-                                         args=(out_path, seg_out, npy))
-                    x.start()
+                save_then_move(out_path, seg_out, npy)
+                if self.segmentation_created_hook:
+                    self.segmentation_created_hook(out_path)

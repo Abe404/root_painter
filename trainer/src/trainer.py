@@ -41,6 +41,7 @@ from datasets import TrainDataset
 from metrics import get_metrics, get_metrics_str, get_metric_csv_row
 from model_utils import ensemble_segment
 from model_utils import create_first_model_with_random_weights
+from model_utils import update_uncertainty_for_one_image
 import model_utils
 from model_utils import save_if_better
 
@@ -173,45 +174,6 @@ class Trainer():
                         self.instruction_deleted_hook(fpath)
         except Exception as e:
             self.log(f'Exception in check_for_instructions: {e}')
-
-
-    def execute_instruction(self, fname, contents):
-        name = fname.rpartition('_')[0]
-        if name in [i.__name__ for i in self.valid_instructions]:
-            try:
-                if not contents.strip():
-                    return False
-                config = self.fix_config_paths(json.loads(contents))
-                getattr(self, name)(config)
-            except Exception as e:
-                self.log(f'Exception parsing instruction,{e},{traceback.format_exc()}')
-                return False
-        else:
-            return False
-        return True
-
-
-    def check_for_instructions(self):
-        try:
-            for fname in ls(self.instruction_dir):
-                fpath = os.path.join(self.instruction_dir, fname)
-                if not os.path.exists(fpath):
-                    continue  # File was deleted or incomplete, skip
-                # Attempt to read file first
-                try:
-                    with open(fpath, 'r') as json_file:
-                        contents = json_file.read()
-                except Exception as e:
-                    # ("Skipping unreadable file '{fname}':", e)
-                    continue
-
-                if self.execute_instruction(fname, contents):
-                    if self.instruction_deleted_hook:
-                        self.instruction_deleted_hook(fpath)
-                    os.remove(fpath)
-
-        except Exception as e:
-            print('Exception checking for instruction', e)
 
 
     def execute_instruction(self, fname, contents):
@@ -356,6 +318,20 @@ class Trainer():
                   end='', flush=True)
 
             self.check_for_instructions() # could update training parameter
+
+
+            # opportunistically compute uncertainty for one active image
+            project_dir = os.path.dirname(self.train_config['seg_dir'])
+            update_uncertainty_for_one_image(
+                project_dir=project_dir,
+                train_annot_dir=self.train_config['train_annot_dir'],
+                val_annot_dir=self.train_config['val_annot_dir'],
+                model=self.model,
+                in_w=self.in_w,
+                out_w=self.out_w
+            )
+
+
             if not self.training:
                 return
 
@@ -403,6 +379,11 @@ class Trainer():
                                    cur_metrics['f1'], prev_metrics['f1'])
         if was_saved:
             self.epochs_without_progress = 0
+
+            # Clear uncertainty cache
+            project_dir = os.path.dirname(self.train_config['seg_dir'])
+            shutil.rmtree(os.path.join(project_dir, "uncertainty"), ignore_errors=True)
+
             if self.model_saved_hook:
                 latest_model_path = model_utils.get_latest_model_paths(model_dir, 1)[0]
                 self.model_saved_hook(latest_model_path)

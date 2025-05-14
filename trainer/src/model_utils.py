@@ -20,6 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import os
 import time
 import glob
+import random
+
 import numpy as np
 import torch
 from torch.nn.functional import softmax
@@ -319,3 +321,77 @@ def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
     reconstructed = im_utils.reconstruct_from_tiles(output_tiles, coords,
                                                     image.shape[:-1])
     return reconstructed
+
+
+
+def get_mean_entropy_over_image(cnn, image, in_w, out_w):
+    tiles, coords = im_utils.get_tiles(image,
+                                       in_tile_shape=(in_w, in_w, 3),
+                                       out_tile_shape=(out_w, out_w))
+
+    entropy_tiles = []
+    for tile in tiles:
+        tile = img_as_float32(tile)
+        tile = im_utils.normalize_tile(tile)
+        tile = np.moveaxis(tile, -1, 0)  # (3, H, W)
+        tile_tensor = torch.from_numpy(tile).unsqueeze(0).float()  # (1, 3, H, W)
+
+        if torch.cuda.is_available():
+            tile_tensor = tile_tensor.cuda()
+
+        with torch.no_grad():
+            logits = cnn(tile_tensor)
+            probs = torch.softmax(logits, dim=1)  # (1, 2, H, W)
+            entropy = -torch.sum(probs * torch.log(probs + 1e-10), dim=1)  # (1, H, W)
+            entropy_np = entropy.squeeze().cpu().numpy()  # (H, W)
+            entropy_tiles.append(entropy_np)
+
+    entropy_map = im_utils.reconstruct_from_tiles(entropy_tiles, coords,
+                                                  image.shape[:-1])
+
+    return np.mean(entropy_map)
+
+
+def update_uncertainty_for_one_image(project_dir, train_annot_dir, val_annot_dir, model, in_w, out_w):
+    uncertainty_dir = os.path.join(project_dir, "uncertainty")
+    os.makedirs(uncertainty_dir, exist_ok=True)
+
+    # 1. Get annotated image basenames
+    annotated_files = set(os.listdir(train_annot_dir)) | set(os.listdir(val_annot_dir))
+    annotated_images = {os.path.splitext(f)[0] for f in annotated_files}
+
+    # 2. Get scored image basenames
+    scored_files = set(os.listdir(uncertainty_dir))
+    scored_images = {os.path.splitext(f.replace('.txt', ''))[0] for f in scored_files if f.endswith('.txt')}
+
+    # 3. Read active images list
+    active_images_path = os.path.join(project_dir, "active_images.txt")
+    with open(active_images_path, "r") as f:
+        active_images = [line.strip() for line in f if line.strip()]
+    active_images = [os.path.splitext(a)[0] for a in active_images]  # remove extensions
+
+    # 4. Determine eligible images
+    remaining_images = list(set(active_images) - annotated_images - scored_images)
+    if not remaining_images:
+        return None  # nothing left to do
+
+    # 5. Select and process one image
+    selected = random.choice(remaining_images)
+    image_path_pattern = os.path.join(project_dir, selected)  # without extension
+    image_path_pattern = glob.escape(image_path_pattern)
+    matches = glob.glob(image_path_pattern + '.*')
+    if not matches:
+        return None
+    image_path = matches[0]
+
+    image = im_utils.load_image(image_path)
+
+    entropy = get_mean_entropy_over_image(model, image, in_w, out_w)
+
+    # Save score
+    score_file = os.path.join(uncertainty_dir, f"{os.path.basename(image_path)}.txt")
+    with open(score_file, "w") as f:
+        f.write(f"{entropy:.6f}")
+
+    return os.path.basename(image_path), entropy
+

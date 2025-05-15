@@ -770,6 +770,7 @@ class RootPainter(QtWidgets.QMainWindow):
         self.graphics_view.setMouseTracking(True)
         self.scene = scene
         self.nav = NavWidget(self.image_fnames, [self.train_annot_dir, self.val_annot_dir])
+        self.nav.parent = self
         self.update_file(self.image_path)
 
         # bottom bar

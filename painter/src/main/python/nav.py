@@ -71,20 +71,126 @@ class NavWidget(QtWidgets.QWidget):
                      for a in all_files]
         return all_paths
 
+
+    def select_highest_entropy_image(self):
+        """
+        Return filename of active image with highest entropy among
+        active images *after* the current image, or None if unavailable.
+        """
+        active_images_path = os.path.join(self.parent.proj_location, "active_images.txt")
+        uncertainty_dir = os.path.join(self.parent.proj_location, "uncertainty")
+
+        if not (os.path.isfile(active_images_path) and os.path.isdir(uncertainty_dir)):
+            return None
+
+        # Get active images set
+        with open(active_images_path, "r") as f:
+            active_images = {line.strip() for line in f if line.strip()}
+
+        # Determine current image position
+        current_fname = os.path.basename(self.image_path)
+        try:
+            current_idx = self.all_fnames.index(current_fname)
+        except ValueError:
+            return None  # safety fallback
+
+        # Only consider images after current
+        future_images = set(self.all_fnames[current_idx+1:])
+        candidate_images = active_images.intersection(future_images)
+
+        # Gather entropy scores for candidates
+        entropy_scores = {}
+        for fname in candidate_images:
+            score_file = os.path.join(uncertainty_dir, fname + ".txt")
+            if os.path.isfile(score_file):
+                try:
+                    with open(score_file, "r") as f_score:
+                        entropy = float(f_score.read().strip())
+                        entropy_scores[fname] = entropy
+                except Exception:
+                    continue
+
+        if not entropy_scores:
+            return None
+
+        return max(entropy_scores, key=entropy_scores.get)
+
+
+    def prefill_next_active_image(self):
+        """
+        Check if next even-index image (after current) is active and replace with highest entropy image.
+        """
+        current_idx = self.all_fnames.index(os.path.basename(self.image_path))
+        next_idx = current_idx + 1
+        if next_idx >= len(self.all_fnames):
+            return  # no next image
+
+        # Check if next image is in active list
+        active_images_path = os.path.join(self.parent.proj_location, "active_images.txt")
+        if not os.path.isfile(active_images_path):
+            return
+
+        with open(active_images_path, "r") as f:
+            active_images = {line.strip() for line in f if line.strip()}
+
+        next_image_name = self.all_fnames[next_idx]
+        if next_image_name not in active_images:
+            return  # next image is not active → no replacement
+
+        # Select best future active image
+        next_entropy_fname = self.select_highest_entropy_image()
+        if not next_entropy_fname:
+            return
+
+        # Replace only if different
+        if self.all_fnames[next_idx] != next_entropy_fname:
+            print(f"Prefill active: replacing {self.all_fnames[next_idx]} → {next_entropy_fname}")
+            self.all_fnames[next_idx] = next_entropy_fname
+
+            # Save updated list to project file
+            import json
+            project_file = self.parent.proj_file_path
+            with open(project_file, 'r') as f:
+                project_data = json.load(f)
+            project_data['file_names'] = self.all_fnames
+            with open(project_file, 'w') as f:
+                json.dump(project_data, f, indent=4)
+
+
     def show_next_image(self):
         self.next_image_button.setEnabled(False)
         self.next_image_button.setText('Loading..')
-        self.next_image_button.setEnabled(False)
         QtWidgets.QApplication.processEvents()
+
+        # normal next
         dir_path, _ = os.path.split(self.image_path)
         all_paths = self.get_path_list(dir_path)
         cur_idx = all_paths.index(self.image_path)
-        next_idx = cur_idx + 1
-        if next_idx >= len(all_paths):
-            next_idx = 0
-        self.image_path = all_paths[next_idx]
+        next_idx = (cur_idx + 1) % len(all_paths)
+        next_fname = os.path.basename(all_paths[next_idx])
+
+        # if next image is active, use highest entropy image instead
+        next_entropy_fname = None
+        active_images_path = os.path.join(self.parent.proj_location, "active_images.txt")
+        if os.path.isfile(active_images_path):
+            with open(active_images_path, "r") as f:
+                active_images = {line.strip() for line in f if line.strip()}
+            if next_fname in active_images:
+                next_entropy_fname = self.select_highest_entropy_image()
+
+        if next_entropy_fname:
+            next_image_path = os.path.join(dir_path, next_entropy_fname)
+        else:
+            next_image_path = all_paths[next_idx]
+
+        # update current image
+        self.image_path = next_image_path
         self.file_change.emit(self.image_path)
         self.update_nav_label()
+
+        # prefill future active slot
+        self.prefill_next_active_image()
+
 
     def show_prev_image(self):
         dir_path, _ = os.path.split(self.image_path)

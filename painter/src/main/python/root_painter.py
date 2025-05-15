@@ -74,6 +74,17 @@ use_plugin("pil")
 Image.MAX_IMAGE_PIXELS = None
 
 
+def generate_active_images_file(project_dir, image_fnames, step=2, skip=6):
+    active_list = image_fnames[skip::step]  # skip first N, then every 2nd image
+    active_file = os.path.join(project_dir, "active_images.txt")
+    with open(active_file, "w") as f:
+        for name in active_list:
+            f.write(f"{name}\n")
+    print(f"[RootPainter] Wrote {len(active_list)} active images to {active_file}")
+    return len(active_list)
+
+
+
 class RootPainter(QtWidgets.QMainWindow):
 
     closed = QtCore.pyqtSignal()
@@ -686,12 +697,34 @@ class RootPainter(QtWidgets.QMainWindow):
                     self.nav.update_nav_label()
             extend_dataset_btn.triggered.connect(update_dataset_after_check)
             extras_menu.addAction(extend_dataset_btn)
-          
 
 
-        
+            generate_active_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                    'Generate active image list',
+                                                    self)
+            def call_generate_active():
+                # Only works if project is open
+                if hasattr(self, 'proj_location') and hasattr(self, 'image_fnames'):
+                    active_file = os.path.join(self.proj_location, "active_images.txt")
+                    if os.path.isfile(active_file):
+                        reply = QtWidgets.QMessageBox.question(
+                            self, 'File exists',
+                            "active_images.txt already exists.\nDo you want to overwrite it?",
+                            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                            QtWidgets.QMessageBox.No)
+                        if reply == QtWidgets.QMessageBox.No:
+                            return  # do nothing
 
-    
+                    count = generate_active_images_file(self.proj_location, self.image_fnames)
+                    QtWidgets.QMessageBox.information(self, "Active list generated", 
+                        f"active_images.txt created with {count} active images.")
+                else:
+                    QtWidgets.QMessageBox.warning(self, "Error", 
+                        "No project open. Open a project first.")
+
+            generate_active_btn.triggered.connect(call_generate_active)
+            extras_menu.addAction(generate_active_btn)
+
 
     def add_about_menu(self, menu_bar):
         about_menu = menu_bar.addMenu('About')

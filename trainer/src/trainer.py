@@ -220,6 +220,10 @@ class Trainer():
                 self.model = create_first_model_with_random_weights(model_dir)
             self.optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01,
                                              momentum=0.99, nesterov=True)
+
+            # validation model needs to be stored for active learning entropy computation.
+            self.validation_model = copy.deepcopy(self.model)
+
             self.model.train()
             self.training = True
 
@@ -326,7 +330,7 @@ class Trainer():
                 project_dir=project_dir,
                 train_annot_dir=self.train_config['train_annot_dir'],
                 val_annot_dir=self.train_config['val_annot_dir'],
-                model=self.model,
+                model=self.validation_model,
                 in_w=self.in_w,
                 out_w=self.out_w
             )
@@ -379,6 +383,8 @@ class Trainer():
                                    cur_metrics['f1'], prev_metrics['f1'])
         if was_saved:
             self.epochs_without_progress = 0
+            self.validation_model = copy.deepcopy(self.model)  # ✅ update to new best model
+
 
             # Clear uncertainty cache
             project_dir = os.path.dirname(self.train_config['seg_dir'])

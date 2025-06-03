@@ -57,6 +57,8 @@ Knowing exactly how accurate a model needs to be for your specific research ques
 
 My best guess is that there is a delay in sync or the sync software is not set up and/or working properly. There might be another problem (such as a bug with RootPainter) but here are a few steps to help you isolate the problem:
 
+0. If using google drive + colab, I suggest changing google drive (local client) to mirror instead of stream. It might take a few hours to download your files (potentially) but then this may speed up/fix sync.
+
 1. **Check the sync directory is speciﬁed correctly**. In your home directory i.e the user directory, there is a ﬁle called root_painter_settings.json. You can open this ﬁle in a text editor to see which directory is speciﬁed as the sync directory. You can also just manually set a new sync directory (to make sure it is correct) using the option from the extras menu. The sync directory should be set as a path to the drive_rp_sync folder if inside your google drive on your local computer, if you are following the colab tutorial. Otherwise it should be the folder setup to share data between the RootPainter client and server (which was also specified when you started the RootPainter server).
 
 2. **Check segmentation instructions are being created**. 

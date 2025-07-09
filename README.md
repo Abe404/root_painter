@@ -66,6 +66,12 @@ You should now be able to see the folders created by RootPainter (datasets, inst
 See [lung tutorial](docs/cxr_lung_tutorial.md) for an example of how to use RootPainter to train a model. I now actually suggest following the [colab tutorial](https://colab.research.google.com/drive/104narYAvTBt-X4QEDrBSOZm_DRaAKHtA?usp=sharing) instructions but using your local setup instead of the colab server, as these are easier to follow than the lung tutorial.
 
 
- ### Questions and Problems
+### Questions and Problems
  
 The [FAQ](https://github.com/Abe404/root_painter/blob/master/docs/FAQ.md) may  be worth checking before reaching out with any questions you have. If you do have a question you can either email me or post in the [discussions](https://github.com/Abe404/root_painter/discussions). If you have an issue/ have identified a problem with the software then you can [post an issue](https://github.com/Abe404/root_painter/issues).
+
+
+### Contributions
+
+At this time, I prefer that any potential contributors discuss proposed changes with me before submitting a pull request. I'm aiming to keep the project stable and focused, so I want to fully understand and prioritize any changes as part of an agreed-upon strategy or roadmap.
+

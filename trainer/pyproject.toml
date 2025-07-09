@@ -2,7 +2,7 @@
 name = "root_painter_trainer"
 version = "0.2.27.1"
 description = "Trainer (server component) for RootPainter"
-readme = "README.md"
+readme = "README.txt"
 authors = [
     {name = "Abraham George Smith"},
 ]
@@ -29,9 +29,6 @@ Homepage = "https://github.com/Abe404/root_painter"
 
 [project.scripts]
 start-trainer = "root_painter_trainer:start"
-
-[tool.setuptools.package-dir]
-root_painter_trainer = "src"
 
 [build-system]
 requires = ["setuptools"]

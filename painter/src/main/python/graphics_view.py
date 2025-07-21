@@ -3,6 +3,7 @@ Container for canvas where image and lines are drawn.
 Facilitates use of zoom and pan.
 
 Copyright (C) 2020 Abraham George Smith
+Copyright (C) 2024 Felipe Galindo
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,10 +19,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 #pylint: disable=I1101,E0611,C0111
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
-from PyQt5 import QtGui
-from PyQt5.QtCore import Qt
+from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5.QtWidgets import QPinchGesture
+from PyQt5.QtCore import Qt, QEvent
 
 class CustomGraphicsView(QtWidgets.QGraphicsView):
     """
@@ -31,10 +31,12 @@ class CustomGraphicsView(QtWidgets.QGraphicsView):
     mouse_scroll_event = QtCore.pyqtSignal(QtGui.QWheelEvent)
     zoom_change = QtCore.pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, parent=None):
         super().__init__()
         self.zoom = 1
         self.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+        self.grabGesture(Qt.PinchGesture)
+        self.panning_enabled = False
 
     def update_zoom(self):
         """ Transform the view based on current zoom value """
@@ -75,3 +77,46 @@ class CustomGraphicsView(QtWidgets.QGraphicsView):
         fitin()
         QtCore.QTimer.singleShot(100, fitin)
         self.zoom_change.emit()
+
+    def event(self, event):
+        if event.type() == QEvent.Gesture:
+            return self.gestureEvent(event)
+        return super().event(event)
+
+    def gestureEvent(self, event):
+        pinch = event.gesture(Qt.PinchGesture)
+        if pinch:
+            self.pinchTriggered(pinch)
+        return True
+
+    def pinchTriggered(self, gesture):
+        changeFlags = gesture.changeFlags()
+        if changeFlags & QPinchGesture.ScaleFactorChanged:
+            self.zoom *= gesture.scaleFactor()
+            self.update_zoom()
+        return True
+
+    def enable_panning(self, enable):
+        self.panning_enabled = enable
+        if enable:
+            self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
+        else:
+            self.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+
+    def mousePressEvent(self, event):
+        if self.panning_enabled:
+            self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self.panning_enabled:
+            self.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+        super().mouseReleaseEvent(event)
+
+    def wheelEvent(self, event):
+        scroll_up = event.angleDelta().y() > 0
+        if scroll_up:
+            self.zoom *= 1.1
+        else:
+            self.zoom /= 1.1
+        self.update_zoom()

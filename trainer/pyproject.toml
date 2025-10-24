@@ -1,6 +1,6 @@
 [project]
 name = "root_painter_trainer"
-version = "0.2.27.1"
+version = "0.2.27.3"
 description = "Trainer (server component) for RootPainter"
 readme = "README.md"
 authors = [
@@ -13,16 +13,16 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    "Pillow==9.3.0",
-    "imagecodecs==2021.8.26",
-    "numpy==1.24.2",
-    "scikit-image==0.19.3",
-    "scipy==1.10.0",
-    "torch==1.13.1",
-    "torchvision==0.14.1",
+    "Pillow==12.0.0",
+    "imagecodecs==2025.8.2",
+    "numpy==2.3.4",
+    "scikit-image==0.25.2",
+    "scipy==1.16.2",
+    "torch==2.6.0",
+    "torchvision==0.21.0",
 ]
 license = {text = "GPL-2.0"}
-requires-python = ">=3.8,<3.11"
+requires-python = ">=3.9,<3.13"
 
 [project.urls]
 Homepage = "https://github.com/Abe404/root_painter"

@@ -11,7 +11,7 @@ Note: This tutorial assume you have a suitable GPU and CUDA already setup.
 6. pyenv global 3.10.11
 7. pyenv version 
 8. python -c "import sys; print(sys.executable)"
-9. pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 --index-url https://download.pytorch.org/whl/cu117
+9. pip install torch==2.3.0 torchvision==0.18.0 --index-url https://download.pytorch.org/whl/cu124
 10. pip install root-painter-trainer
 11. start-trainer
 12. You will be prompted to input the RootPainter Sync directory. You can just type root_painter_sync and press enter.

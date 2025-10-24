@@ -1,7 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cu124
 imagecodecs==2025.8.2
 numpy==2.3.4
 pytest==8.4.2
 scikit-image==0.25.2
 scipy==1.16.2
 pillow==12.0.0
+torch==2.6.0+cu124
+torchvision==0.21.0+cu124
 

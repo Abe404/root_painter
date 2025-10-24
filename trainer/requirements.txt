@@ -1,8 +1,7 @@
-scikit-image==0.23.2
-numpy==1.26.4
-imagecodecs==2024.1.1
-scipy==1.13.0
-Pillow==10.3.0
-torch==2.3.0
-torchvision==0.18.0
-pytest==8.2.0
+imagecodecs==2025.8.2
+numpy==2.3.4
+pytest==8.4.2
+scikit-image==0.25.2
+scipy==1.16.2
+pillow==12.0.0
+

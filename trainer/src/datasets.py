@@ -80,7 +80,7 @@ class UNetTransformer():
         # TODO check skimage docs for something cleaner to convert
         # from float to int
         photo = rescale_intensity(photo, out_range=(0, 255))
-        photo = Image.fromarray((photo).astype(np.int8), mode='RGB')
+        photo = Image.fromarray((photo).astype(np.uint8), mode='RGB')
         photo = self.color_jit(photo)  # returns PIL image
         photo = img_as_float32(np.array(photo))  # return back to numpy
         return photo, annot

@@ -1,6 +1,6 @@
 [project]
 name = "root_painter_trainer"
-version = "0.2.27.3"
+version = "0.2.27.4"
 description = "Trainer (server component) for RootPainter"
 readme = "README.md"
 authors = [

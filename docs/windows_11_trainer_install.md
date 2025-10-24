@@ -12,7 +12,7 @@ Note: This tutorial assume you have a suitable GPU and CUDA already setup.
 7. pyenv version 
 8. python -c "import sys; print(sys.executable)"
 9. pip install torch==2.6.0+cu124 torchvision==0.21.0+cu124 --index-url https://download.pytorch.org/whl/cu124
-10. pip install root-painter-trainer
+10. pip install root-painter-trainer==0.2.27.4
 11. start-trainer
 12. You will be prompted to input the RootPainter Sync directory. You can just type root_painter_sync and press enter.
 13. The trainer should now be running and it should tell you your batch size (should be above 0) and if the GPU is available or not (It should say True).

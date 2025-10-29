@@ -1,6 +1,6 @@
 [project]
 name = "root_painter_trainer"
-version = "0.2.27.4"
+version = "0.2.27.5"
 description = "Trainer (server component) for RootPainter"
 readme = "README.md"
 authors = [
@@ -22,7 +22,7 @@ dependencies = [
     "torchvision==0.21.0",
 ]
 license = {text = "GPL-2.0"}
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.11,<3.13"
 
 [project.urls]
 Homepage = "https://github.com/Abe404/root_painter"

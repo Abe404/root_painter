@@ -7,8 +7,8 @@ Note: This tutorial assume you have a suitable GPU and CUDA already setup.
 2. Set-ExecutionPolicy -ExecutionPolicy RemoteSigned
 3. Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/pyenv-win/pyenv-win/master/pyenv-win/install-pyenv-win.ps1" -OutFile "./install-pyenv-win.ps1"; &"./install-pyenv-win.ps1"
 4. Close and reopen powershell as administrator.
-5. pyenv install 3.10.11
-6. pyenv global 3.10.11
+5. pyenv install 3.11.9
+6. pyenv global 3.11.9
 7. pyenv version 
 8. python -c "import sys; print(sys.executable)"
 9. pip install torch==2.6.0+cu124 torchvision==0.21.0+cu124 --index-url https://download.pytorch.org/whl/cu124

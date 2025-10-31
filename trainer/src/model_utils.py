@@ -48,14 +48,14 @@ def get_latest_model_paths(model_dir, k):
 
 def load_model(model_path):
     model = UNetGNRes()
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() or torch.backends.mps.is_available():
         try:
             model.load_state_dict(torch.load(model_path))
             model = torch.nn.DataParallel(model)
         except:
             model = torch.nn.DataParallel(model)
             model.load_state_dict(torch.load(model_path))
-        model.cuda()
+        model.to(device)
     else:
         # if you are running on a CPU-only machine, please use torch.load with 
         # map_location=torch.device('cpu') to map your storages to the CPU.
@@ -77,8 +77,8 @@ def create_first_model_with_random_weights(model_dir):
     model_path = os.path.join(model_dir, model_name)
     torch.save(model.state_dict(), model_path)
 
-    if torch.cuda.is_available():
-        model.cuda()
+    if torch.cuda.is_available() or torch.backends.mps.is_avilable():
+        model.to(device)
     return model
 
 
@@ -292,14 +292,13 @@ def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
                 tile_idx += 1
                 tiles_to_process.append(tile)
         tiles_for_gpu = torch.from_numpy(np.array(tiles_to_process))
-        if torch.cuda.is_available():
-            tiles_for_gpu.cuda()
+        tiles_for_gpu = tiles_for_gpu.to(device)
         tiles_for_gpu = tiles_for_gpu.float()
         batches.append(tiles_for_gpu)
 
     output_tiles = []
     for gpu_tiles in batches:
-        outputs = cnn(gpu_tiles.cuda())
+        outputs = cnn(gpu_tiles.to(device))
         softmaxed = softmax(outputs, 1)
         foreground_probs = softmaxed[:, 1, :]  # just the foreground probability.
         if threshold is not None:

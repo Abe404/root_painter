@@ -89,14 +89,25 @@ class Trainer():
         total_mem = 0
         self.num_workers=min(multiprocessing.cpu_count(), max_workers)
         print(self.num_workers, 'workers assigned for data loader')
-        print('GPU Available', torch.cuda.is_available())
+        print('CUDA Available', torch.cuda.is_available())
+
         if torch.cuda.is_available():
             for i in range(torch.cuda.device_count()):
                 total_mem += torch.cuda.get_device_properties(i).total_memory
+
+        print('MPS Available', torch.backends.mps.is_available())
+        # MPS only has one device.
+        # There is no obvious way of getting memory for MPS
+        # FIXME: setting arbitrary amount of memory.
+        if torch.backends.mps.is_available():
+            total_mem = 24_589_934_592
+
+        if total_mem > 0: # means CUDA or MPS found
             self.bs = total_mem // mem_per_item
             self.bs = min(12, self.bs)
         else:
             self.bs = 1 # cpu is batch size of 1
+
         print('Batch size', self.bs)
         self.optimizer = None
         # used to check for updates
@@ -287,6 +298,9 @@ class Trainer():
         if not [is_photo(a) for a in ls(val_annot_dir)]:
             return
 
+
+        device = model_utils.get_device()
+
         if self.first_loop:
             self.first_loop = False
             self.write_message('Training started')
@@ -313,9 +327,9 @@ class Trainer():
                    defined_tiles) in enumerate(train_loader):
 
             self.check_for_instructions()
-            photo_tiles = photo_tiles.cuda()
-            foreground_tiles = foreground_tiles.cuda()
-            defined_tiles = defined_tiles.cuda()
+            photo_tiles = photo_tiles.to(device)
+            foreground_tiles = foreground_tiles.to(device)
+            defined_tiles = defined_tiles.to(device)
             self.optimizer.zero_grad()
             outputs = self.model(photo_tiles)
             softmaxed = softmax(outputs, 1)

@@ -4,7 +4,7 @@ setuptools==65.5.1
 natsort==8.0.2
 scikit-image==0.19.1
 PyWavelets==1.2.0
-Pillow==9.3.0
+Pillow==10.0.1
 scipy==1.10.0
 imagecodecs==2021.11.20
 matplotlib==3.5.2

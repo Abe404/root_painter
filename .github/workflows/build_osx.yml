@@ -42,8 +42,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m venv env
         source env/bin/activate
-        # install pyinstaller seperately to use different version depending on platform
-        pip install pyinstaller==4.8 # fix for https://github.com/Abe404/root_painter/issues/41
+        pip install "pyinstaller==6.6.0"
         pip install -r requirements.txt
 
     - name: Build software

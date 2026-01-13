@@ -133,9 +133,18 @@ def save_masked_image(seg_dir, image_dir, output_dir, fname):
         # resize the segmentation to match the image, so smaller segmentations
         # can be used to mask larger images (for example in localisation stages)
         if im.shape[:2] != seg.shape[:2]:
-            seg = resize(seg, (im.shape[0], im.shape[1], 3), order=0)
-        im[:][seg[:, :, 2] == 0] = 0 # make background black.
-        imsave(os.path.join(output_dir, im_fname), im, quality=95)
+            seg = resize(seg, (im.shape[0], im.shape[1]),
+                         order=0, preserve_range=True,
+                         anti_aliasing=False).astype(seg.dtype)
+        im[seg == 0] = 0  # make background black
+        out_path = os.path.join(output_dir, im_fname)
+        ext = os.path.splitext(im_fname)[1].lower()
+        if ext in [".jpg", ".jpeg"]:
+            Image.fromarray(im).save(out_path, quality=95, subsampling=0, optimize=True)
+        else:
+            imsave(out_path, im)
+
+
 
 def save_corrected_segmentation(annot_fpath, seg_dir, output_dir):
     """assign the annotations (corrections) to the segmentations. This is useful
@@ -207,4 +216,10 @@ def gen_composite(annot_dir, photo_dir, comp_dir, fname, ext='.jpg'):
         with warnings.catch_warnings():
             # avoid low constrast warning.
             warnings.simplefilter("ignore")
-            imsave(out_path, comp, quality=95)
+            ext = os.path.splitext(out_path)[1].lower()
+            if ext in [".jpg", ".jpeg"]:
+                Image.fromarray(comp).save(out_path, quality=95, subsampling=0, optimize=True)
+            else:
+                imsave(out_path, comp)
+
+

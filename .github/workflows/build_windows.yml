@@ -49,6 +49,12 @@ jobs:
           cd painter
           python src/build/run_pyinstaller.py
 
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis -y
+          echo "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: Make installer
         shell: pwsh
         run: |

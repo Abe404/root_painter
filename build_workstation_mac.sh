@@ -13,6 +13,7 @@ deactivate
 cd "$ROOT/painter"
 source env/bin/activate
 pip install -r requirements.txt pyinstaller
+pip install pyinstaller
 python src/build/run_pyinstaller_workstation.py
 deactivate
 

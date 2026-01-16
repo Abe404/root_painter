@@ -53,7 +53,7 @@ trainer_exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=True,   # keep console for trainer
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -88,7 +88,7 @@ painter_exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,  # GUI app
     disable_windowed_traceback=False,
     argv_emulation=True if platform == "darwin" else False,

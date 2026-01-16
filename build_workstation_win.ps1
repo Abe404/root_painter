@@ -26,7 +26,8 @@ Run "painter\env\Scripts\pip install -r painter\requirements.txt"
 
 # If your build relies on pyinstaller living in one env, pick ONE:
 # Option A: install pyinstaller in painter env
-Run "painter\env\Scripts\pip install pyinstaller"
+Run "painter\env\Scripts\pip install --upgrade pyinstaller"
+
 
 # Optional: print PyQt sanity (if applicable)
 Run "painter\env\Scripts\python -c `"import PyQt5; print('PyQt5 OK')`""
@@ -35,6 +36,7 @@ Run "painter\env\Scripts\python -c `"import PyQt5; print('PyQt5 OK')`""
 # If you have a Windows script already, call it here:
 #
 Run "painter\env\Scripts\python painter\src\build\build_workstation.py"
+
 
 
 # Zip output if present (nice for Actions downloads)

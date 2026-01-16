@@ -5,8 +5,8 @@ on:
 
 jobs:
   build-ubuntu-cuda128:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    runs-on: ubuntu-latest-xl
+    timeout-minutes: 180
 
     steps:
       - name: Checkout

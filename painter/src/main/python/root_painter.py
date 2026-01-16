@@ -68,6 +68,9 @@ from im_viewer import ContextViewer
 from random_split import RandomSplitWidget
 from resize_images import ResizeWidget
 from controls_dialog import ControlsDialog
+from server_manager import find_trainer_launch, ServerManager, ServerLogDialog
+
+
 
 use_plugin("pil")
 
@@ -85,6 +88,9 @@ class RootPainter(QtWidgets.QMainWindow):
         self.setWindowIcon(QtGui.QIcon(os.path.join(app_dir, 'icons/linux/128.png')))
 
         self.assign_sync_directory(sync_dir)
+        spec = find_trainer_launch()
+        self.server_manager = ServerManager(spec, parent=self) if spec else None
+
         self.tracking = False
 
         self.contrast_enhance_enabled = False
@@ -489,6 +495,12 @@ class RootPainter(QtWidgets.QMainWindow):
         # # segment folder
         self.segment_folder_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
                                                     'Segment folder', self)
+
+        if self.server_manager:
+            server_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'),
+                                                     'Open Server', self)
+            server_btn.triggered.connect(self.show_server_window)
+            self.network_menu.addAction(server_btn)
 
         def show_segment_folder():
             self.segment_folder_widget = SegmentFolderWidget(self.sync_dir,
@@ -1001,7 +1013,7 @@ class RootPainter(QtWidgets.QMainWindow):
                                                    'View image context',
                                                     self)
 
-        show_image_context_btn.setShortcut('Ctrl+C')
+        show_image_context_btn.setShortcut('Ctrl+Shift+C')
 
         def show_image_context():
             proj_settings = json.load(open(self.proj_file_path))
@@ -1063,6 +1075,16 @@ class RootPainter(QtWidgets.QMainWindow):
         stop_training_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Stop training', self)
         stop_training_btn.triggered.connect(self.stop_training)
         network_menu.addAction(stop_training_btn)
+
+
+
+
+
+        if self.server_manager:
+            server_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Open server', self)
+            server_btn.triggered.connect(self.show_server_window)
+            network_menu.addAction(server_btn)
+
 
         # # segment folder
         segment_folder_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Segment folder', self)
@@ -1137,6 +1159,18 @@ class RootPainter(QtWidgets.QMainWindow):
         self.messages_label.setText("Stopping training...")
         content = {"message_dir": self.message_dir}
         self.send_instruction('stop_training', content)
+
+
+    def show_server_window(self):
+        if not self.server_manager:
+            QtWidgets.QMessageBox.information(self, "Server", "No bundled server found.")
+            return
+        if not hasattr(self, "server_log_dialog") or self.server_log_dialog is None:
+            self.server_log_dialog = ServerLogDialog(self.server_manager, self.sync_dir, parent=self)
+        self.server_log_dialog.show()
+        self.server_log_dialog.raise_()
+        self.server_log_dialog.activateWindow()
+
 
     def start_training(self):
         self.messages_label.setText("Starting training...")

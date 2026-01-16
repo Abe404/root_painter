@@ -47,9 +47,15 @@ jobs:
           test -f painter/dist/RootPainter.app/Contents/MacOS/RootPainterTrainerBundle/RootPainterTrainer
           test -d painter/dist/RootPainter.app/Contents/MacOS/RootPainterTrainerBundle/_internal
 
+      - name: Zip .app (preserve bundle)
+        shell: bash
+        run: |
+          cd painter/dist
+          ditto -c -k --keepParent RootPainter.app RootPainter-Workstation-macOS.zip
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: RootPainter-Workstation-macOS
-          path: painter/dist/RootPainter.app
-
+          path: painter/dist/RootPainter-Workstation-macOS.zip
+          if-no-files-found: error

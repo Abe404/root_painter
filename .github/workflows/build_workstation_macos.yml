@@ -2,9 +2,6 @@ name: Build Workstation (macOS)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ master ]
-  pull_request:
 
 jobs:
   build-macos:

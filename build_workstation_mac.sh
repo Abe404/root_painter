@@ -2,22 +2,35 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
+# -----------------------
 # Trainer: deps + build
+# -----------------------
 cd "$ROOT/trainer"
 source env/bin/activate
-pip install -r requirements.txt pyinstaller
+
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install pyinstaller
+
 python src/build/run_pyinstaller_trainer.py
 deactivate
 
+# -----------------------
 # Painter: deps + build
+# -----------------------
 cd "$ROOT/painter"
 source env/bin/activate
-pip install -r requirements.txt pyinstaller
-pip install pyinstaller
+
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install pyinstaller
+
 python src/build/run_pyinstaller_workstation.py
 deactivate
 
-# Bundle trainer into app (use the *actual* PyInstaller output location)
+# -----------------------
+# Bundle trainer into app
+# -----------------------
 APP="$ROOT/painter/dist/RootPainter.app"
 APP_MACOS="$APP/Contents/MacOS"
 
@@ -36,5 +49,5 @@ cp -R "$ROOT/trainer/src/dist/RootPainterTrainer" "$APP_MACOS/RootPainterTrainer
 # Make sure main trainer binary is executable
 chmod +x "$APP_MACOS/RootPainterTrainerBundle/RootPainterTrainer"
 
-echo "OK: open \"$APP\""
+echo "OK: built workstation app at: $APP"
 

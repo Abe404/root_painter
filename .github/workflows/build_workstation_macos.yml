@@ -1,0 +1,55 @@
+name: Build Workstation (macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('trainer/requirements.txt', 'painter/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Create venvs
+        shell: bash
+        run: |
+          python -m venv trainer/env
+          python -m venv painter/env
+
+      - name: Build Workstation (macOS)
+        shell: bash
+        run: |
+          chmod +x build_workstation_mac.sh
+          ./build_workstation_mac.sh
+
+      - name: Sanity check bundle layout
+        shell: bash
+        run: |
+          test -f painter/dist/RootPainter.app/Contents/MacOS/RootPainterTrainerBundle/RootPainterTrainer
+          test -d painter/dist/RootPainter.app/Contents/MacOS/RootPainterTrainerBundle/_internal
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RootPainter-Workstation-macOS
+          path: painter/dist/RootPainter.app
+

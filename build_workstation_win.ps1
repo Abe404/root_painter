@@ -35,7 +35,8 @@ Run "painter\env\Scripts\python -c `"import PyQt5; print('PyQt5 OK')`""
 # Run your build entrypoint
 # If you have a Windows script already, call it here:
 #
-Run "painter\env\Scripts\python painter\src\build\build_workstation.py"
+Run "painter\env\Scripts\python painter\src\build\run_pyinstaller_workstation.py"
+
 
 
 

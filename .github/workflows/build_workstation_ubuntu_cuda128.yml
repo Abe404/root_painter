@@ -1,0 +1,52 @@
+name: Build Workstation (Ubuntu, CUDA 12.8 / RTX50)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ubuntu-cuda128:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: System deps (Qt + runtime libs)
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            patchelf \
+            libgl1 \
+            libglib2.0-0 \
+            libxkbcommon-x11-0 \
+            libxcb-xinerama0 \
+            libxrender1 \
+            libxext6 \
+            libx11-6
+
+      - name: Build Workstation (Ubuntu CUDA128)
+        shell: bash
+        run: |
+          chmod +x build_workstation_ubuntu_cuda128.sh
+          ./build_workstation_ubuntu_cuda128.sh
+
+      - name: Sanity check bundle layout
+        shell: bash
+        run: |
+          test -x painter/dist/RootPainterWorkstation/RootPainter
+          test -x painter/dist/RootPainterWorkstation/RootPainterTrainerBundle/RootPainterTrainer
+          test -d painter/dist/RootPainterWorkstation/RootPainterTrainerBundle/_internal
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RootPainter-Workstation-Ubuntu-CUDA128-RTX50
+          path: painter/dist/RootPainterWorkstation

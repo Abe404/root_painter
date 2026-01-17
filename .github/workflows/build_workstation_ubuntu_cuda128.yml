@@ -38,6 +38,16 @@ jobs:
           chmod +x build_workstation_ubuntu_cuda128.sh
           ./build_workstation_ubuntu_cuda128.sh
 
+      - name: Inspect dist output
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ls -lah painter/dist || true
+          find painter/dist -maxdepth 2 -type d -print || true
+          du -sh painter/dist/* 2>/dev/null || true
+          df -h
+          free -h
+
       - name: Sanity check bundle layout
         shell: bash
         run: |

@@ -35,8 +35,15 @@ jobs:
       - name: Build Workstation (Ubuntu CUDA128)
         shell: bash
         run: |
+          set -euxo pipefail
           chmod +x build_workstation_ubuntu_cuda128.sh
           ./build_workstation_ubuntu_cuda128.sh
+
+          echo "=== POST-BUILD STATE (inside build step) ==="
+          ls -lah painter/dist || true
+          du -sh painter/dist/* 2>/dev/null || true
+          df -h || true
+          free -h || true
 
       - name: Inspect dist output
         shell: bash

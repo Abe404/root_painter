@@ -3,6 +3,11 @@ name: Build Workstation (Ubuntu, CUDA 12.8 / RTX50)
 on:
   workflow_dispatch:
 
+env:
+  ACTIONS_RUNNER_DEBUG: 'true'
+  ACTIONS_STEP_DEBUG: 'true'
+
+
 jobs:
   build-ubuntu-cuda128:
     runs-on: ubuntu-24.04
@@ -32,10 +37,18 @@ jobs:
             libxext6 \
             libx11-6
 
+
       - name: Build Workstation (Ubuntu CUDA128)
         shell: bash
         run: |
           set -euxo pipefail
+
+          # heartbeat in background
+          (while true; do echo "heartbeat $(date -Is)"; sleep 10; done) &
+          HB_PID=$!
+
+          trap 'kill $HB_PID 2>/dev/null || true' EXIT
+
           chmod +x build_workstation_ubuntu_cuda128.sh
           ./build_workstation_ubuntu_cuda128.sh
 

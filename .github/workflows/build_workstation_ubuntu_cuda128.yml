@@ -22,6 +22,16 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Show Python paths
+        shell: bash
+        run: |
+          which python || true
+          python --version || true
+          which python3 || true
+          python3 --version || true
+          which python3.11 || true
+          python3.11 --version || true
+
       - name: Free disk space
         shell: bash
         run: |

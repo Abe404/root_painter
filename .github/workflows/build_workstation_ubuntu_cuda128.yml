@@ -22,6 +22,18 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Free disk space
+        shell: bash
+        run: |
+          set -euxo pipefail
+          df -h
+          sudo rm -rf /opt/hostedtoolcache || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/local/share/boost || true
+          sudo rm -rf /usr/share/swift || true
+          df -h
+
       - name: System deps (Qt + runtime libs)
         shell: bash
         run: |

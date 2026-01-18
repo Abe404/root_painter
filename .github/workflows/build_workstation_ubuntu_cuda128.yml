@@ -4,9 +4,8 @@ on:
   workflow_dispatch:
 
 env:
-  ACTIONS_RUNNER_DEBUG: 'true'
-  ACTIONS_STEP_DEBUG: 'true'
-
+  ACTIONS_RUNNER_DEBUG: "true"
+  ACTIONS_STEP_DEBUG: "true"
 
 jobs:
   build-ubuntu-cuda128:
@@ -18,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -25,6 +25,8 @@ jobs:
       - name: Show Python paths
         shell: bash
         run: |
+          set -euxo pipefail
+          echo "setup-python.outputs.python-path=${{ steps.setup-python.outputs.python-path }}"
           which python || true
           python --version || true
           which python3 || true
@@ -37,7 +39,6 @@ jobs:
         run: |
           set -euxo pipefail
           df -h
-          sudo rm -rf /opt/hostedtoolcache || true
           sudo rm -rf /usr/share/dotnet || true
           sudo rm -rf /usr/local/lib/android || true
           sudo rm -rf /usr/local/share/boost || true
@@ -47,6 +48,7 @@ jobs:
       - name: System deps (Qt + runtime libs)
         shell: bash
         run: |
+          set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
@@ -59,16 +61,16 @@ jobs:
             libxext6 \
             libx11-6
 
-
       - name: Build Workstation (Ubuntu CUDA128)
         shell: bash
+        env:
+          PYTHON: ${{ steps.setup-python.outputs.python-path }}
         run: |
           set -euxo pipefail
 
-          # heartbeat in background
+          # heartbeat in background (keeps logs flowing)
           (while true; do echo "heartbeat $(date -Is)"; sleep 10; done) &
           HB_PID=$!
-
           trap 'kill $HB_PID 2>/dev/null || true' EXIT
 
           chmod +x build_workstation_ubuntu_cuda128.sh
@@ -107,3 +109,4 @@ jobs:
         with:
           name: RootPainter-Workstation-Ubuntu-CUDA128-RTX50
           path: painter/dist/RootPainterWorkstation
+

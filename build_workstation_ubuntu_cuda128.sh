@@ -2,11 +2,17 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-PYTHON="${PYTHON:-python3.11}"
+PYTHON="${PYTHON:-python}"
 
-# Fail fast if python3.11 isn't available
+# Fail fast if interpreter isn't available
 command -v "$PYTHON" >/dev/null 2>&1 || {
-  echo "ERROR: $PYTHON not found. Install Python 3.11 or set PYTHON=/path/to/python3.11"
+  echo "ERROR: $PYTHON not found. Set PYTHON=/path/to/python"
+  exit 1
+}
+
+# Enforce Python 3.11 (without hardcoding binary name)
+"$PYTHON" -c 'import sys; assert sys.version_info[:2]==(3,11), sys.version' || {
+  echo "ERROR: Python 3.11 required. Current: $("$PYTHON" -V 2>&1)"
   exit 1
 }
 

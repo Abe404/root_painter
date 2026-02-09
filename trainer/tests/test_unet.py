@@ -5,22 +5,24 @@ Can the network be trained to approximate and target.
 
 import sys
 import os
-# Add the parent directory to sys.path
-parent_dir = os.path.abspath('../')
-sys.path.insert(0, parent_dir)
+# Add trainer/src to sys.path so we can import the project modules
+test_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.join(os.path.dirname(test_dir), 'src')
+sys.path.insert(0, src_dir)
+sys.path.insert(0, test_dir)
 
-# Now you can import the module located in the parent directory
 from torch.nn.functional import softmax
 from unet import UNetGNRes
 from test_utils import get_acc
 
+temp_out = os.path.join(test_dir, 'test_temp_output')
+
 def setup_function():
-    import os
     """setup any state tied to the execution of the given function.
     Invoked for every test function in the module.
     """
-    if not os.path.isdir('test_temp_output'):
-        os.makedirs('test_temp_output')
+    if not os.path.isdir(temp_out):
+        os.makedirs(temp_out)
 
 
 def test_inference():
@@ -44,7 +46,7 @@ def test_inference():
     output = output[0] # single image.
     output = output.numpy()
     im = img_as_uint(output)
-    imsave('test_temp_output/out.png', im, check_contrast=False)
+    imsave(os.path.join(temp_out, 'out.png'), im, check_contrast=False)
 
 
 def test_training():
@@ -80,8 +82,8 @@ def test_training():
         output = output.detach().cpu().numpy()
         output = output[0] # single image.
         im = img_as_uint(output)
-        imsave('test_temp_output/out_' + str(step).zfill(3) + '.png', im,
-               check_contrast=False)
+        imsave(os.path.join(temp_out, 'out_' + str(step).zfill(3) + '.png'),
+               im, check_contrast=False)
         # if loss < 1e-7: this requires model update see unetv2
         if loss < 1.1e-3:
             print('reached loss of ', loss.item(), 'after', step, 'steps')
@@ -117,7 +119,7 @@ def test_mask_training():
     target = (test_input[:, 0, 36:-36, 36:-36] > 0.5)
     target = target.float().to(device)
 
-    imsave('test_temp_output/targ.png',
+    imsave(os.path.join(temp_out, 'targ.png'),
            img_as_uint(target.float().cpu().numpy()),
            check_contrast=False)
 
@@ -138,8 +140,8 @@ def test_mask_training():
         output = output.detach().cpu().numpy()
         output = output[0] # singke image.
         im = img_as_uint(output)
-        imsave('test_temp_output/out_' + str(step).zfill(3) + '.png', im,
-               check_contrast=False)
+        imsave(os.path.join(temp_out, 'out_' + str(step).zfill(3) + '.png'),
+               im, check_contrast=False)
         acc = get_acc(output, target)
         print(acc, end=',')
         if get_acc(output, target) == 1:

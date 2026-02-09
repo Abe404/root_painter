@@ -1,8 +1,12 @@
 
-import sys; import os; import numpy as np
-# Add the parent directory to sys.path
-parent_dir = os.path.abspath('../')
-sys.path.insert(0, parent_dir)
+import sys
+import os
+import numpy as np
+
+# Add trainer/src to sys.path so we can import the project modules
+test_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.join(os.path.dirname(test_dir), 'src')
+sys.path.insert(0, src_dir)
 
 import torch
 from torch.nn.functional import softmax, binary_cross_entropy 

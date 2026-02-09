@@ -21,9 +21,10 @@ import os
 import sys
 import shutil
 
-# Add the parent directory to sys.path
-parent_dir = os.path.abspath('../')
-sys.path.insert(0, parent_dir)
+# Add trainer/src to sys.path so we can import the project modules
+test_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.join(os.path.dirname(test_dir), 'src')
+sys.path.insert(0, src_dir)
 
 
 from metrics import get_metrics_str, get_metric_csv_row

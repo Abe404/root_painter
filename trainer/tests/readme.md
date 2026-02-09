@@ -1,13 +1,9 @@
 Tests for the server (trainer) component of RootPainter
 
-To run the tests (from this directory).
+To run the unit tests (from this directory):
 
-pytest 
+    ../env/bin/python -m pytest test_loss.py test_unet.py -v
 
+To run the training benchmarks (downloads data from Zenodo on first run):
 
-
-## TODO / Roadmap
-
-    * Get tests to run without error.
-        - figure out why tests are failing.
-
+    ../env/bin/python -m pytest test_training.py -v -s

@@ -18,8 +18,8 @@ dependencies = [
     "numpy==2.3.4",
     "scikit-image==0.25.2",
     "scipy==1.16.2",
-    "torch==2.6.0",
-    "torchvision==0.21.0",
+    "torch>=2.8.0",
+    "torchvision>=0.23.0",
 ]
 license = {text = "GPL-2.0"}
 requires-python = ">=3.11,<3.13"

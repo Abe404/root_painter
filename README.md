@@ -36,12 +36,12 @@ If you are not confident installing and running python applications on the comma
 
 #### Server setup 
 
-The following instructions are for a local server. If you do not have a suitable NVIDIA GPU with at least 8GB of GPU memory then my current recommendation is to run via Google colab. A publicly available notebook is available at [Google Drive with Google Colab](https://colab.research.google.com/drive/104narYAvTBt-X4QEDrBSOZm_DRaAKHtA?usp=sharing).
+The following instructions are for a local server. If you do not have a suitable NVIDIA GPU (at least 8GB of GPU memory) or a Mac with Apple Silicon, then my current recommendation is to run via Google colab. A publicly available notebook is available at [Google Drive with Google Colab](https://colab.research.google.com/drive/104narYAvTBt-X4QEDrBSOZm_DRaAKHtA?usp=sharing).
 
 Other options to run the server component of RootPainter on a remote machine include the [the sshfs server setup tutorial](https://github.com/Abe404/root_painter/blob/master/docs/server_setup_sshfs.md). You can also use Dropbox instead of sshfs.
 
 
-For the next steps I assume you have a suitable GPU and CUDA installed.
+For the next steps I assume you have a suitable GPU (NVIDIA with CUDA, or Apple Silicon with MPS).
 
 1. To install the RootPainter trainer:
 

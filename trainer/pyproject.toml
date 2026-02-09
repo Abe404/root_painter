@@ -1,8 +1,7 @@
 [project]
 name = "root_painter_trainer"
-version = "0.2.28"
-description = "Trainer (server component) for RootPainter"
-readme = "README.md"
+version = "0.2.28.1"
+description = "Training server for RootPainter. Handles model training and segmentation. See https://github.com/Abe404/root_painter"
 authors = [
     {name = "Abraham George Smith"},
 ]

@@ -48,23 +48,13 @@ def get_latest_model_paths(model_dir, k):
 
 def load_model(model_path):
     model = UNetGNRes()
-    if torch.cuda.is_available() or torch.backends.mps.is_available():
-        try:
-            model.load_state_dict(torch.load(model_path))
-            model = torch.nn.DataParallel(model)
-        except:
-            model = torch.nn.DataParallel(model)
-            model.load_state_dict(torch.load(model_path))
-        model.to(device)
-    else:
-        # if you are running on a CPU-only machine, please use torch.load with 
-        # map_location=torch.device('cpu') to map your storages to the CPU.
-        try:
-            model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
-            model = torch.nn.DataParallel(model)
-        except:
-            model = torch.nn.DataParallel(model)
-            model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+    try:
+        model.load_state_dict(torch.load(model_path, map_location=device))
+        model = torch.nn.DataParallel(model)
+    except:
+        model = torch.nn.DataParallel(model)
+        model.load_state_dict(torch.load(model_path, map_location=device))
+    model.to(device)
     return model
 
 def create_first_model_with_random_weights(model_dir):

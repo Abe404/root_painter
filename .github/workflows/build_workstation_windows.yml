@@ -36,11 +36,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RootPainter-Workstation-Windows
-          path: |
-            painter\src\build\dist\**
-            painter\src\build\out\**
-            **\*.exe
-            **\*.msi
-            **\*.zip
-          if-no-files-found: warn
+          path: dist\RootPainterWorkstation\
+          if-no-files-found: error
 

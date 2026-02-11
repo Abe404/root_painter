@@ -32,10 +32,9 @@ jobs:
           Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
           ./build_workstation_win.ps1
 
-      - name: Build NSIS installer
-        uses: joncloud/makensis-action@v4
-        with:
-          script-file: painter/src/build/assets/Installer.nsi
+      - name: Build Inno Setup installer
+        shell: pwsh
+        run: iscc painter\src\build\assets\InstallerWorkstation.iss
 
       - name: Upload installer
         uses: actions/upload-artifact@v4

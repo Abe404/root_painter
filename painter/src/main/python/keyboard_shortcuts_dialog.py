@@ -40,7 +40,7 @@ class KeyboardShortcutsDialog(QtWidgets.QDialog):
             ("Zoom", "Scroll"),
             ("Fit to view", "Ctrl+F"),
             ("Actual size", "Ctrl+A"),
-            ("Pan", "Right-click drag"),
+            ("Pan", "Ctrl+Right-click drag"),
         ]
 
         layout = QtWidgets.QVBoxLayout()

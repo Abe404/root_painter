@@ -67,7 +67,7 @@ from plot_seg_metrics import MetricsPlot, ExtractMetricsWidget
 from im_viewer import ContextViewer
 from random_split import RandomSplitWidget
 from resize_images import ResizeWidget
-from controls_dialog import ControlsDialog
+from keyboard_shortcuts_dialog import KeyboardShortcutsDialog
 from server_manager import find_trainer_launch, ServerManager, ServerLogDialog
 
 
@@ -511,7 +511,7 @@ class RootPainter(QtWidgets.QMainWindow):
 
         self.add_measurements_menu(menu_bar)
         self.add_extras_menu(menu_bar)
-        self.add_about_menu(menu_bar)
+        self.add_help_menu(menu_bar)
 
         ### Add project btns to open window (so it shows something useful)
         project_btn_widget = QtWidgets.QWidget()
@@ -705,15 +705,25 @@ class RootPainter(QtWidgets.QMainWindow):
 
     
 
-    def add_about_menu(self, menu_bar):
-        about_menu = menu_bar.addMenu('About')
+    def add_help_menu(self, menu_bar):
+        help_menu = menu_bar.addMenu('Help')
+
+        shortcuts_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Keyboard Shortcuts', self)
+        shortcuts_btn.setShortcut('C')
+        shortcuts_btn.triggered.connect(self.show_keyboard_shortcuts)
+        help_menu.addAction(shortcuts_btn)
+
         license_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'License', self)
         license_btn.triggered.connect(self.show_license_window)
-        about_menu.addAction(license_btn)
+        help_menu.addAction(license_btn)
 
-        about_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'RootPainter', self)
+        about_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'About RootPainter', self)
         about_btn.triggered.connect(self.show_about_window)
-        about_menu.addAction(about_btn)
+        help_menu.addAction(about_btn)
+
+    def show_keyboard_shortcuts(self):
+        self.keyboard_shortcuts_dialog = KeyboardShortcutsDialog(self)
+        self.keyboard_shortcuts_dialog.show()
 
     def show_license_window(self):
         self.license_window = LicenseWindow()
@@ -812,15 +822,6 @@ class RootPainter(QtWidgets.QMainWindow):
         bottom_bar_r_layout.addWidget(info_container_right)
         bottom_bar_r_layout.setContentsMargins(0, 0, 0, 0)
 
-        # checkbox to show controls
-        self.controls_checkbox = QtWidgets.QCheckBox("Controls (C)")
-        self.controls_checkbox.stateChanged.connect(self.show_controls)
-        info_container_right_layout.addWidget(self.controls_checkbox)
-
-         # Add keyboard shortcut to show controls
-        shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("C"), self)
-        shortcut.activated.connect(self.check_controls_checkbox)
-
         self.add_menu()
 
         self.resize(container_layout.sizeHint())
@@ -832,21 +833,6 @@ class RootPainter(QtWidgets.QMainWindow):
             self.update_cursor()
             self.graphics_view.fit_to_view()
         QtCore.QTimer.singleShot(100, view_fix)
-
-    def show_controls(self, state):
-        if state == QtCore.Qt.Checked:
-            self.controls_dialog = ControlsDialog(self)
-            self.controls_dialog.closed.connect(self.uncheck_controls_checkbox)
-            self.controls_dialog.show()
-        else:
-            if hasattr(self, 'controls_dialog') and self.controls_dialog.isVisible():
-                self.controls_dialog.close()
-
-    def uncheck_controls_checkbox(self):
-        self.controls_checkbox.setChecked(False)
-
-    def check_controls_checkbox(self):
-        self.controls_checkbox.setChecked(True)
 
     def track_changes(self):
         if self.tracking:
@@ -1104,6 +1090,7 @@ class RootPainter(QtWidgets.QMainWindow):
 
         self.add_measurements_menu(menu_bar)
         self.add_extras_menu(menu_bar, project_open=True)
+        self.add_help_menu(menu_bar)
 
 
     def add_measurements_menu(self, menu_bar):

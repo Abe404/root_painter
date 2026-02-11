@@ -32,10 +32,21 @@ jobs:
           Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
           ./build_workstation_win.ps1
 
-      - name: Upload artifacts
+      - name: Build NSIS installer
+        uses: joncloud/makensis-action@v4
+        with:
+          script-file: painter/src/build/assets/Installer.nsi
+
+      - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: RootPainter-Workstation-Windows
-          path: dist\RootPainterWorkstation\
+          name: RootPainter-Workstation-Windows-Installer
+          path: dist\RootPainterWorkstationInstaller.exe
           if-no-files-found: error
 
+      - name: Upload portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: RootPainter-Workstation-Windows-Portable
+          path: dist\RootPainterWorkstation\
+          if-no-files-found: error

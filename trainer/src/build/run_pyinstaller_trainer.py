@@ -27,6 +27,14 @@ PyInstaller.__main__.run([
     "--hidden-import", "torchvision.io",
     "--hidden-import", "torchvision.transforms",
 
+    # Exclude unused CUDA/torch packages to reduce build size (~2.3GB savings)
+    "--exclude-module", "triton",         # torch.compile JIT, not needed
+    "--exclude-module", "nvidia.nccl",    # multi-GPU communication
+    "--exclude-module", "nvidia.nvshmem", # multi-node communication
+    "--exclude-module", "nvidia.cufft",   # FFT operations
+    "--exclude-module", "nvidia.cusparselt",  # sparse matrix ops
+    "--exclude-module", "nvidia.cusparse",    # sparse matrix ops
+
     "--distpath", str(DIST),
     "--workpath", str(WORK),
     str(ENTRY),

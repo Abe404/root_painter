@@ -61,7 +61,8 @@ def ensure_required_folders_exist(sync_dir):
 
     # RootPainter requires some folders to run. If they aren't already
     # in the sync_dir then create them
-    required_subfolders = ['projects', 'datasets', 'instructions']
+    required_subfolders = ['projects', 'datasets', 'instructions',
+                           'executed_instructions', 'failed_instructions']
     for subfolder in required_subfolders:
         subfolder_path = os.path.join(sync_dir_abs, subfolder)
         if not os.path.isdir(subfolder_path):

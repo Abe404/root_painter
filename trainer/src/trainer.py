@@ -53,13 +53,7 @@ class Trainer():
 
     def __init__(self, sync_dir=None, patch_size=572,
                  max_workers=12,
-                 instruction_deleted_hook=None,
-                 segmentation_created_hook=None,
-                 model_saved_hook=None):
-
-        self.instruction_deleted_hook = instruction_deleted_hook
-        self.segmentation_created_hook = segmentation_created_hook
-        self.model_saved_hook = model_saved_hook
+                 ):
 
 
         valid_sizes = get_valid_patch_sizes()
@@ -77,6 +71,10 @@ class Trainer():
 
         ensure_required_folders_exist(self.sync_dir)
         self.instruction_dir = os.path.join(self.sync_dir, 'instructions')
+        self.executed_dir = os.path.join(self.sync_dir, 'executed_instructions')
+        self.failed_dir = os.path.join(self.sync_dir, 'failed_instructions')
+        self.retry_counts = {}
+        self.max_retries = 60
         self.training = False
         self.train_set = None
         # Can be set by instructions.
@@ -169,57 +167,31 @@ class Trainer():
             for fname in ls(self.instruction_dir):
                 fpath = os.path.join(self.instruction_dir, fname)
                 if not os.path.exists(fpath):
-                    continue
-                try:
-                    with open(fpath, 'r') as json_file:
-                        contents = json_file.read()
-                except:
-                    continue  # silently skip unreadable files
-                if self.execute_instruction(fname, contents):
-                    try:
-                        os.remove(fpath)
-                    except:
-                        pass  # silently ignore failed deletions
-                    if self.instruction_deleted_hook:
-                        self.instruction_deleted_hook(fpath)
-        except Exception as e:
-            self.log(f'Exception in check_for_instructions: {e}')
-
-
-    def execute_instruction(self, fname, contents):
-        name = fname.rpartition('_')[0]
-        if name in [i.__name__ for i in self.valid_instructions]:
-            try:
-                if not contents.strip():
-                    return False
-                config = self.fix_config_paths(json.loads(contents))
-                getattr(self, name)(config)
-            except Exception as e:
-                self.log(f'Exception parsing instruction,{e},{traceback.format_exc()}')
-                return False
-        else:
-            return False
-        return True
-
-
-    def check_for_instructions(self):
-        try:
-            for fname in ls(self.instruction_dir):
-                fpath = os.path.join(self.instruction_dir, fname)
-                if not os.path.exists(fpath):
                     continue  # File was deleted or incomplete, skip
                 # Attempt to read file first
                 try:
                     with open(fpath, 'r') as json_file:
                         contents = json_file.read()
                 except Exception as e:
-                    # ("Skipping unreadable file '{fname}':", e)
                     continue
 
-                if self.execute_instruction(fname, contents):
-                    if self.instruction_deleted_hook:
-                        self.instruction_deleted_hook(fpath)
-                    os.remove(fpath)
+                success, error_msg = self.execute_instruction(fname, contents)
+                if success:
+                    shutil.move(fpath, os.path.join(self.executed_dir, fname))
+                    self.retry_counts.pop(fname, None)
+                else:
+                    self.retry_counts[fname] = self.retry_counts.get(fname, 0) + 1
+                    if self.retry_counts[fname] >= self.max_retries:
+                        print(f'Moving {fname} to failed after'
+                              f' {self.max_retries} retries')
+                        shutil.move(fpath, os.path.join(self.failed_dir, fname))
+                        # write the last error alongside the instruction
+                        error_path = os.path.join(
+                            self.failed_dir,
+                            fname + '_exception.txt')
+                        with open(error_path, 'w') as f:
+                            f.write(error_msg or 'Unknown error')
+                        self.retry_counts.pop(fname, None)
 
         except Exception as e:
             print('Exception checking for instruction', e)
@@ -231,19 +203,19 @@ class Trainer():
         if name in [i.__name__ for i in self.valid_instructions]:
             try:
                 if contents.strip() == "":
-                    # ("Instruction file is empty, skipping:", name)
-                    return False
+                    return False, 'Instruction file is empty'
                 config = self.fix_config_paths(json.loads(contents))
                 print('execute_instruction', name)
                 getattr(self, name)(config)
             except Exception as e:
+                error_msg = f'{e}\n{traceback.format_exc()}'
                 print('Exception parsing instruction', e)
                 print(f'{traceback.format_exc()}')
                 self.log(f'Exception parsing instruction,{e},{traceback.format_exc()}')
-                return False
+                return False, error_msg
         else:
             raise Exception(f"Unhandled instruction: {name}")
-        return True
+        return True, None
 
     def stop_training(self, _):
         if self.training:
@@ -417,10 +389,6 @@ class Trainer():
                                    cur_metrics['f1'], prev_metrics['f1'])
         if was_saved:
             self.epochs_without_progress = 0
-            if self.model_saved_hook:
-                latest_model_path = model_utils.get_latest_model_paths(model_dir, 1)[0]
-                self.model_saved_hook(latest_model_path)
-
         else:
             self.epochs_without_progress += 1
 
@@ -573,5 +541,3 @@ class Trainer():
                     seg_out  = (seg_alpha * 255).astype(np.uint8)
 
                 save_then_move(out_path, seg_out, npy)
-                if self.segmentation_created_hook:
-                    self.segmentation_created_hook(out_path)

@@ -1,0 +1,193 @@
+name: Build Custom PyTorch Wheel (minimal CUDA)
+
+on:
+  workflow_dispatch:
+    inputs:
+      pytorch_ref:
+        description: "PyTorch git ref (tag, branch, or commit)"
+        required: true
+        default: "v2.7.1"
+      torchvision_ref:
+        description: "torchvision git ref (tag, branch, or commit)"
+        required: true
+        default: "v0.22.1"
+      cuda_arch:
+        description: "CUDA arch list (e.g. 12.0 for Blackwell)"
+        required: true
+        default: "12.0"
+      release_tag:
+        description: "GitHub release tag to create and upload wheels to"
+        required: true
+        default: "torch-cu128-sm120-v1"
+
+jobs:
+  build-torch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout (for release creation)
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        shell: bash
+        run: |
+          set -euxo pipefail
+          df -h
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/local/share/boost || true
+          sudo rm -rf /usr/share/swift || true
+          sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+          sudo rm -rf /opt/hostedtoolcache/go || true
+          sudo rm -rf /opt/hostedtoolcache/node || true
+          sudo docker image prune --all --force || true
+          df -h
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CUDA 12.8 toolkit
+        shell: bash
+        run: |
+          set -euxo pipefail
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
+          sudo apt-get update
+          sudo apt-get install -y cuda-toolkit-12-8
+          echo "/usr/local/cuda-12.8/bin" >> "$GITHUB_PATH"
+          echo "CUDA_HOME=/usr/local/cuda-12.8" >> "$GITHUB_ENV"
+          echo "CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-12.8" >> "$GITHUB_ENV"
+
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install cmake ninja wheel "setuptools<81" typing_extensions pyyaml numpy
+
+      - name: Clone PyTorch
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch ${{ inputs.pytorch_ref }} --recursive \
+            https://github.com/pytorch/pytorch.git /tmp/pytorch
+
+      - name: Build PyTorch wheel
+        shell: bash
+        env:
+          # Enable only the CUDA features RootPainter actually needs
+          USE_CUDA: "1"
+          USE_CUDNN: "1"
+          USE_CUBLAS: "1"
+          USE_CURAND: "1"
+          # Disable unused CUDA libraries (biggest size savings)
+          USE_NCCL: "0"
+          USE_CUSPARSELT: "0"
+          USE_CUSPARSE: "0"
+          USE_CUFFT: "0"
+          USE_CUSOLVER: "0"
+          USE_CUFILE: "0"
+          # Disable distributed training (RootPainter uses DataParallel, not DDP)
+          USE_DISTRIBUTED: "0"
+          USE_TENSORPIPE: "0"
+          USE_GLOO: "0"
+          USE_MPI: "0"
+          # Disable unused backends
+          BUILD_TEST: "0"
+          USE_FLASH_ATTENTION: "0"
+          USE_MEM_EFF_ATTENTION: "0"
+          USE_NNPACK: "0"
+          USE_QNNPACK: "0"
+          USE_XNNPACK: "0"
+          # Keep useful features
+          USE_OPENMP: "1"
+          USE_FBGEMM: "1"
+          # Target specific GPU architecture
+          TORCH_CUDA_ARCH_LIST: ${{ inputs.cuda_arch }}
+          MAX_JOBS: "4"
+        run: |
+          set -euxo pipefail
+          cd /tmp/pytorch
+          python setup.py bdist_wheel
+          ls -lh dist/
+
+      - name: Build torchvision wheel
+        shell: bash
+        env:
+          TORCH_CUDA_ARCH_LIST: ${{ inputs.cuda_arch }}
+        run: |
+          set -euxo pipefail
+          # Install the custom torch wheel first
+          python -m pip install /tmp/pytorch/dist/torch-*.whl
+
+          git clone --depth 1 --branch ${{ inputs.torchvision_ref }} --recursive \
+            https://github.com/pytorch/vision.git /tmp/vision
+          cd /tmp/vision
+          python setup.py bdist_wheel
+          ls -lh dist/
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install /tmp/vision/dist/torchvision-*.whl
+          python -c "
+          import torch
+          print('torch version:', torch.__version__)
+          print('CUDA available:', torch.cuda.is_available())
+          print('CUDA built:', torch.version.cuda)
+
+          # CPU forward + backward pass (no GPU on CI runner)
+          conv = torch.nn.Conv2d(3, 16, 3, padding=1)
+          x = torch.randn(1, 3, 32, 32)
+          y = conv(x)
+          loss = y.sum()
+          loss.backward()
+          print('CPU forward+backward: OK')
+
+          import torchvision
+          print('torchvision version:', torchvision.__version__)
+          print('Smoke test passed')
+          "
+
+      - name: Collect wheels
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/wheels
+          cp /tmp/pytorch/dist/torch-*.whl /tmp/wheels/
+          cp /tmp/vision/dist/torchvision-*.whl /tmp/wheels/
+          ls -lh /tmp/wheels/
+
+      - name: Upload wheels as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytorch-custom-wheels
+          path: /tmp/wheels/*.whl
+
+      - name: Create GitHub release and upload wheels
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euxo pipefail
+          TAG="${{ inputs.release_tag }}"
+
+          # Create release (or skip if it already exists)
+          gh release create "$TAG" \
+            --title "Custom PyTorch wheels (CUDA 12.8, sm ${{ inputs.cuda_arch }})" \
+            --notes "Minimal PyTorch + torchvision wheels for RootPainter workstation builds.
+
+          **PyTorch ref:** \`${{ inputs.pytorch_ref }}\`
+          **torchvision ref:** \`${{ inputs.torchvision_ref }}\`
+          **CUDA arch:** \`${{ inputs.cuda_arch }}\`
+
+          Built without: nccl, cusparse, cusparselt, cufft, cusolver, distributed, triton, flash-attention" \
+            --prerelease \
+          || echo "Release $TAG may already exist, uploading wheels anyway"
+
+          # Upload wheels to the release
+          gh release upload "$TAG" /tmp/wheels/*.whl --clobber

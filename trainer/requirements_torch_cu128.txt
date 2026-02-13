@@ -1,5 +1,8 @@
---index-url https://download.pytorch.org/whl/nightly/cu128
-
-torch==2.11.0.dev20260211+cu128
-torchvision==0.26.0.dev20260211+cu128
-
+# Custom minimal PyTorch wheels (CUDA 12.8, Blackwell sm_120)
+# Built without: nccl, cusparse, cusparselt, cufft, cusolver, distributed, triton
+#
+# These URLs are a fallback for CI / builds without local wheels.
+# For local builds: ./build_custom_torch.sh outputs wheels to ./dist/
+# and build_workstation_ubuntu_cuda128.sh picks them up automatically.
+https://github.com/Abe404/root_painter/releases/download/torch-cu128-sm120-v1/torch-2.7.1a0+gite2d141d-cp311-cp311-linux_x86_64.whl
+https://github.com/Abe404/root_painter/releases/download/torch-cu128-sm120-v1/torchvision-0.22.1+59a3e1f-cp311-cp311-linux_x86_64.whl

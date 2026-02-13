@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Build the Linux CUDA 12.8 workstation bundle (painter + trainer).
+#
+# PyTorch wheels: uses local wheels from ./dist/ if present (built by
+# ./build_custom_torch.sh), otherwise falls back to the URLs in
+# trainer/requirements_torch_cu128.txt.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -26,7 +31,21 @@ source env/bin/activate
 
 python -m pip install --upgrade pip
 python -m pip install -r requirements_base_no_torch.txt
-python -m pip install -r requirements_torch_cu128.txt
+
+# Use local wheels if available, otherwise fall back to requirements file
+TORCH_WHEEL=$(ls "$ROOT"/dist/torch-*.whl 2>/dev/null | head -1 || true)
+VISION_WHEEL=$(ls "$ROOT"/dist/torchvision-*.whl 2>/dev/null | head -1 || true)
+
+if [ -n "$TORCH_WHEEL" ] && [ -n "$VISION_WHEEL" ]; then
+  echo "Using local wheels:"
+  echo "  $TORCH_WHEEL"
+  echo "  $VISION_WHEEL"
+  python -m pip install "$TORCH_WHEEL" "$VISION_WHEEL"
+else
+  echo "No local wheels in ./dist/, using requirements_torch_cu128.txt"
+  python -m pip install -r requirements_torch_cu128.txt
+fi
+
 python -m pip install pyinstaller
 
 python src/build/run_pyinstaller_trainer.py

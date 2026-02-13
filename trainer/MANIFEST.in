@@ -1,0 +1,2 @@
+prune src/build
+prune src/dist

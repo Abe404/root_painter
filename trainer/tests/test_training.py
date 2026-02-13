@@ -26,15 +26,29 @@ sys.path.insert(0, src_dir)
 sys.path.insert(0, test_dir)
 
 import json
+import shutil
 import subprocess
+import tempfile
 import torch
 import numpy as np
 import time
 from datasets import TrainDataset
-from torch.utils.data import DataLoader
 from multi_epoch.multi_epoch_loader import MultiEpochsDataLoader
-from test_utils import get_acc, log_metrics, dl_dir_from_zip
+from test_utils import log_metrics, dl_dir_from_zip
 from metrics import get_metrics
+
+
+# First 6 annotations (in project order) that contain both FG and BG.
+# These are the initial "clear" annotations before the model made predictions.
+# From zenodo.org/records/11236258 corrective roots project file.
+ROOTS_CORRECTIVE_CLEAR_ANNOTS = [
+    '16_06_21_12E10c_P6210535_000.png',   # val
+    '16_08_22_12W10a_P8222612_000.png',   # train
+    '16_07_18_11E10d_P7181739_000.png',   # train
+    '16_06_21_10E8b_P6210600_000.png',    # train
+    '16_07_18_11W2a_P7181921_000.png',    # train
+    '16_08_22_10W8c_P8222514_000.png',    # train
+]
 
 # All paths relative to the test file location, not CWD
 sync_dir = os.path.join(test_dir, 'test_rp_sync')
@@ -155,76 +169,115 @@ def save_run_info(run_dir, info):
         json.dump(info_with_timestamp, f, indent=2)
 
 
-def training(dataset_dir, annot_dir, name):
-    """Run training benchmark: multiple runs, logging train and val metrics per epoch."""
+def make_filtered_annot_dir(annot_dir, filenames):
+    """Create a temp directory with symlinks to only the specified annotation files."""
+    tmp_dir = tempfile.mkdtemp(prefix='clear_annots_')
+    for fname in filenames:
+        src = os.path.join(annot_dir, fname)
+        if os.path.exists(src):
+            os.symlink(src, os.path.join(tmp_dir, fname))
+    return tmp_dir
+
+
+def training(dataset_dir, annot_dir, name, clear_annots=None,
+             stage1_epochs=4, runs=5, epochs=60):
+    """Run training benchmark: multiple runs, logging train and val metrics per epoch.
+
+    If clear_annots is provided, runs two-stage training:
+      Stage 1: train on only the clear annotations for stage1_epochs
+      Stage 2: train on all annotations for remaining epochs
+    """
     import model_utils
     from unet import UNetGNRes
-    runs = 5
     in_w = 572
     out_w = in_w - 72
     batch_size = 6
-    epochs = 60
     lr = 0.01
 
-    for run in range(1, runs + 1):
-        seed = run
-        run_dir = os.path.join(metrics_dir, name + '_run' + str(run))
+    train_annot_dir = os.path.join(annot_dir, 'train')
+    val_annot_dir = os.path.join(annot_dir, 'val')
 
-        run_info = make_run_info(run, seed, 'UNetGNRes',
-                                 f'SGD(lr={lr}, momentum=0.99, nesterov=True)',
-                                 in_w, out_w, batch_size, epochs, name)
+    # For two-stage: figure out which clear annots are in train vs val
+    clear_train_dir = None
+    clear_val_dir = None
+    if clear_annots:
+        train_files = set(os.listdir(train_annot_dir))
+        val_files = set(os.listdir(val_annot_dir))
+        clear_train = [f for f in clear_annots if f in train_files]
+        clear_val = [f for f in clear_annots if f in val_files]
+        print(f'two-stage: {len(clear_train)} clear in train, '
+              f'{len(clear_val)} clear in val, '
+              f'stage1={stage1_epochs} epochs')
+        clear_train_dir = make_filtered_annot_dir(train_annot_dir, clear_train)
+        clear_val_dir = make_filtered_annot_dir(val_annot_dir, clear_val)
 
-        if run_is_complete(run_dir, run_info):
-            print(f'skipping run {run} for {name} (already complete)')
-            continue
+    try:
+        for run in range(1, runs + 1):
+            seed = run
+            run_dir = os.path.join(metrics_dir, name + '_run' + str(run))
 
-        set_seed(seed)
+            run_info = make_run_info(run, seed, 'UNetGNRes',
+                                     f'SGD(lr={lr}, momentum=0.99, nesterov=True)',
+                                     in_w, out_w, batch_size, epochs, name)
 
-        model = UNetGNRes()
-        optimizer = torch.optim.SGD(model.parameters(), lr=lr,
-                                    momentum=0.99, nesterov=True)
+            if run_is_complete(run_dir, run_info):
+                print(f'skipping run {run} for {name} (already complete)')
+                continue
 
-        train_annot_dir = os.path.join(annot_dir, 'train')
-        val_annot_dir = os.path.join(annot_dir, 'val')
-        start_time = time.time()
+            set_seed(seed)
 
-        train_set = TrainDataset(train_annot_dir,
-                                 dataset_dir,
-                                 in_w, out_w)
+            model = UNetGNRes()
+            optimizer = torch.optim.SGD(model.parameters(), lr=lr,
+                                        momentum=0.99, nesterov=True)
 
-        os.makedirs(run_dir, exist_ok=True)
+            os.makedirs(run_dir, exist_ok=True)
+            val_metrics_path = os.path.join(run_dir, 'val.csv')
+            train_metrics_path = os.path.join(run_dir, 'train.csv')
+            save_run_info(run_dir, run_info)
 
-        val_metrics_path = os.path.join(run_dir, 'val.csv')
-        train_metrics_path = os.path.join(run_dir, 'train.csv')
+            for i in range(epochs):
+                # Two-stage: use clear-only annotations for stage 1
+                if clear_annots and i < stage1_epochs:
+                    stage = 1
+                    cur_train_dir = clear_train_dir
+                    cur_val_dir = clear_val_dir
+                else:
+                    stage = 2 if clear_annots else 0
+                    cur_train_dir = train_annot_dir
+                    cur_val_dir = val_annot_dir
 
-        save_run_info(run_dir, run_info)
+                print(f'starting epoch {i+1} run {run}',
+                      f'(stage {stage})' if clear_annots else '')
 
-        train_loader = MultiEpochsDataLoader(train_set, batch_size, shuffle=False,
-                                             num_workers=6,
-                                             drop_last=False, pin_memory=True)
+                train_set = TrainDataset(cur_train_dir, dataset_dir, in_w, out_w)
+                train_loader = MultiEpochsDataLoader(
+                    train_set, batch_size, shuffle=True,
+                    num_workers=6, drop_last=False, pin_memory=True)
 
-        print('loader setup time', time.time() - start_time)
-        for i in range(epochs):
-            print('starting epoch', i + 1, 'run', run)
+                start_time = time.time()
+                train_result = model_utils.epoch(model, train_loader, batch_size,
+                                                 optimizer=optimizer,
+                                                 step_callback=None, stop_fn=None)
 
-            start_time = time.time()
-            train_result = model_utils.epoch(model, train_loader, batch_size,
-                                             optimizer=optimizer,
-                                             step_callback=None, stop_fn=None)
+                duration = time.time() - start_time
+                print('train epoch complete time', duration)
+                tps, fps, tns, fns, defined_sum = train_result
+                total = tps + fps + tns + fns
+                assert total > 0
+                train_metrics = get_metrics(tps, fps, tns, fns, defined_sum, duration)
+                # Always validate on full val set
+                val_metrics = model_utils.get_val_metrics(
+                    model, val_annot_dir, dataset_dir, in_w, out_w, bs=batch_size)
+                print('val epoch complete time', time.time() - start_time)
+                print('val_metrics', val_metrics)
 
-            duration = time.time() - start_time
-            print('train epoch complete time', duration)
-            tps, fps, tns, fns, defined_sum = train_result
-            total = tps + fps + tns + fns
-            assert total > 0
-            train_metrics = get_metrics(tps, fps, tns, fns, defined_sum, duration)
-            val_metrics = model_utils.get_val_metrics(model, val_annot_dir, dataset_dir,
-                                                      in_w, out_w, bs=batch_size)
-            print('val epoch complete time', time.time() - start_time)
-            print('val_metrics', val_metrics)
-
-            log_metrics(val_metrics, val_metrics_path)
-            log_metrics(train_metrics, train_metrics_path)
+                log_metrics(val_metrics, val_metrics_path)
+                log_metrics(train_metrics, train_metrics_path)
+    finally:
+        if clear_train_dir:
+            shutil.rmtree(clear_train_dir, ignore_errors=True)
+        if clear_val_dir:
+            shutil.rmtree(clear_val_dir, ignore_errors=True)
 
 
 def test_corrective_biopore_training():
@@ -236,7 +289,10 @@ def test_dense_roots_training():
 
 
 def test_corrective_roots_training():
-    training(annot_dir=corrective_root_annot_dir, name='root_corrective', dataset_dir=root_dataset_dir)
+    training(annot_dir=corrective_root_annot_dir, name='root_corrective',
+             dataset_dir=root_dataset_dir,
+             clear_annots=ROOTS_CORRECTIVE_CLEAR_ANNOTS,
+             stage1_epochs=6, runs=10, epochs=26)
 
 
 def test_dense_nodules_training():

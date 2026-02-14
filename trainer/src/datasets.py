@@ -78,7 +78,7 @@ class UNetTransformer():
 
     def color_jit_transform(self, photo, annot):
         # TODO check skimage docs for something cleaner to convert
-        # from float to int
+        # from float to int
         photo = rescale_intensity(photo, out_range=(0, 255))
         photo = Image.fromarray((photo).astype(np.uint8), mode='RGB')
         photo = self.color_jit(photo)  # returns PIL image
@@ -87,27 +87,28 @@ class UNetTransformer():
 
 
 class TrainDataset(Dataset):
-    def __init__(self, train_annot_dir, dataset_dir, in_w, out_w):
+    def __init__(self, train_annot_dir, dataset_dir, in_w, out_w,
+                 min_epoch_tiles=612):
         """
         in_w and out_w are the tile size in pixels
+        min_epoch_tiles: minimum number of samples per epoch
         """
         self.in_w = in_w
         self.out_w = out_w
         self.train_annot_dir = train_annot_dir
         self.dataset_dir = dataset_dir
         self.augmentor = UNetTransformer()
+        self.min_epoch_tiles = min_epoch_tiles
 
     def __len__(self):
-        # use at least 612 but when dataset gets bigger start to expand
-        # to prevent validation from taking all the time (relatively)
-        return max(612, len(ls(self.train_annot_dir)) * 2)
+        return max(self.min_epoch_tiles, len(ls(self.train_annot_dir)) * 2)
 
     def __getitem__(self, _):
         image, annot, fname = load_train_image_and_annot(self.dataset_dir,
                                                          self.train_annot_dir)
         tile_pad = (self.in_w - self.out_w) // 2
 
-        # ensures each pixel is sampled with equal chance
+        # ensures each pixel is sampled with equal chance
         im_pad_w = self.out_w + tile_pad
         padded_w = image.shape[1] + (im_pad_w * 2)
         padded_h = image.shape[0] + (im_pad_w * 2)
@@ -119,9 +120,9 @@ class TrainDataset(Dataset):
         right_lim = padded_w - self.in_w
         bottom_lim = padded_h - self.in_w
 
-        # TODO:
+        # TODO:
         # Images with less annoations will still give the same number of
-        # tiles in the training procedure as images with more annotation.
+        # tiles in the training procedure as images with more annotation.
         # Further empirical investigation into effects of
         # instance selection required are required.
         while True:
@@ -150,7 +151,7 @@ class TrainDataset(Dataset):
         background = np.array(annot_tile)[:, :, 1]
 
         # Annotion is cropped post augmentation to ensure
-        # elastic grid doesn't remove the edges.
+        # elastic grid doesn't remove the edges.
         foreground = foreground[tile_pad:-tile_pad, tile_pad:-tile_pad]
         background = background[tile_pad:-tile_pad, tile_pad:-tile_pad]
         # mask specified pixels of annotation which are defined

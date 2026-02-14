@@ -33,7 +33,7 @@ def log_metrics(metrics, fpath):
     if not os.path.isfile(fpath):
         # write headers if file didn't exist
         print('date_time,true_positives,false_positives,true_negatives,'
-              'false_negatives,precision,recall,f1,defined,duration',
+              'false_negatives,precision,recall,f1,defined,duration,loss',
               file=open(fpath, 'w+'))
     with open(fpath, 'a+') as log_file:
             log_file.write(get_metric_csv_row(metrics))

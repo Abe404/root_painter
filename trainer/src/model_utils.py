@@ -203,6 +203,7 @@ def epoch(model, train_loader, batch_size,
     tns = 0
     fns = 0
     defined_total = 0
+    loss_sum = 0
 
     for step, (photo_tiles,
                foreground_tiles,
@@ -251,6 +252,7 @@ def epoch(model, train_loader, batch_size,
         fps += torch.sum((foregrounds_list == 0) * (preds_list == 1)).cpu().numpy()
         fns += torch.sum((foregrounds_list == 1) * (preds_list == 0)).cpu().numpy()
         defined_total += torch.sum(defined_list > 0).cpu().numpy()
+        loss_sum += loss.item()
         # https://github.com/googlecolab/colabtools/issues/166
         print(f"\rTraining: {(step+1) * batch_size}/"
                 f"{len(train_loader.dataset)} "
@@ -258,7 +260,8 @@ def epoch(model, train_loader, batch_size,
                 end='', flush=True)
         if stop_fn and stop_fn():
             return None
-    return (tps, fps, tns, fns, defined_total)
+    avg_loss = loss_sum / (step + 1)
+    return (tps, fps, tns, fns, defined_total, avg_loss)
 
 def unet_segment(cnn, image, bs, in_w, out_w, threshold=0.5):
     """

@@ -347,8 +347,9 @@ class Trainer():
 
         duration = round(time.time() - epoch_start, 3)
         print('epoch train duration', duration)
+        avg_loss = loss_sum / (step + 1)
         self.log_metrics('train', get_metrics(tps, fps, tns, fns,
-                                              defined_total, duration))
+                                              defined_total, duration, avg_loss))
         before_val_time = time.time()
         self.validation()
         print('epoch validation duration', time.time() - before_val_time)
@@ -360,7 +361,7 @@ class Trainer():
         if not os.path.isfile(fpath):
             # write headers if file didn't exist
             print('date_time,true_positives,false_positives,true_negatives,'
-                  'false_negatives,precision,recall,f1,defined,duration',
+                  'false_negatives,precision,recall,f1,defined,duration,loss',
                   file=open(fpath, 'w+'))
         with open(fpath, 'a+') as log_file:
             log_file.write(get_metric_csv_row(metrics))

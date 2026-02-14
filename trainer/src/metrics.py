@@ -33,7 +33,7 @@ def get_metric_csv_row(metrics):
     parts = [now_str, metrics['TP'], metrics['FP'], metrics['TN'],
              metrics['FN'], round(metrics['precision'], 4),
              round(metrics['recall'], 4), round(metrics['f1'], 4),
-             metrics['defined'], metrics['duration']]
+             metrics['defined'], metrics['duration'], metrics['loss']]
     return ','.join([str(p) for p in parts]) + '\n'
 
 

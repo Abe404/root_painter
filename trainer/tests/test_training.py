@@ -261,10 +261,10 @@ def training(dataset_dir, annot_dir, name, clear_annots=None,
 
                 duration = time.time() - start_time
                 print('train epoch complete time', duration)
-                tps, fps, tns, fns, defined_sum = train_result
+                tps, fps, tns, fns, defined_sum, avg_loss = train_result
                 total = tps + fps + tns + fns
                 assert total > 0
-                train_metrics = get_metrics(tps, fps, tns, fns, defined_sum, duration)
+                train_metrics = get_metrics(tps, fps, tns, fns, defined_sum, duration, avg_loss)
                 # Always validate on full val set
                 val_metrics = model_utils.get_val_metrics(
                     model, val_annot_dir, dataset_dir, in_w, out_w, bs=batch_size)

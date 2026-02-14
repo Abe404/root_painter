@@ -24,9 +24,9 @@ def fix_path(path, sync_dir):
         be different on another machine """
     path_str = str(path)
     path_str = path_str.replace(str(sync_dir), '')
-    path_str = path_str.replace('\\', '/') # server is unix.
-    
-    # sometimes the path has forward slash so the sync dir doesn't 
+    path_str = path_str.replace('\\', '/') # server is unix.
+
+    # sometimes the path has forward slash so the sync dir doesn't
     # get removed. In this case get the sync dir with forward
     # slash and then try to remove that.
     sync_dir_forward = str(sync_dir).replace('\\', '/')
@@ -62,9 +62,18 @@ def fix_instruction_paths(old_config, sync_dir):
 
 
 def send_instruction(name, content, instruction_dir, sync_dir):
+    if not os.path.isdir(instruction_dir):
+        raise FileNotFoundError(
+            f"Could not connect to the sync directory. "
+            f"The instructions folder was not found at:\n\n"
+            f"{instruction_dir}\n\n"
+            f"Please check that the trainer has been started.\n\n"
+            f"You can verify your sync directory from the Extras menu:\n"
+            f"  Extras > Open sync directory\n"
+            f"  Extras > Specify sync directory")
     content = fix_instruction_paths(content, sync_dir)
     # append a hash to avoid over writing older instructions that
-    # have not yet finished.
+    # have not yet finished.
     hash_str = '_' + str(hash(json.dumps(content)))
     fpath = os.path.join(instruction_dir, name + hash_str)
     # if this instruction already exists then don't send again

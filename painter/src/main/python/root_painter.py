@@ -260,6 +260,8 @@ class RootPainter(QtWidgets.QMainWindow):
         message = now_str + '|sys_exception|' + message
         print('log_exception', message)
         print(message, file=open(os.path.join(self.sync_dir, 'client_exceptions.txt'), 'a+'))
+        if isinstance(value, FileNotFoundError) and 'sync directory' in str(value):
+            QtWidgets.QMessageBox.warning(self, 'Sync directory error', str(value))
 
     def log_thread_exception(self, type, value, tb):
         message = f"Error. type: {type}, value: {value}, traceback: "

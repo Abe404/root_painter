@@ -120,6 +120,7 @@ Outputs wheels to `./dist/`. After building, upload to a GitHub release and upda
 
 ### Benchmarks (in progress)
 - test_unet.py passing (inference, synthetic training, mask training)
+- test_instructions.py passing (instruction execution, retry/failure handling)
 - test_training.py running with Zenodo datasets (biopores, roots/towers, nodules)
 - Biopore corrective benchmark done (5 runs x 60 epochs)
 - Still need: dense roots, corrective roots, dense nodules benchmarks

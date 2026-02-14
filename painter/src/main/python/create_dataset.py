@@ -385,9 +385,15 @@ class CreateDatasetWidget(QtWidgets.QWidget):
         self.image_dialog.open()
 
 
+def get_image_names(dataset_dir):
+    """List image files in a directory, excluding hidden files."""
+    return [f for f in os.listdir(dataset_dir)
+            if not f.startswith('.') and is_image(f)]
+
+
 def check_extend_dataset(main_window, dataset_dir, prev_fnames, proj_file_path):
 
-    all_image_names = [f for f in os.listdir(dataset_dir) if is_image(f)]
+    all_image_names = get_image_names(dataset_dir)
 
     new_image_names = [f for f in all_image_names if f not in prev_fnames]
 

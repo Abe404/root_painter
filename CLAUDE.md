@@ -115,3 +115,31 @@ Outputs wheels to `./dist/`. After building, upload to a GitHub release and upda
 - Trainer imports are relative (e.g., `from unet import ...`), not package-qualified—tests and entry points run from `trainer/src/`
 - Batch size is auto-detected from GPU memory (CUDA/MPS/CPU fallback)
 - Contributions require discussion with the maintainer before submitting PRs
+
+## Current Development Status
+
+### Benchmarks (in progress)
+- test_unet.py passing (inference, synthetic training, mask training)
+- test_training.py running with Zenodo datasets (biopores, roots/towers, nodules)
+- Biopore corrective benchmark done (5 runs x 60 epochs)
+- Still need: dense roots, corrective roots, dense nodules benchmarks
+- Still need: get test_loss.py passing
+
+### Planned: Model Abstraction
+- Add model_type parameter ("unet" | "mobilesam") with factory function
+- Keep both model classes available, switch via instruction JSON or settings
+
+### Planned: MobileSAM Integration
+- Based on evaluation in github.com/sotlampr/seg — full pipeline works for dense segmentation without prompts (pass None to prompt encoder, use SAM's own mask decoder)
+- Open decisions: output format (2-channel softmax vs 1-channel sigmoid), tile size (current 572 vs MobileSAM's 1024), optimizer (SGD vs AdamW with warmup), weight distribution (~40MB mobile_sam.pt)
+- Implementation order: finish UNet benchmarks first, then add abstraction layer, then integrate MobileSAM behind it, then compare
+
+### Planned: Sigmoid / Single-Channel Output
+- Switch from 2-channel softmax to 1-channel sigmoid (BCE loss)
+- Consistent with MobileSAM's natural output
+- The sigmoid branch has partial work on this
+- Needs benchmarking to confirm no regression
+
+### Planned: Training Stability
+- Observed oscillation when corrective (sparse, BG-heavy) annotations are introduced
+- Two approaches to evaluate: self-distillation from best checkpoint (KL divergence), and EMA of model weights

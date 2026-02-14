@@ -8,32 +8,16 @@ test_dir = os.path.dirname(os.path.abspath(__file__))
 src_dir = os.path.join(os.path.dirname(test_dir), 'src')
 sys.path.insert(0, src_dir)
 
+sys.path.insert(0, test_dir)
+
 import torch
-from torch.nn.functional import softmax, binary_cross_entropy 
+from torch.nn.functional import softmax, binary_cross_entropy
 from torch.nn.functional import cross_entropy
 from loss import combined_loss as criterion
 from skimage.io import imsave
 from skimage import img_as_uint
 from loss import dice_loss, dice_loss2
-
-
-
-
-def get_acc(pred, true):
-    if hasattr(pred, 'numpy'):
-        pred = pred.numpy()
-    if hasattr(true, 'numpy'):
-        true = true.numpy()
-
-    assert np.min(pred) >= 0
-    assert np.max(pred) <= 1
-
-    assert np.min(true) >= 0
-    assert np.max(true) <= 1
-
-    output_bool = pred.reshape(-1) >= 0.5
-    target_bool = true.reshape(-1) >= 0.5
-    return (np.sum(output_bool == target_bool) / true.size)
+from test_utils import get_acc
  
 def test_dice_loss_goes_to_zero_no_mask():
     test_input = np.zeros((1, 3, 572, 572))

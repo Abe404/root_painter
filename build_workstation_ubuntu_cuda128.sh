@@ -42,9 +42,9 @@ if [ -n "$TORCH_WHEEL" ] && [ -n "$VISION_WHEEL" ]; then
   echo "  $VISION_WHEEL"
   python -m pip install "$TORCH_WHEEL" "$VISION_WHEEL"
   # Install CUDA runtime libs (custom wheel doesn't declare pip deps on these)
-  python -m pip install nvidia-cublas-cu12 nvidia-cuda-runtime-cu12 \
-    nvidia-cudnn-cu12 nvidia-curand-cu12 nvidia-nvjitlink-cu12 \
-    nvidia-cuda-nvrtc-cu12
+  python -m pip install nvidia-cublas-cu12 nvidia-cuda-cupti-cu12 \
+    nvidia-cuda-runtime-cu12 nvidia-cudnn-cu12 nvidia-curand-cu12 \
+    nvidia-nvjitlink-cu12 nvidia-cuda-nvrtc-cu12
 else
   echo "No local wheels in ./dist/, using requirements_torch_cu128.txt"
   python -m pip install -r requirements_torch_cu128.txt

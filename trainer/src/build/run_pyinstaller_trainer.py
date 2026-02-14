@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import shutil
 import subprocess
 import sys
@@ -10,6 +11,28 @@ ENTRY = SRC / "main.py"
 
 DIST = SRC / "dist"
 WORK = SRC / "build" / "_pyi_work"
+
+# ---------------------------------------------------------------------------
+# Ensure nvidia pip package .so files are discoverable by PyInstaller.
+#
+# When building without a system CUDA toolkit (e.g. CI runners), the CUDA
+# shared libraries live inside site-packages/nvidia/*/lib/.  PyInstaller
+# needs them on LD_LIBRARY_PATH to resolve binary dependencies.
+# ---------------------------------------------------------------------------
+def _nvidia_lib_dirs():
+    """Find all lib/ dirs inside installed nvidia pip packages."""
+    try:
+        import nvidia
+        nvidia_root = Path(nvidia.__path__[0])
+    except (ImportError, AttributeError):
+        return []
+    return sorted(str(p) for p in nvidia_root.rglob("lib") if p.is_dir())
+
+_nv_dirs = _nvidia_lib_dirs()
+if _nv_dirs:
+    existing = os.environ.get("LD_LIBRARY_PATH", "")
+    os.environ["LD_LIBRARY_PATH"] = ":".join(_nv_dirs + ([existing] if existing else []))
+    print(f"Added {len(_nv_dirs)} nvidia lib dirs to LD_LIBRARY_PATH")
 
 PyInstaller.__main__.run([
     "--noconfirm",

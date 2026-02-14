@@ -103,3 +103,15 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# PyInstaller build artifacts
+painter/build/
+trainer/src/build/_pyi_work/
+
+# Test outputs and benchmark results
+trainer/tests/test_temp_output/
+trainer/tests/test_rp_sync/
+trainer/tests/metrics/
+
+# Private notes / roadmap
+trainer/ROADMAP.md

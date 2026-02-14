@@ -35,7 +35,9 @@ from loss import combined_loss as criterion
 def get_device():
     if torch.backends.mps.is_available():
         return torch.device("mps")
-    return torch.device('cuda')
+    if torch.cuda.is_available():
+        return torch.device('cuda')
+    return torch.device('cpu')
 
 
 device = get_device() # used in epoch function etc.
@@ -67,8 +69,7 @@ def create_first_model_with_random_weights(model_dir):
     model_path = os.path.join(model_dir, model_name)
     torch.save(model.state_dict(), model_path)
 
-    if torch.cuda.is_available() or torch.backends.mps.is_avilable():
-        model.to(device)
+    model.to(device)
     return model
 
 

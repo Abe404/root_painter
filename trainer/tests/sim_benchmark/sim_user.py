@@ -324,19 +324,22 @@ def corrective_annotation(ground_truth, prediction):
         if error_area == 0:
             return
 
-        # Brush sized for the error region, constrained to fit GT class
+        # User grabs a comfortable brush and paints quickly near errors.
+        # They don't fuss with a tiny brush for small errors — a bigger
+        # brush covers the error plus some surrounding correct area, which
+        # is fine (and realistic).
         error_equiv = np.sqrt(error_area / np.pi)
         class_area = int(np.sum(gt_class_mask))
         class_equiv = np.sqrt(class_area / np.pi)
-        # Start from error-appropriate size (capped by class geometry)
-        brush_radius = max(1, int(min(error_equiv, class_equiv) / 2))
+        comfort_brush = max(5, min(h, w) // 15)
+        brush_radius = min(comfort_brush, max(1, int(class_equiv / 2)))
         paint_region = None
         while True:
             safe = binary_erosion(
                 gt_class_mask, structure=disk(brush_radius + 1))
-            # Neighborhood: one brush-width beyond errors
+            # Wide neighborhood — user paints broadly near the error
             nbhd = binary_dilation(
-                error_mask, structure=disk(brush_radius))
+                error_mask, structure=disk(brush_radius * 2))
             candidate = safe & nbhd
             if np.any(candidate):
                 paint_region = candidate

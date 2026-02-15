@@ -200,7 +200,7 @@ def render_trajectory_frames(rgb_image, ground_truth, trajectory,
         panel1 = overlay(rgb, contour, GT_CONTOUR)
         panel1 = add_label(
             panel1,
-            f"image {image_index}  t={sim_time:.1f}s  {phase}")
+            f"image {image_index + 1}  t={sim_time:.1f}s  {phase}")
 
         # Panel 2: current annotation + cursor
         panel2 = rgb.copy()

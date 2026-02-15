@@ -239,52 +239,49 @@ def initial_annotation(ground_truth, seed=None, **_ignored):
 
 def _annotate_error_region(annot, error_region, gt_class_mask, channel,
                            mouse_pos, rng, trajectory, h, w):
-    """Annotate a single error region with targeted axis-aligned strokes.
+    """Annotate a single error region with one big stroke.
 
     Returns updated mouse_pos.
     """
     error_area = int(np.sum(error_region))
-    class_equiv = np.sqrt(int(np.sum(gt_class_mask)) / np.pi)
+    error_equiv = np.sqrt(error_area / np.pi)
 
-    # Comfortable brush: small enough to fit, big enough to cover
-    brush_radius = min(max(5, min(h, w) // 20),
-                       max(1, int(class_equiv / 2)))
+    brush_radius = max(3, int(error_equiv * 0.6))
 
-    paint_region = None
-    while brush_radius >= 1:
-        safe = binary_erosion(gt_class_mask, structure=disk(brush_radius + 1))
-        nbhd = binary_dilation(error_region, structure=disk(brush_radius * 2))
-        candidate = safe & nbhd
-        if np.any(candidate):
-            paint_region = candidate
-            break
-        brush_radius = max(1, brush_radius // 2)
-        if brush_radius <= 1 and paint_region is None:
-            break
+    # Keep brush center far enough from the wrong class that the disk won't spill
+    safe = binary_erosion(gt_class_mask, structure=disk(brush_radius + 1))
+    paint_region = safe & binary_dilation(error_region,
+                                          structure=disk(brush_radius * 2))
+    if not np.any(paint_region):
+        for r in [brush_radius // 2, max(1, brush_radius // 4), 1]:
+            safe = binary_erosion(gt_class_mask, structure=disk(r + 1))
+            paint_region = safe & binary_dilation(error_region,
+                                                  structure=disk(r * 2))
+            if np.any(paint_region):
+                brush_radius = r
+                break
+        else:
+            return mouse_pos
 
-    if paint_region is None:
-        return mouse_pos
-
-    # One stroke along the error region's principal axis
+    # One stroke along the error region's principal axis.
+    # Pick start/end from error pixels so the stroke stays on one side.
     direction = principal_axis(error_region)
-    pr_rows, pr_cols = np.where(paint_region)
-    axis_proj = (pr_rows * direction[0] + pr_cols * direction[1]).astype(float)
+    er_rows, er_cols = np.where(error_region)
+    axis_proj = (er_rows * direction[0] + er_cols * direction[1]).astype(float)
 
     start_i = np.argmin(axis_proj)
     end_i = np.argmax(axis_proj)
 
-    # FG channel=0, BG channel=1
     base_duration = FG_STROKE_DURATION if channel == 0 else BG_STROKE_DURATION
     duration = base_duration * rng.lognormal(0, STROKE_DURATION_SPREAD)
 
-    # Derive jitter from effective speed for start-point offset
-    dist_est = np.sqrt((pr_rows[end_i] - pr_rows[start_i])**2 +
-                       (pr_cols[end_i] - pr_cols[start_i])**2)
+    dist_est = np.sqrt((er_rows[end_i] - er_rows[start_i])**2 +
+                       (er_cols[end_i] - er_cols[start_i])**2)
     sigma = max(1.0, dist_est / duration) * JITTER_RATE
 
     jr, jc = rng.normal(0, sigma), rng.normal(0, sigma)
-    start = (int(pr_rows[start_i] + jr), int(pr_cols[start_i] + jc))
-    end = (int(pr_rows[end_i]), int(pr_cols[end_i]))
+    start = (int(er_rows[start_i] + jr), int(er_cols[start_i] + jc))
+    end = (int(er_rows[end_i]), int(er_cols[end_i]))
 
     noise = abs(rng.normal(0, max(1, sigma * 0.5)))
     rad = max(1, brush_radius - int(noise))
@@ -302,8 +299,7 @@ def _annotate_error_region(annot, error_region, gt_class_mask, channel,
 def corrective_annotation(ground_truth, prediction):
     """Create corrective annotations in the neighborhood of errors.
 
-    Finds all connected error regions (FN and FP), then visits each
-    in nearest-neighbor order from the current mouse position.
+    Merges nearby error blobs, then sweeps each with a big brush.
 
     Returns (annot, trajectory) or (None, []) if no clear errors.
     """
@@ -321,17 +317,22 @@ def corrective_annotation(ground_truth, prediction):
     rng = np.random.RandomState(0)
     mouse_pos = (h // 2, w // 2)
 
-    # Find connected error regions, keep only the most significant ones
+    # Dilate error masks to merge nearby blobs, then label
+    merge_radius = max(5, min(h, w) // 10)
     errors = []
     for error_mask, gt_class_mask, channel in [
         (fn_mask, ground_truth == 1, 0),  # FN -> paint FG
         (fp_mask, ground_truth == 0, 1),  # FP -> paint BG
     ]:
-        labeled, num = ndimage_label(error_mask)
+        if not np.any(error_mask):
+            continue
+        merged = binary_dilation(error_mask, structure=disk(merge_radius))
+        labeled, num = ndimage_label(merged)
         for i in range(1, num + 1):
-            region = labeled == i
+            # Use original error pixels within this merged blob
+            region = error_mask & (labeled == i)
             area = int(np.sum(region))
-            if area < 50:  # skip small noise
+            if area < 50:
                 continue
             region_rows, region_cols = np.where(region)
             centroid = (float(np.mean(region_rows)),
@@ -347,7 +348,6 @@ def corrective_annotation(ground_truth, prediction):
     # Visit each error in nearest-neighbor order from mouse position
     remaining = list(range(len(errors)))
     while remaining:
-        # Find nearest error region to current mouse position
         best_idx = None
         best_dist = float('inf')
         for idx in remaining:

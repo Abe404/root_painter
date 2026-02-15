@@ -45,7 +45,7 @@ def paint(annot, center, radius, channel):
           channel][d[dr_start:dr_end, dc_start:dc_end]] = 255
 
 
-def paint_stroke(annot, start, end, brush_radius, channel):
+def paint_stroke(annot, start, end, brush_radius, channel, forbidden=None):
     """Paint brush dabs along a line from start to end.
 
     Args:
@@ -54,12 +54,15 @@ def paint_stroke(annot, start, end, brush_radius, channel):
         end: (row, col) tuple
         brush_radius: radius of each dab
         channel: 0 for foreground, 1 for background
+        forbidden: optional (H, W) bool mask — skip dabs whose center is here
     """
     r0, c0 = start
     r1, c1 = end
+    h, w = annot.shape[:2]
     dist = max(abs(r1 - r0), abs(c1 - c0))
     if dist == 0:
-        paint(annot, start, brush_radius, channel)
+        if forbidden is None or not _on_forbidden(r0, c0, h, w, forbidden):
+            paint(annot, start, brush_radius, channel)
         return
     # Space dabs by ~brush_radius for continuous coverage
     num_dabs = max(1, int(dist / max(1, brush_radius))) + 1
@@ -67,7 +70,16 @@ def paint_stroke(annot, start, end, brush_radius, channel):
         t = i / max(num_dabs, 1)
         r = int(r0 + (r1 - r0) * t)
         c = int(c0 + (c1 - c0) * t)
+        if forbidden is not None and _on_forbidden(r, c, h, w, forbidden):
+            continue
         paint(annot, (r, c), brush_radius, channel)
+
+
+def _on_forbidden(r, c, h, w, forbidden):
+    """Check if (r, c) lands on forbidden pixels."""
+    if r < 0 or r >= h or c < 0 or c >= w:
+        return False
+    return forbidden[r, c]
 
 
 def new_annot(height, width):

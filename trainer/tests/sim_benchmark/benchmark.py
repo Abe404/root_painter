@@ -31,7 +31,9 @@ from multi_epoch.multi_epoch_loader import MultiEpochsDataLoader
 from metrics import get_metrics
 
 from sim_benchmark.sim_user import initial_annotation, corrective_annotation
-from sim_benchmark.video import make_frame, save_frames, render_trajectory_frames
+from sim_benchmark.video import (make_frame, make_training_frame,
+                                    save_frames, save_gif,
+                                    render_trajectory_frames)
 
 
 def load_ground_truths(gt_dir, fnames):
@@ -152,9 +154,8 @@ def run_benchmark(dataset_dir, ground_truth_dir, output_dir,
             phase = 'corrective'
 
         if phase == 'initial':
-            annot, traj = initial_annotation(gt, coverage=initial_coverage,
-                                             seed=image_seed)
-            print(f"  Initial annotation (coverage={initial_coverage})")
+            annot, traj = initial_annotation(gt, seed=image_seed)
+            print(f"  Initial annotation")
         else:
             # Segment with best model
             seg_model = UNetGNRes()
@@ -175,8 +176,13 @@ def run_benchmark(dataset_dir, ground_truth_dir, output_dir,
                 print("  Skipping (no clear errors)")
                 if save_video:
                     rgb = im_utils.load_image(os.path.join(dataset_dir, fname))
-                    frames.append(make_frame(
-                        rgb, gt, None, pred, stem, 'skipped', best_f1))
+                    video_data.append({
+                        'rgb': rgb, 'gt': gt, 'traj': [], 'pred': pred,
+                        'annot': None, 'stem': stem, 'phase': 'skipped',
+                        'image_index': i, 'val_f1': best_f1,
+                        'num_annotated': num_annotated,
+                        'f1_before': best_f1, 'f1_after': best_f1,
+                    })
                 results.append({
                     'image': stem, 'phase': 'skipped',
                     'val_f1': best_f1,
@@ -196,20 +202,23 @@ def run_benchmark(dataset_dir, ground_truth_dir, output_dir,
         num_annotated += 1
         print(f"  Saved to {split} (total annotated: {num_annotated})")
 
-        if save_video:
-            rgb = im_utils.load_image(os.path.join(dataset_dir, fname))
-            video_data.append({
-                'rgb': rgb, 'gt': gt, 'traj': traj, 'pred': pred,
-                'annot': annot, 'stem': stem, 'phase': phase,
-                'image_index': i, 'val_f1': best_f1,
-            })
-
         # Training starts after min_initial_images are annotated
         if num_annotated < min_initial_images:
+            if save_video:
+                rgb = im_utils.load_image(os.path.join(dataset_dir, fname))
+                video_data.append({
+                    'rgb': rgb, 'gt': gt, 'traj': traj, 'pred': pred,
+                    'annot': annot, 'stem': stem, 'phase': phase,
+                    'image_index': i, 'val_f1': best_f1,
+                    'num_annotated': num_annotated,
+                    'f1_before': best_f1, 'f1_after': best_f1,
+                })
             results.append({
                 'image': stem, 'phase': phase, 'val_f1': best_f1,
             })
             continue
+
+        f1_before = best_f1
 
         # Train epochs on all annotations currently on disk
         has_train = any(f.endswith('.png') for f in os.listdir(train_annot_dir))
@@ -246,6 +255,16 @@ def run_benchmark(dataset_dir, ground_truth_dir, output_dir,
                         best_model_state = copy.deepcopy(model.state_dict())
                         print(f"  New best model: val f1={best_f1:.4f}")
 
+        if save_video:
+            rgb = im_utils.load_image(os.path.join(dataset_dir, fname))
+            video_data.append({
+                'rgb': rgb, 'gt': gt, 'traj': traj, 'pred': pred,
+                'annot': annot, 'stem': stem, 'phase': phase,
+                'image_index': i, 'val_f1': best_f1,
+                'num_annotated': num_annotated,
+                'f1_before': f1_before, 'f1_after': best_f1,
+            })
+
         results.append({
             'image': stem, 'phase': phase,
             'val_f1': best_f1,
@@ -254,34 +273,39 @@ def run_benchmark(dataset_dir, ground_truth_dir, output_dir,
     if save_video and video_data:
         from sim_benchmark.video import trajectory_duration
         video_fps = 6
-        video_duration = 60.0  # render at most 60s of simulated time
         sim_time = 0.0
         for d in video_data:
-            traj_dur = trajectory_duration(d['traj'])
-            if sim_time + traj_dur > video_duration:
-                # render partial trajectory up to the time limit
-                traj_frames, sim_time = render_trajectory_frames(
-                    d['rgb'], d['gt'], d['traj'], d['pred'],
-                    d['stem'], d['phase'], d['val_f1'],
-                    image_index=d['image_index'], time_offset=sim_time,
-                    fps=video_fps, max_time=video_duration)
-                frames.extend(traj_frames)
-                break
             traj_frames, sim_time = render_trajectory_frames(
                 d['rgb'], d['gt'], d['traj'], d['pred'],
                 d['stem'], d['phase'], d['val_f1'],
                 image_index=d['image_index'], time_offset=sim_time,
                 fps=video_fps)
             frames.extend(traj_frames)
-            frames.append(make_frame(
+            # Hold on completed annotation for 1 second
+            summary = make_frame(
                 d['rgb'], d['gt'], d['annot'], d['pred'],
-                d['stem'], d['phase'], d['val_f1']))
+                d['stem'], d['phase'], d['val_f1'])
+            for _ in range(video_fps):
+                frames.append(summary)
+
+            # Training transition frame (only when training happened)
+            if d['num_annotated'] >= min_initial_images:
+                num_panels = 3 if d['pred'] is not None else 2
+                panel_h, panel_w = d['gt'].shape
+                training_frame = make_training_frame(
+                    d['num_annotated'], d['f1_before'], d['f1_after'],
+                    panel_h, panel_w, num_panels=num_panels)
+                # Show for 1.5 seconds
+                for _ in range(int(video_fps * 1.5)):
+                    frames.append(training_frame)
 
         if frames:
             paths = save_frames(frames, output_dir)
+            gif_path = os.path.join(output_dir, 'demo.gif')
+            save_gif(frames, gif_path, fps=video_fps, scale=2)
             print(f"\nVideo: {sim_time:.1f}s simulated, "
                   f"{len(paths)} frames at {video_fps} FPS")
-            print(f"  Saved to {os.path.dirname(paths[0])}/")
-            print(f"  Open in Finder and arrow through")
+            print(f"  Frames: {os.path.dirname(paths[0])}/")
+            print(f"  GIF: {gif_path}")
 
     return results

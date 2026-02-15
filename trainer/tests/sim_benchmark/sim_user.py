@@ -4,15 +4,8 @@ Simulated annotator for corrective annotation benchmarking.
 Creates initial and corrective annotations following the RootPainter
 protocol using a simulated mouse.
 
-Brush selection principle: use the largest brush that fits the
-constraints (region geometry and pixel budget). Bigger brush = more
-pixels per dab = less time. No magic scale parameters — the brush
-radius is derived from the region and the task.
-
-Speed-jitter tradeoff: the user's aim jitter is proportional to their
-painting speed. In open regions they go fast (more jitter, but plenty
-of margin). In tight regions they slow down (less jitter, precise
-placement). One parameter (JITTER_RATE) governs the whole tradeoff.
+Duration-based time model. Stroke durations are stable across users
+even though pixel speeds vary with image resolution and zoom level.
 
 Every event is recorded with a simulated time cost (dt in seconds).
 """
@@ -20,148 +13,135 @@ import numpy as np
 from scipy.ndimage import binary_erosion, binary_dilation
 from sim_benchmark.brush import disk, paint, new_annot
 
-# Simulated mouse speeds (pixels per second).
-TRAVEL_SPEED = 800.0       # mouse-up repositioning (fast, straight line)
-MIN_PAINT_SPEED = 30.0     # careful painting near boundaries
-MAX_PAINT_SPEED = 200.0    # confident painting in open areas
+# Stroke durations (seconds).
+# FG: slow, careful tracing.  BG: quick confident sweeps.
+FG_STROKE_DURATION = 1.4
+BG_STROKE_DURATION = 0.75
+STROKE_DURATION_SPREAD = 0.3  # log-normal spread for natural variation
 
-# Speed-jitter coupling: aim σ = paint_speed * JITTER_RATE.
-# At 100 px/s → σ ≈ 4 px.  At 200 px/s → σ ≈ 8 px.  At 30 px/s → σ ≈ 1.2 px.
-JITTER_RATE = 0.04         # seconds (σ in pixels per px/s of speed)
+# Inter-stroke gap: thinking + repositioning between strokes.
+INTER_STROKE_GAP = 1.5
 
-
-def choose_paint_speed(eroded):
-    """Choose painting speed based on the safe zone's size.
-
-    Larger safe zone → faster → more jitter (but within margin).
-    Tight zone → slower → precise placement.
-
-    The user picks the fastest speed where 3σ of jitter fits within
-    the equivalent radius of the eroded region.
-
-    Returns (paint_speed, aim_sigma).
-    """
-    eroded_area = int(np.sum(eroded))
-    if eroded_area == 0:
-        speed = MIN_PAINT_SPEED
-        return speed, speed * JITTER_RATE
-    margin = np.sqrt(eroded_area / np.pi)
-    # Speed where 3σ fits within margin: 3 * speed * JITTER_RATE <= margin
-    safe_speed = margin / (3 * JITTER_RATE)
-    speed = float(np.clip(safe_speed, MIN_PAINT_SPEED, MAX_PAINT_SPEED))
-    sigma = speed * JITTER_RATE
-    return speed, sigma
+# Jitter: σ in pixels = JITTER_RATE * effective_speed.
+# Effective speed is derived from stroke distance / duration, so jitter
+# scales naturally — fast sweeps wobble more, slow strokes are precise.
+JITTER_RATE = 0.04
 
 
 def fit_brush(mask, max_radius, min_interior=50):
-    """Find the largest brush radius <= max_radius that fits inside mask.
+    """Largest brush radius <= max_radius that fits inside mask.
 
-    "Fits" means binary erosion by (radius+1) still leaves at least
-    min_interior pixels of interior. Uses binary search for precision.
     Returns (brush_radius, eroded_mask) or (0, None) if nothing fits.
     """
     lo, hi = 1, max_radius
-    best_radius, best_eroded = 0, None
+    best_r, best_eroded = 0, None
     while lo <= hi:
         mid = (lo + hi) // 2
         eroded = binary_erosion(mask, structure=disk(mid + 1))
         if np.sum(eroded) >= min_interior:
-            best_radius, best_eroded = mid, eroded
+            best_r, best_eroded = mid, eroded
             lo = mid + 1
         else:
             hi = mid - 1
-    return best_radius, best_eroded
+    return best_r, best_eroded
 
 
-def mouse_travel(trajectory, from_pos, to_pos, speed=8.0):
-    """Record mouse-up movement from one position to another."""
+def principal_axis(mask):
+    """Unit vector (dr, dc) along longest dimension of mask via covariance eigendecomposition."""
+    rows, cols = np.where(mask)
+    if len(rows) < 2:
+        return (1.0, 0.0)
+    cov = np.cov(rows.astype(float), cols.astype(float))
+    eigvals, eigvecs = np.linalg.eigh(cov)
+    axis = eigvecs[:, -1]
+    length = np.sqrt(axis[0]**2 + axis[1]**2)
+    if length < 1e-8:
+        return (1.0, 0.0)
+    return (float(axis[0] / length), float(axis[1] / length))
+
+
+def axis_endpoints(mask, direction):
+    """Project mask pixels onto direction, return (start, end) at extremes."""
+    rows, cols = np.where(mask)
+    if len(rows) == 0:
+        return None, None
+    projections = rows * direction[0] + cols * direction[1]
+    return (int(rows[np.argmin(projections)]), int(cols[np.argmin(projections)])), \
+           (int(rows[np.argmax(projections)]), int(cols[np.argmax(projections)]))
+
+
+def mouse_travel(trajectory, from_pos, to_pos, rng):
+    """Record mouse-up repositioning from one position to another.
+
+    Uses the inter-stroke gap duration (thinking + travel), distributed
+    across interpolated cursor positions for smooth video playback.
+    """
     r0, c0 = from_pos
     r1, c1 = to_pos
     dist = np.sqrt((r1 - r0) ** 2 + (c1 - c0) ** 2)
-    num_steps = max(1, int(dist / speed))
-    step_dist = dist / num_steps if num_steps > 0 else 0
-    dt = step_dist / TRAVEL_SPEED
+    num_steps = max(1, int(dist / 8.0))
+    gap = INTER_STROKE_GAP * rng.lognormal(0, 0.3)
+    dt = gap / num_steps
     for i in range(1, num_steps + 1):
         t = i / num_steps
-        r = r0 + (r1 - r0) * t
-        c = c0 + (c1 - c0) * t
         trajectory.append({
-            'r': int(round(r)), 'c': int(round(c)),
-            'painting': False, 'channel': -1, 'brush_radius': 0,
-            'dt': dt,
+            'r': int(round(r0 + (r1 - r0) * t)),
+            'c': int(round(c0 + (c1 - c0) * t)),
+            'painting': False, 'channel': -1, 'brush_radius': 0, 'dt': dt,
         })
 
 
-def mouse_stroke(annot, start, eroded, brush_radius, channel, rng,
-                  trajectory, num_steps=20, step_size=None, max_dabs=None,
-                  paint_speed=None):
-    """Simulate a mouse-down drag: smooth curve staying within the region.
+def mouse_stroke(annot, start, end, region, brush_radius, channel, rng,
+                  trajectory, stroke_duration):
+    """Paint dabs along a directed line from start to end.
 
-    Moves with momentum and slight angular noise. Only paints when
-    inside the eroded region (guarantees no cross-class painting).
-    Stops early if max_dabs is reached (user lifts pen when done).
+    Total time for the stroke is stroke_duration (seconds). Jitter is
+    derived from effective speed (distance / duration) so fast sweeps
+    wobble more than slow careful strokes.
+
+    Only paints where region is True. Returns number of dabs placed.
     """
-    if step_size is None:
-        step_size = max(1, brush_radius)
-    if paint_speed is None:
-        paint_speed = MAX_PAINT_SPEED
+    step_size = max(1, brush_radius // 2)
 
-    dt = step_size / paint_speed
+    dr = end[0] - start[0]
+    dc = end[1] - start[1]
+    dist = max(1.0, np.sqrt(dr ** 2 + dc ** 2))
+    num_steps = max(1, int(dist / step_size))
+    dt = stroke_duration / num_steps
 
-    h, w = eroded.shape
-    r, c = float(start[0]), float(start[1])
-    angle = rng.uniform(0, 2 * np.pi)
+    # Jitter from effective speed
+    effective_speed = dist / stroke_duration
+    sigma = effective_speed * JITTER_RATE
+
+    # Perpendicular direction for natural wavering
+    perp_r, perp_c = -dc / dist, dr / dist
+
+    h, w = region.shape
     dabs = 0
-
-    for _ in range(num_steps):
+    for i in range(num_steps):
+        t = (i + 1) / num_steps
+        waver = rng.normal(0, sigma * 0.08)
+        r = start[0] + dr * t + perp_r * waver
+        c = start[1] + dc * t + perp_c * waver
         ir, ic = int(round(r)), int(round(c))
-        if 0 <= ir < h and 0 <= ic < w and eroded[ir, ic]:
+        # Paint only where region allows, but always record cursor position
+        # (mouse is down for the entire stroke — continuous drag)
+        painted = (0 <= ir < h and 0 <= ic < w and region[ir, ic])
+        if painted:
             paint(annot, (ir, ic), brush_radius, channel)
-            trajectory.append({
-                'r': ir, 'c': ic,
-                'painting': True, 'channel': channel,
-                'brush_radius': brush_radius,
-                'dt': dt,
-            })
             dabs += 1
-            if max_dabs is not None and dabs >= max_dabs:
-                break
-
-        angle += rng.normal(0, 0.1)
-        next_r = r + np.sin(angle) * step_size
-        next_c = c + np.cos(angle) * step_size
-
-        nr, nc = int(round(next_r)), int(round(next_c))
-        if 0 <= nr < h and 0 <= nc < w and eroded[nr, nc]:
-            r, c = next_r, next_c
-        else:
-            rows, cols = np.where(eroded)
-            dists = (rows - r) ** 2 + (cols - c) ** 2
-            nearby = dists < (step_size * 5) ** 2
-            if np.any(nearby):
-                nearby_idx = np.where(nearby)[0]
-                pick = rng.choice(nearby_idx)
-                dr = rows[pick] - r
-                dc = cols[pick] - c
-            else:
-                dr = np.mean(rows) - r
-                dc = np.mean(cols) - c
-            angle = np.arctan2(dr, dc)
-            r += np.sin(angle) * step_size
-            c += np.cos(angle) * step_size
+        trajectory.append({
+            'r': max(0, min(ir, h - 1)), 'c': max(0, min(ic, w - 1)),
+            'painting': True, 'painted': painted,
+            'channel': channel, 'brush_radius': brush_radius, 'dt': dt,
+        })
+    return dabs
 
 
-def initial_annotation(ground_truth, coverage=0.05, seed=None):
+def initial_annotation(ground_truth, seed=None, **_ignored):
     """Create initial annotations using simulated mouse strokes on FG/BG.
 
-    Brush selection:
-    - FG: largest brush that fits in the FG region. No pixel cap —
-      more FG annotation is always fine, so overshoot is harmless.
-    - BG: largest brush where one dab doesn't exceed the pixel budget
-      (balance constraint: BG <= 10x FG). Avoids wasting balance budget.
-
-    Returns:
-        (annot, trajectory)
+    Returns (annot, trajectory).
     """
     rng = np.random.RandomState(seed)
     h, w = ground_truth.shape
@@ -178,96 +158,70 @@ def initial_annotation(ground_truth, coverage=0.05, seed=None):
 
     mouse_pos = (h // 2, w // 2)
 
-    def paint_class(mask, area, target_pixels, channel, max_dab_pixels=None):
-        """Paint strokes on mask to reach target_pixels.
+    def paint_class(mask, area, channel, max_pixels=None):
+        """Fill the safe zone with straight strokes.
 
-        max_dab_pixels: if set, cap brush so pi*r^2 <= max_dab_pixels.
+        Brush = largest comfortable fit. Strokes are horizontal scan
+        lines through the safe zone — simple, long, and predictable.
+        Handles non-convex regions naturally since mouse_stroke only
+        paints where the safe zone allows.
         """
         nonlocal mouse_pos
-        if target_pixels <= 0:
-            return 0
 
         equiv_radius = np.sqrt(area / np.pi)
 
-        # User picks brush to maximize painting efficiency (pixels/second).
-        # Big brush = fewer dabs but less margin, forcing slower painting.
-        # Sweet spot: biggest brush that still allows fast, comfortable painting.
-        margin_for_max_speed = 3 * MAX_PAINT_SPEED * JITTER_RATE
-        if equiv_radius > 2 * margin_for_max_speed:
-            target_brush = max(1, int(equiv_radius - margin_for_max_speed))
-        else:
-            target_brush = max(1, int(equiv_radius / 2))
-
-        if max_dab_pixels is not None:
-            # Majority class: user paints a few long strokes, not giant dabs.
-            # Size brush so it takes ~2 strokes to reach the target.
-            dabs_per_stroke = max(5, int(equiv_radius / 20))
-            budget_per_dab = max_dab_pixels / max(1, 2 * dabs_per_stroke)
-            budget_max = max(3, int(np.sqrt(budget_per_dab / np.pi)))
-            brush_max = min(target_brush, budget_max)
-        else:
-            brush_max = target_brush
-
-        brush_radius, eroded = fit_brush(mask, brush_max)
+        # Largest brush that fits comfortably in the region.
+        # Require enough interior survives erosion so the brush works
+        # across the region, not just in corners of non-convex shapes.
+        target_brush = max(1, int(equiv_radius / 2))
+        min_interior = max(50, int(area * 0.2))
+        brush_radius, eroded = fit_brush(mask, target_brush, min_interior)
         if brush_radius == 0 or eroded is None:
             return 0
 
-        # Speed adapts to how much room the user has
-        paint_speed, sigma = choose_paint_speed(eroded)
+        # FG channel=0, BG channel=1
+        base_duration = FG_STROKE_DURATION if channel == 0 else BG_STROKE_DURATION
 
-        rows, cols = np.where(eroded)
-        dab_area = max(1, int(np.pi * brush_radius ** 2))
-        total_dabs_needed = max(1, target_pixels // dab_area)
-        # Continuous dab spacing (~50% brush diameter, like real painting)
-        step_size = max(1, brush_radius // 2)
-        # Stroke covers roughly one equiv_radius of distance
-        stroke_steps = max(5, int(equiv_radius / max(1, step_size)))
+        er_rows, er_cols = np.where(eroded)
+        row_min, row_max = int(np.min(er_rows)), int(np.max(er_rows))
+        row_extent = row_max - row_min
 
-        attempts = 0
-        max_attempts = max(10, total_dabs_needed * 3)
-        while attempts < max_attempts:
-            painted = int(np.sum(annot[:, :, channel] > 0))
-            remaining = target_pixels - painted
-            if painted > 0 and remaining <= dab_area:
-                break
-            dabs_left = max(1, remaining // dab_area)
+        stroke_width = brush_radius * 2
+        num_strokes = max(1, int(np.ceil(row_extent / stroke_width)))
 
-            # Start on unpainted ground — don't waste time re-annotating
-            fresh = eroded & (annot[:, :, channel] == 0)
-            fresh_rows, fresh_cols = np.where(fresh)
-            if len(fresh_rows) == 0:
-                break  # everything reachable is already painted
+        # Evenly spaced horizontal scan lines through the safe zone
+        scan_ys = np.linspace(row_min, row_max, num_strokes + 2)[1:-1]
 
-            if max_dab_pixels is not None:
-                idx = rng.choice(len(fresh_rows))
-            else:
-                dists = (fresh_rows - mouse_pos[0]) ** 2 + (fresh_cols - mouse_pos[1]) ** 2
-                nearest = np.argsort(dists)[:max(1, len(fresh_rows) // 5)]
-                idx = rng.choice(nearest)
+        for scan_y in scan_ys:
+            if max_pixels is not None:
+                painted_so_far = int(np.sum(annot[:, :, channel] > 0))
+                if painted_so_far >= max_pixels:
+                    break
 
-            jr = rng.normal(0, sigma)
-            jc = rng.normal(0, sigma)
-            start = (int(fresh_rows[idx] + jr), int(fresh_cols[idx] + jc))
+            iy = int(round(scan_y))
+            iy = max(0, min(iy, h - 1))
+            row = eroded[iy, :]
+            if not np.any(row):
+                continue
 
-            size_noise = abs(rng.normal(0, max(1, sigma * 0.5)))
-            jittered_radius = max(1, brush_radius - int(size_noise))
+            cols = np.where(row)[0]
+            start = (iy, int(cols[0]))
+            end = (iy, int(cols[-1]))
 
-            mouse_travel(trajectory, mouse_pos, start)
-            mouse_stroke(annot, start, fresh, jittered_radius, channel, rng,
-                          trajectory, num_steps=stroke_steps,
-                          step_size=step_size, max_dabs=dabs_left,
-                          paint_speed=paint_speed)
+            # Skip very short strokes
+            if abs(end[1] - start[1]) < brush_radius:
+                continue
 
-            if trajectory and trajectory[-1]['painting']:
-                mouse_pos = (trajectory[-1]['r'], trajectory[-1]['c'])
-            else:
-                mouse_pos = start
+            duration = base_duration * rng.lognormal(0, STROKE_DURATION_SPREAD)
+            mouse_travel(trajectory, mouse_pos, start, rng)
+            mouse_stroke(annot, start, end, eroded, brush_radius, channel,
+                          rng, trajectory, duration)
 
-            attempts += 1
+            mouse_pos = (trajectory[-1]['r'], trajectory[-1]['c'])
 
         return int(np.sum(annot[:, :, channel] > 0))
 
-    # Annotate minority class first, then majority up to 10x minority
+    # Minority class first, then majority up to 10x
     if fg_area <= bg_area:
         min_mask, min_area, min_ch = fg_mask, fg_area, 0
         maj_mask, maj_area, maj_ch = bg_mask, bg_area, 1
@@ -275,37 +229,86 @@ def initial_annotation(ground_truth, coverage=0.05, seed=None):
         min_mask, min_area, min_ch = bg_mask, bg_area, 1
         maj_mask, maj_area, maj_ch = fg_mask, fg_area, 0
 
-    # Minority class: paint as much as convenient (strokes will naturally
-    # cover a subset — no need for a conservative coverage cap)
-    min_target = min_area
-    min_annotated = paint_class(min_mask, min_area, min_target, min_ch)
+    min_annotated = paint_class(min_mask, min_area, min_ch)
 
-    # Move to a clearly-majority area before painting (user wouldn't
-    # paint BG right next to the FG object they just annotated)
-    maj_rows, maj_cols = np.where(maj_mask)
-    if len(maj_rows) > 0:
-        pick = rng.randint(len(maj_rows))
-        mouse_pos = (int(maj_rows[pick]), int(maj_cols[pick]))
-
-    # Majority: aim for up to 10x minority, capped by available area
-    maj_target = min(10 * max(1, min_annotated), maj_area)
-    paint_class(maj_mask, maj_area, maj_target, maj_ch,
-                max_dab_pixels=maj_target)
+    maj_budget = min(10 * max(1, min_annotated), maj_area)
+    paint_class(maj_mask, maj_area, maj_ch, max_pixels=maj_budget)
 
     return annot, trajectory
+
+
+def _annotate_error_region(annot, error_region, gt_class_mask, channel,
+                           mouse_pos, rng, trajectory, h, w):
+    """Annotate a single error region with targeted axis-aligned strokes.
+
+    Returns updated mouse_pos.
+    """
+    error_area = int(np.sum(error_region))
+    class_equiv = np.sqrt(int(np.sum(gt_class_mask)) / np.pi)
+
+    # Comfortable brush: small enough to fit, big enough to cover
+    brush_radius = min(max(5, min(h, w) // 20),
+                       max(1, int(class_equiv / 2)))
+
+    paint_region = None
+    while brush_radius >= 1:
+        safe = binary_erosion(gt_class_mask, structure=disk(brush_radius + 1))
+        nbhd = binary_dilation(error_region, structure=disk(brush_radius * 2))
+        candidate = safe & nbhd
+        if np.any(candidate):
+            paint_region = candidate
+            break
+        brush_radius = max(1, brush_radius // 2)
+        if brush_radius <= 1 and paint_region is None:
+            break
+
+    if paint_region is None:
+        return mouse_pos
+
+    # One stroke along the error region's principal axis
+    direction = principal_axis(error_region)
+    pr_rows, pr_cols = np.where(paint_region)
+    axis_proj = (pr_rows * direction[0] + pr_cols * direction[1]).astype(float)
+
+    start_i = np.argmin(axis_proj)
+    end_i = np.argmax(axis_proj)
+
+    # FG channel=0, BG channel=1
+    base_duration = FG_STROKE_DURATION if channel == 0 else BG_STROKE_DURATION
+    duration = base_duration * rng.lognormal(0, STROKE_DURATION_SPREAD)
+
+    # Derive jitter from effective speed for start-point offset
+    dist_est = np.sqrt((pr_rows[end_i] - pr_rows[start_i])**2 +
+                       (pr_cols[end_i] - pr_cols[start_i])**2)
+    sigma = max(1.0, dist_est / duration) * JITTER_RATE
+
+    jr, jc = rng.normal(0, sigma), rng.normal(0, sigma)
+    start = (int(pr_rows[start_i] + jr), int(pr_cols[start_i] + jc))
+    end = (int(pr_rows[end_i]), int(pr_cols[end_i]))
+
+    noise = abs(rng.normal(0, max(1, sigma * 0.5)))
+    rad = max(1, brush_radius - int(noise))
+
+    mouse_travel(trajectory, mouse_pos, start, rng)
+    mouse_stroke(annot, start, end, paint_region, rad, channel,
+                  rng, trajectory, duration)
+
+    mouse_pos = end if not trajectory or not trajectory[-1]['painting'] else \
+        (trajectory[-1]['r'], trajectory[-1]['c'])
+
+    return mouse_pos
 
 
 def corrective_annotation(ground_truth, prediction):
     """Create corrective annotations in the neighborhood of errors.
 
-    Brush selection: largest brush that fits in the GT class region
-    and still has paintable area near the errors. The user paints
-    the correct class in the error neighborhood — FG strokes may
-    land on correctly-predicted FG, which is realistic.
+    Finds all connected error regions (FN and FP), then visits each
+    in nearest-neighbor order from the current mouse position.
 
-    Returns:
-        (annot, trajectory) or (None, []) if no clear errors
+    Returns (annot, trajectory) or (None, []) if no clear errors.
     """
+    from scipy.ndimage import label as ndimage_label
+
     fn_mask = (ground_truth == 1) & (prediction == 0)
     fp_mask = (ground_truth == 0) & (prediction == 1)
 
@@ -318,73 +321,47 @@ def corrective_annotation(ground_truth, prediction):
     rng = np.random.RandomState(0)
     mouse_pos = (h // 2, w // 2)
 
-    def cover_errors(error_mask, gt_class_mask, channel):
-        nonlocal mouse_pos
-        error_area = int(np.sum(error_mask))
-        if error_area == 0:
-            return
+    # Find connected error regions, keep only the most significant ones
+    errors = []
+    for error_mask, gt_class_mask, channel in [
+        (fn_mask, ground_truth == 1, 0),  # FN -> paint FG
+        (fp_mask, ground_truth == 0, 1),  # FP -> paint BG
+    ]:
+        labeled, num = ndimage_label(error_mask)
+        for i in range(1, num + 1):
+            region = labeled == i
+            area = int(np.sum(region))
+            if area < 50:  # skip small noise
+                continue
+            region_rows, region_cols = np.where(region)
+            centroid = (float(np.mean(region_rows)),
+                        float(np.mean(region_cols)))
+            errors.append({
+                'region': region,
+                'area': area,
+                'centroid': centroid,
+                'gt_class_mask': gt_class_mask,
+                'channel': channel,
+            })
 
-        # User grabs a comfortable brush and paints quickly near errors.
-        # They don't fuss with a tiny brush for small errors — a bigger
-        # brush covers the error plus some surrounding correct area, which
-        # is fine (and realistic).
-        error_equiv = np.sqrt(error_area / np.pi)
-        class_area = int(np.sum(gt_class_mask))
-        class_equiv = np.sqrt(class_area / np.pi)
-        comfort_brush = max(5, min(h, w) // 15)
-        brush_radius = min(comfort_brush, max(1, int(class_equiv / 2)))
-        paint_region = None
-        while True:
-            safe = binary_erosion(
-                gt_class_mask, structure=disk(brush_radius + 1))
-            # Wide neighborhood — user paints broadly near the error
-            nbhd = binary_dilation(
-                error_mask, structure=disk(brush_radius * 2))
-            candidate = safe & nbhd
-            if np.any(candidate):
-                paint_region = candidate
-                break
-            if brush_radius <= 1:
-                break
-            brush_radius = max(1, brush_radius // 2)
+    # Visit each error in nearest-neighbor order from mouse position
+    remaining = list(range(len(errors)))
+    while remaining:
+        # Find nearest error region to current mouse position
+        best_idx = None
+        best_dist = float('inf')
+        for idx in remaining:
+            cr, cc = errors[idx]['centroid']
+            d = (cr - mouse_pos[0])**2 + (cc - mouse_pos[1])**2
+            if d < best_dist:
+                best_dist = d
+                best_idx = idx
+        remaining.remove(best_idx)
 
-        if paint_region is None:
-            return
-
-        # Speed adapts to how tight the paint region is
-        paint_speed, sigma = choose_paint_speed(paint_region)
-
-        rows, cols = np.where(paint_region)
-        # A few strokes across the error region, each a few dabs long
-        brush_widths = max(1, int(error_equiv / max(1, brush_radius)))
-        stroke_steps = max(3, brush_widths)
-        num_strokes = max(1, min(5, brush_widths))
-
-        for _ in range(num_strokes):
-            # Start near current position to minimize travel
-            dists = (rows - mouse_pos[0]) ** 2 + (cols - mouse_pos[1]) ** 2
-            nearest = np.argsort(dists)[:max(1, len(rows) // 5)]
-            idx = rng.choice(nearest)
-            jr = rng.normal(0, sigma)
-            jc = rng.normal(0, sigma)
-            start = (int(rows[idx] + jr), int(cols[idx] + jc))
-
-            # Brush size jitter scaled to current sigma
-            size_noise = abs(rng.normal(0, max(1, sigma * 0.5)))
-            jittered_radius = max(1, brush_radius - int(size_noise))
-
-            mouse_travel(trajectory, mouse_pos, start)
-            mouse_stroke(annot, start, paint_region, jittered_radius, channel,
-                          rng, trajectory, num_steps=stroke_steps,
-                          paint_speed=paint_speed)
-
-            if trajectory and trajectory[-1]['painting']:
-                mouse_pos = (trajectory[-1]['r'], trajectory[-1]['c'])
-            else:
-                mouse_pos = start
-
-    cover_errors(fn_mask, ground_truth == 1, channel=0)
-    cover_errors(fp_mask, ground_truth == 0, channel=1)
+        e = errors[best_idx]
+        mouse_pos = _annotate_error_region(
+            annot, e['region'], e['gt_class_mask'], e['channel'],
+            mouse_pos, rng, trajectory, h, w)
 
     if not np.any(annot[:, :, 0] > 0) and not np.any(annot[:, :, 1] > 0):
         return None, []

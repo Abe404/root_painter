@@ -2,7 +2,7 @@
 import sys, os
 import shutil
 import numpy as np
-from PIL import Image
+import torch
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 tests_dir = os.path.dirname(this_dir)
@@ -10,8 +10,15 @@ src_dir = os.path.join(os.path.dirname(tests_dir), 'src')
 sys.path.insert(0, src_dir)
 sys.path.insert(0, tests_dir)
 
+import model_utils
+import im_utils
+from unet import UNetGNRes
 from sim_benchmark.sim_user import initial_annotation
 from sim_benchmark.video import render_trajectory_frames, save_frames
+
+
+IN_W = 172
+OUT_W = 100
 
 
 def make_images(size=200):
@@ -43,16 +50,31 @@ def make_images(size=200):
     return images
 
 
+def segment(model, rgb):
+    """Segment an image with the current model, like the trainer does."""
+    image, pad_settings = im_utils.pad_to_min(rgb, min_w=IN_W, min_h=IN_W)
+    with torch.no_grad():
+        pred = model_utils.unet_segment(
+            model, image, 2, IN_W, OUT_W, threshold=0.5)
+    return im_utils.crop_from_pad_settings(pred, pad_settings)
+
+
 def main():
     out_dir = os.path.join(this_dir, 'quick_output')
     if os.path.exists(out_dir):
         shutil.rmtree(out_dir)
     os.makedirs(out_dir)
 
+    # Fresh model with random weights, same as real flow
+    model = UNetGNRes()
+    model.to(model_utils.device)
+    model.eval()
+
     all_frames = []
     sim_time = 0.0
 
     for i, (rgb, gt, name) in enumerate(make_images()):
+        pred = segment(model, rgb)
         annot, traj = initial_annotation(gt, seed=i + 1)
 
         total_time = sum(e.get('dt', 0) for e in traj)
@@ -61,7 +83,7 @@ def main():
         print(f"{name}: {total_time:.1f}s, {len(traj)} events, {n_strokes} strokes")
 
         frames, sim_time = render_trajectory_frames(
-            rgb, gt, traj, None, name, 'initial', 0.0,
+            rgb, gt, traj, pred, name, 'initial', 0.0,
             image_index=i, time_offset=sim_time, fps=6)
         all_frames.extend(frames)
 

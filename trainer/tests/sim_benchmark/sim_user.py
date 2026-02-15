@@ -4,9 +4,8 @@ Simulated annotator for corrective annotation benchmarking.
 Creates initial and corrective annotations following the RootPainter
 protocol using a simulated mouse.
 
-Duration-based time model calibrated from real annotation sessions.
-Stroke durations are stable across users even though pixel speeds
-vary with image resolution and zoom level.
+Duration-based time model. Stroke durations are stable across users
+even though pixel speeds vary with image resolution and zoom level.
 
 Every event is recorded with a simulated time cost (dt in seconds).
 """
@@ -14,7 +13,7 @@ import numpy as np
 from scipy.ndimage import binary_erosion, binary_dilation
 from sim_benchmark.brush import disk, paint, new_annot
 
-# Stroke durations (seconds) calibrated from real user data.
+# Stroke durations (seconds).
 # FG: slow, careful tracing.  BG: quick confident sweeps.
 FG_STROKE_DURATION = 1.4
 BG_STROKE_DURATION = 0.75

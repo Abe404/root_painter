@@ -19,7 +19,7 @@ sys.path.insert(0, src_dir)
 from sim_benchmark.benchmark import run_benchmark
 
 
-def _make_synthetic_dataset(tmpdir, num_images=4, size=750):
+def make_synthetic_dataset(tmpdir, num_images=4, size=200):
     """Create synthetic RGB images with circle foregrounds and matching GT masks."""
     dataset_dir = os.path.join(tmpdir, 'dataset')
     gt_dir = os.path.join(tmpdir, 'ground_truth')
@@ -31,9 +31,9 @@ def _make_synthetic_dataset(tmpdir, num_images=4, size=750):
 
     for i in range(num_images):
         # random circle position and radius
-        cx = rng.randint(200, size - 200)
-        cy = rng.randint(200, size - 200)
-        r = rng.randint(80, 150)
+        cx = rng.randint(size // 4, 3 * size // 4)
+        cy = rng.randint(size // 4, 3 * size // 4)
+        r = rng.randint(30, size // 4)
 
         mask = ((x - cx) ** 2 + (y - cy) ** 2 <= r ** 2).astype(np.uint8)
 
@@ -50,31 +50,41 @@ def _make_synthetic_dataset(tmpdir, num_images=4, size=750):
 
 def test_benchmark_improves():
     with tempfile.TemporaryDirectory() as tmpdir:
-        dataset_dir, gt_dir = _make_synthetic_dataset(tmpdir)
+        dataset_dir, gt_dir = make_synthetic_dataset(tmpdir)
         output_dir = os.path.join(tmpdir, 'output')
 
         results = run_benchmark(
             dataset_dir=dataset_dir,
             ground_truth_dir=gt_dir,
             output_dir=output_dir,
-            num_initial_points=15,
-            num_corrective_points=10,
-            brush_radius=10,
-            epochs_per_round=2,
-            num_rounds=2,
+            min_initial_images=2,
+            initial_coverage=0.05,
+            corrective_f1_threshold=0.2,
+            epochs_between_images=1,
             batch_size=2,
-            in_w=92,
-            out_w=20,
+            in_w=172,
+            out_w=100,
             lr=0.01,
             seed=1,
-            min_epoch_tiles=20,
+            min_epoch_tiles=10,
+            save_video=True,
         )
 
-        assert len(results) == 2
-        first_f1 = results[0]['f1']
-        last_f1 = results[-1]['f1']
-        print(f"\nF1 round 0: {first_f1:.4f}, F1 round 1: {last_f1:.4f}")
+        assert len(results) >= 2
+        first_f1 = results[0]['val_f1']
+        last_f1 = results[-1]['val_f1']
+        print(f"\nF1 first image: {first_f1:.4f}, F1 last image: {last_f1:.4f}")
         assert last_f1 > first_f1, (
-            f"Expected improvement: round 0 F1={first_f1:.4f}, "
-            f"round 1 F1={last_f1:.4f}"
+            f"Expected improvement: first F1={first_f1:.4f}, "
+            f"last F1={last_f1:.4f}"
         )
+
+        # Verify frames were produced and copy to persistent location
+        frames_dir = os.path.join(output_dir, 'frames')
+        assert os.path.isdir(frames_dir), "verification frames not created"
+        import shutil
+        persistent_frames = os.path.join(test_dir, 'frames')
+        if os.path.exists(persistent_frames):
+            shutil.rmtree(persistent_frames)
+        shutil.copytree(frames_dir, persistent_frames)
+        print(f"\nVerification frames copied to {persistent_frames}/")

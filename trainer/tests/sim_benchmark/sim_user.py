@@ -394,11 +394,13 @@ def _annotate_error_region(annot, error_region, gt_class_mask, channel,
     # Each iteration: find the best brush for the remaining error, then
     # fill with raster zigzag scan lines.  When the error becomes a thin
     # boundary strip, fall back to per-component strokes with a small brush.
+    # No artificial stroke cap.  Stops when all clear errors are corrected
+    # or stalled (3 consecutive iterations with <5% progress).
     total_strokes = 0
+    stall_count = 0
     force_boundary = False
-    for stroke_i in range(20):
-        if _done() or total_strokes >= 20:
-            break
+    while not _done() and stall_count < 3:
+        error_before = int(np.sum(remaining_error & ~near_opposite))
         actionable = remaining_error & ~near_opposite
         if not np.any(actionable):
             break
@@ -460,7 +462,7 @@ def _annotate_error_region(annot, error_region, gt_class_mask, channel,
                           for ci in range(1, num + 1)]
             comp_sizes.sort(reverse=True)
             for _, ci in comp_sizes:
-                if _done() or total_strokes >= 20:
+                if _done():
                     break
                 comp = (labeled == ci)
                 comp_pr = curve_pr & binary_dilation(
@@ -469,8 +471,6 @@ def _annotate_error_region(annot, error_region, gt_class_mask, channel,
                     continue
                 waypoints = _order_waypoints(comp, comp_pr, spacing=wp_spacing)
                 for wi in range(len(waypoints) - 1):
-                    if total_strokes >= 20:
-                        break
                     _do_stroke(waypoints[wi], waypoints[wi + 1],
                                comp_pr, br, careful=True)
                     total_strokes += 1
@@ -504,7 +504,7 @@ def _annotate_error_region(annot, error_region, gt_class_mask, channel,
         scanned_any = False
         zigzag = 1  # alternating sweep direction
         for scan_pos in scan_positions:
-            if _done() or total_strokes >= 20:
+            if _done():
                 break
             # Recompute uncovered strokeable for each scan line
             cur_actionable = remaining_error & ~near_opposite
@@ -535,6 +535,19 @@ def _annotate_error_region(annot, error_region, gt_class_mask, channel,
 
         if not scanned_any:
             force_boundary = True
+
+        # Stall detection: if no meaningful progress was made this
+        # iteration, increment stall counter.  Stop after 3 stalls.
+        # "Meaningful" = covered at least 5% of what remained, or at
+        # least 10 pixels.  Chasing tiny boundary fragments isn't
+        # productive — a real annotator would move on.
+        error_after = int(np.sum(remaining_error & ~near_opposite))
+        covered = error_before - error_after
+        min_progress = max(10, int(error_before * 0.05))
+        if covered < min_progress:
+            stall_count += 1
+        else:
+            stall_count = 0
 
     return mouse_pos
 

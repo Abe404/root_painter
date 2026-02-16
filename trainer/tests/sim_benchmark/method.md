@@ -212,7 +212,8 @@ remaining error is updated, so subsequent scan lines target only unpainted
 territory. Sweep direction alternates (zigzag / boustrophedon) to minimize
 travel between lines, like a human coloring back and forth. The loop
 continues until only boundary-ambiguous pixels remain (within 2px of the
-GT class edge), with a safety cap of 20 strokes per error region.
+GT class edge), or the annotator stalls (3 consecutive iterations
+covering less than 5% of remaining error).
 
 **Boundary-aware stopping.** The simulated user does not try to annotate
 the last few pixels of error right on the boundary between true foreground

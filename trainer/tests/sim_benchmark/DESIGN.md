@@ -258,5 +258,14 @@ _None currently open._
   silently failed on thin structures, causing the annotator to skip errors
   it should have corrected. Fixed with progressive fallbacks (smaller
   brush, boundary mode with per-component strokes) and boundary-aware
-  stopping criterion (stop only when remaining errors are within 4px of
+  stopping criterion (stop only when remaining errors are within 2px of
   the GT class edge).
+
+- **Artificial 20-stroke-per-region cap.** The original stroke loop had a
+  hard cap of 20 strokes per error region, which prevented the annotator
+  from correcting all clear errors on images with large error areas (e.g.
+  when the model is weak early in training). Replaced with stall-based
+  stopping: if 3 consecutive iterations each cover less than 5% of the
+  remaining actionable error, the annotator moves on. This follows the
+  protocol's instruction to correct all clear errors — annotation time is
+  naturally longer when the model is bad and shorter as it improves.

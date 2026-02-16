@@ -34,6 +34,37 @@ if _nv_dirs:
     os.environ["LD_LIBRARY_PATH"] = ":".join(_nv_dirs + ([existing] if existing else []))
     print(f"Added {len(_nv_dirs)} nvidia lib dirs to LD_LIBRARY_PATH")
 
+# ---------------------------------------------------------------------------
+# Create minimal stub .so files for CUDA libraries that aren't installed
+# (cusparse, cufft, cusolver).  torch tries to dlopen these at import time;
+# without them PyInstaller's analysis fails and it misses submodules like
+# torch._dynamo.polyfills.fx.  The stubs only need to be loadable — torch
+# never calls into them for RootPainter workloads.
+# ---------------------------------------------------------------------------
+import tempfile
+
+_STUB_SONAMES = ["libcusparse.so.12", "libcufft.so.11", "libcusolver.so.11"]
+_stub_dir = None
+
+if sys.platform == "linux" and shutil.which("gcc"):
+    _stub_dir = tempfile.mkdtemp(prefix="cuda_stubs_")
+    for _soname in _STUB_SONAMES:
+        _stub_path = os.path.join(_stub_dir, _soname)
+        if not any(os.path.exists(os.path.join(d, _soname)) for d in
+                   os.environ.get("LD_LIBRARY_PATH", "").split(":")):
+            # Create a minimal empty .so with the correct soname
+            _stub_c = _stub_path + ".c"
+            with open(_stub_c, "w") as _f:
+                _f.write("// empty stub\n")
+            subprocess.run([
+                "gcc", "-shared", "-o", _stub_path, _stub_c,
+                f"-Wl,-soname,{_soname}",
+            ], check=True)
+            os.unlink(_stub_c)
+            print(f"Created pre-analysis stub: {_soname}")
+    existing = os.environ.get("LD_LIBRARY_PATH", "")
+    os.environ["LD_LIBRARY_PATH"] = _stub_dir + ":" + existing
+
 PyInstaller.__main__.run([
     "--noconfirm",
     "--clean",

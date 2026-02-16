@@ -312,9 +312,9 @@ def main():
             fp_mask = (gt == 0) & (pred == 1)
             fg_annot = annot[:, :, 0] > 0
             bg_annot = annot[:, :, 1] > 0
-            # Boundary = within 4px of opposite class
-            near_bg = binary_dilation(gt == 0, structure=disk(4))
-            near_fg = binary_dilation(gt == 1, structure=disk(4))
+            # Boundary = within 2px of opposite class
+            near_bg = binary_dilation(gt == 0, structure=disk(2))
+            near_fg = binary_dilation(gt == 1, structure=disk(2))
             # Non-boundary errors that should have been corrected
             fn_interior = fn_mask & ~near_bg  # FN away from BG boundary
             fp_interior = fp_mask & ~near_fg  # FP away from FG boundary

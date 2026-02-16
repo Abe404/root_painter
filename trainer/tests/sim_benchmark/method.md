@@ -180,10 +180,13 @@ predicted FG. Implementation:
 This ensures annotations stay on the correct class while covering the error
 and its surroundings.
 
-**Brush sized to the error.** The brush adapts to the remaining error each
-iteration. The desired radius is based on the error's equivalent radius
-(sqrt(area/pi)) capped by the maximum distance transform value within the
-error (how deep inside the GT class the error pixels are). `_find_brush`
+**Brush sizing.** The brush adapts to the remaining error. For chunky
+errors (raster fill), the desired radius is based on the error's equivalent
+radius (sqrt(area/pi)) capped by the maximum distance transform value
+within the error. For thin errors (curved strokes), the brush is sized to
+the GT class depth *near* the error — the maximum distance transform in a
+20px neighbourhood — so a large brush centered deep inside the GT class
+can cover a thin boundary error with just its edge. `_find_brush`
 binary-searches for the largest radius where the eroded safe zone
 (gt_class_mask eroded by disk(radius)) overlaps with the dilated error.
 Erosion ignores image borders (pad with edge values) so the brush can
@@ -208,24 +211,31 @@ is clipped to the UNCOVERED strokeable area — after each stroke, the
 remaining error is updated, so subsequent scan lines target only unpainted
 territory. Sweep direction alternates (zigzag / boustrophedon) to minimize
 travel between lines, like a human coloring back and forth. The loop
-continues until only boundary-ambiguous pixels remain (within 4px of the
+continues until only boundary-ambiguous pixels remain (within 2px of the
 GT class edge), with a safety cap of 20 strokes per error region.
 
 **Boundary-aware stopping.** The simulated user does not try to annotate
 the last few pixels of error right on the boundary between true foreground
 and background. These pixels are genuinely ambiguous — a real user wouldn't
-agonize over them either. Error pixels within 4px of the opposite GT class
-(computed via `binary_dilation(~gt_class_mask, disk(4))`) are excluded
+agonize over them either. Error pixels within 2px of the opposite GT class
+(computed via `binary_dilation(~gt_class_mask, disk(2))`) are excluded
 from the actionable error mask. If all remaining error pixels fall within
 this boundary zone, the error region is considered corrected.
 
-**Boundary mode for thin errors.** When `_find_brush` cannot fit any
-brush with safe-zone erosion (the error is right at the GT class
-boundary), the annotator switches to boundary mode: connected components
-of the remaining actionable error are labeled, and each component is
-stroked individually along its own principal axis using a small brush
-(radius 2) with a 1px erosion buffer to minimize spill. If even that
-fails, radius 1 on the uneroded GT mask is tried.
+**Curved contour-following strokes for thin errors.** When the error is
+thin relative to the brush (narrower dimension < 2× brush diameter), the
+annotator switches from raster fill to curved strokes that follow the
+error contour. Connected components of the actionable error are labeled.
+For each component, pixels are ordered via BFS walk from an endpoint,
+waypoints are sampled at regular spacing (scaled with brush size), and
+snapped to the paintable region. The stroke chains through waypoints,
+producing a smooth curve that follows the boundary. These strokes use
+"careful" mode: 2× slower duration (less jitter) and full brush radius
+(no size reduction), since precision matters near edges.
+
+When no brush fits with safe-zone erosion (error right at the GT class
+boundary), a small brush (radius 2) with 1px erosion buffer is used.
+If even that fails, radius 1 on the uneroded GT mask is tried.
 
 **Spill detection and eraser.** After each stroke, a check detects any
 annotation pixels that landed on the wrong GT class. If spill is found,

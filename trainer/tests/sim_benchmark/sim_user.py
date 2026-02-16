@@ -10,6 +10,7 @@ even though pixel speeds vary with image resolution and zoom level.
 Every event is recorded with a simulated time cost (dt in seconds).
 """
 import sys
+from collections import deque
 import numpy as np
 from scipy.ndimage import binary_erosion, binary_dilation, distance_transform_edt
 from sim_benchmark.brush import disk, paint, new_annot
@@ -229,6 +230,69 @@ def initial_annotation(ground_truth, seed=None, **_ignored):
     return annot, trajectory
 
 
+def _order_waypoints(error_comp, paintable, spacing=15):
+    """Order pixels of a thin error component and sample waypoints.
+
+    Walks along the component from one endpoint to the other (BFS on
+    8-connected pixels), then samples waypoints at regular spacing and
+    snaps them to the paintable region.  This produces curved stroke
+    paths that follow boundary error contours.
+
+    Returns list of (row, col) waypoints (at least 2).
+    """
+    rows, cols = np.where(error_comp)
+    if len(rows) < 2:
+        pr, pc = np.where(paintable)
+        if len(pr) == 0:
+            return [(int(rows[0]), int(cols[0]))] * 2
+        return [(int(pr[0]), int(pc[0])), (int(pr[-1]), int(pc[-1]))]
+
+    # Build 8-connected adjacency
+    pixels = set(zip(rows.tolist(), cols.tolist()))
+    adj = {p: [] for p in pixels}
+    for r, c in pixels:
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                if (dr, dc) != (0, 0) and (r + dr, c + dc) in pixels:
+                    adj[(r, c)].append((r + dr, c + dc))
+
+    # Find an endpoint (fewest neighbors) to start from
+    start = min(adj, key=lambda p: len(adj[p]))
+
+    # BFS to order pixels along the component
+    visited = {start}
+    ordered = [start]
+    queue = deque([start])
+    while queue:
+        p = queue.popleft()
+        for n in adj[p]:
+            if n not in visited:
+                visited.add(n)
+                ordered.append(n)
+                queue.append(n)
+
+    # Sample waypoints at regular spacing
+    waypoints = [ordered[0]]
+    for p in ordered[1:]:
+        last = waypoints[-1]
+        if (p[0] - last[0]) ** 2 + (p[1] - last[1]) ** 2 >= spacing ** 2:
+            waypoints.append(p)
+    if waypoints[-1] != ordered[-1]:
+        waypoints.append(ordered[-1])
+
+    # Snap each waypoint to nearest paintable pixel
+    pr, pc = np.where(paintable)
+    if len(pr) == 0:
+        return waypoints
+
+    def _snap(point):
+        d = (pr - point[0]) ** 2 + (pc - point[1]) ** 2
+        i = int(np.argmin(d))
+        return (int(pr[i]), int(pc[i]))
+
+    return [_snap(wp) for wp in waypoints]
+
+
 def _annotate_error_region(annot, error_region, gt_class_mask, channel,
                            mouse_pos, rng, trajectory, h, w):
     """Annotate a single error region with raster zigzag fill.
@@ -248,7 +312,7 @@ def _annotate_error_region(annot, error_region, gt_class_mask, channel,
 
     base_duration = FG_STROKE_DURATION if channel == 0 else BG_STROKE_DURATION
     remaining_error = error_region.copy()
-    near_opposite = binary_dilation(~gt_class_mask, structure=disk(4))
+    near_opposite = binary_dilation(~gt_class_mask, structure=disk(2))
     dt = distance_transform_edt(gt_class_mask)
 
     def _done():
@@ -289,17 +353,26 @@ def _annotate_error_region(annot, error_region, gt_class_mask, channel,
                 hi2 = mid - 1
         return best_r, best_pr
 
-    def _do_stroke(start, end, pr, br):
-        """Execute a stroke, return dabs_placed."""
+    def _do_stroke(start, end, pr, br, careful=False):
+        """Execute a stroke, return dabs_placed.
+
+        careful=True for edge strokes: slower (less jitter), full brush
+        radius (need every pixel of reach to cover boundary errors).
+        """
         nonlocal mouse_pos
         duration = base_duration * rng.lognormal(0, STROKE_DURATION_SPREAD)
+        if careful:
+            duration *= 2  # slow down near edges for precision
         dist_est = max(1.0, np.sqrt((end[0]-start[0])**2 +
                                      (end[1]-start[1])**2))
         sigma = max(1.0, dist_est / duration) * JITTER_RATE
         jr, jc = rng.normal(0, sigma), rng.normal(0, sigma)
         jstart = (int(start[0] + jr), int(start[1] + jc))
-        noise = abs(rng.normal(0, max(1, sigma * 0.5)))
-        rad = max(1, br - int(noise))
+        if careful:
+            rad = br  # full radius to reach edges
+        else:
+            noise = abs(rng.normal(0, max(1, sigma * 0.5)))
+            rad = max(1, br - int(noise))
         mouse_travel(trajectory, mouse_pos, jstart, rng)
         dabs = mouse_stroke(annot, jstart, end, pr, rad, channel,
                              rng, trajectory, duration)
@@ -330,7 +403,7 @@ def _annotate_error_region(annot, error_region, gt_class_mask, channel,
         if not np.any(actionable):
             break
 
-        # Adapt brush to current remaining error
+        # Brush sized to the error for raster fill (chunky errors).
         act_rows, act_cols = np.where(actionable)
         act_area = int(np.sum(actionable))
         act_equiv = np.sqrt(act_area / np.pi)
@@ -342,25 +415,47 @@ def _annotate_error_region(annot, error_region, gt_class_mask, channel,
             force_boundary = False
         else:
             br, pr = _find_brush(actionable, act_desired)
-        if br == 0 or pr is None:
-            # Boundary-adjacent: break into connected components and
-            # stroke each arc separately with a small brush.
-            # Use br=2 with 1px erosion buffer to reduce spill.
-            br = 2
-            safe_boundary = _erode_safe(gt_class_mask, 1)
-            pr_full = safe_boundary & binary_dilation(
-                actionable, structure=disk(br + 1))
-            if not np.any(pr_full):
-                # Can't fit even br=2 with erosion — use br=1 on uneroded
-                br = 1
-                pr_full = gt_class_mask & binary_dilation(
-                    actionable, structure=disk(2))
-                if not np.any(pr_full):
-                    break
 
-            # Label connected components of actionable error
+        # Thin errors get curved strokes with a bigger brush — sized
+        # to GT class depth nearby, not error size.  One big sweep
+        # along the contour with brush edge covering the thin error.
+        row_ext = int(np.max(act_rows)) - int(np.min(act_rows))
+        col_ext = int(np.max(act_cols)) - int(np.min(act_cols))
+        min_ext = min(row_ext, col_ext)
+        use_curved = (br == 0 or pr is None)
+        if not use_curved and min_ext < br * 2:
+            # Thin error — try bigger brush from GT depth nearby
+            search_r = min(20, max(h, w) // 10)
+            nearby_mask = binary_dilation(actionable, structure=disk(search_r))
+            nearby_dt = dt[nearby_mask & (dt > 0)]
+            if len(nearby_dt) > 0:
+                curved_desired = max(br, int(np.max(nearby_dt)))
+                cbr, cpr = _find_brush(actionable, curved_desired)
+                if cbr > br:
+                    br, pr = cbr, cpr
+            use_curved = True
+        if use_curved:
+            if br == 0 or pr is None:
+                # No brush fits — use br=2 with 1px erosion buffer
+                br = 2
+                safe_boundary = _erode_safe(gt_class_mask, 1)
+                curve_pr = safe_boundary & binary_dilation(
+                    actionable, structure=disk(br + 1))
+                if not np.any(curve_pr):
+                    br = 1
+                    curve_pr = gt_class_mask & binary_dilation(
+                        actionable, structure=disk(2))
+                    if not np.any(curve_pr):
+                        break
+            else:
+                # Brush fits — use its paintable region
+                curve_pr = pr
+
+            # Per-component curved strokes following the error contour.
+            # Waypoint spacing scales with brush — big brush covers more
+            # per dab, so waypoints can be further apart.
+            wp_spacing = max(15, br * 2)
             labeled, num = ndimage_label(actionable)
-            # Process components largest first
             comp_sizes = [(int(np.sum(labeled == ci)), ci)
                           for ci in range(1, num + 1)]
             comp_sizes.sort(reverse=True)
@@ -368,20 +463,17 @@ def _annotate_error_region(annot, error_region, gt_class_mask, channel,
                 if _done() or total_strokes >= 20:
                     break
                 comp = (labeled == ci)
-                comp_pr = pr_full & binary_dilation(
+                comp_pr = curve_pr & binary_dilation(
                     comp, structure=disk(br + 1))
                 if not np.any(comp_pr):
                     continue
-                # Stroke along this component's axis
-                comp_dir = principal_axis(comp)
-                cr, cc = np.where(comp_pr)
-                axis_proj = cr * comp_dir[0] + cc * comp_dir[1]
-                start = (int(cr[np.argmin(axis_proj)]),
-                         int(cc[np.argmin(axis_proj)]))
-                end = (int(cr[np.argmax(axis_proj)]),
-                       int(cc[np.argmax(axis_proj)]))
-                _do_stroke(start, end, comp_pr, br)
-                total_strokes += 1
+                waypoints = _order_waypoints(comp, comp_pr, spacing=wp_spacing)
+                for wi in range(len(waypoints) - 1):
+                    if total_strokes >= 20:
+                        break
+                    _do_stroke(waypoints[wi], waypoints[wi + 1],
+                               comp_pr, br, careful=True)
+                    total_strokes += 1
             remaining_error = remaining_error & ~(annot[:, :, channel] > 0)
             continue
 

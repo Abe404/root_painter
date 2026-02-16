@@ -275,7 +275,7 @@ def run_benchmark(dataset_dir, ground_truth_dir, output_dir,
         video_fps = 6
         sim_time = 0.0
         for d in video_data:
-            traj_frames, sim_time = render_trajectory_frames(
+            traj_frames, _, _, sim_time = render_trajectory_frames(
                 d['rgb'], d['gt'], d['traj'], d['pred'],
                 d['stem'], d['phase'], d['val_f1'],
                 image_index=d['image_index'], time_offset=sim_time,

@@ -225,18 +225,21 @@ def render_trajectory_frames(rgb_image, ground_truth, trajectory,
     plays back at real speed when viewed at the given FPS.
 
     Returns:
-        (frames, end_time) — list of frame arrays, and final simulated time
+        (frames, frame_times, corrected_f1s, end_time) — frame arrays,
+        per-frame simulated times, per-frame corrected F1, final sim time
     """
     from sim_benchmark.brush import paint, new_annot
 
     if not trajectory:
-        return [], time_offset
+        return [], [], [], time_offset
 
     h, w = ground_truth.shape
     rgb = np.array(Image.fromarray(rgb_image).resize((w, h)))
 
     annot = new_annot(h, w)
     frames = []
+    frame_times = []
+    frame_corrected_f1s = []
     sep = np.full((h, 3, 3), 30, dtype=np.uint8)
 
     frame_interval = 1.0 / fps
@@ -270,9 +273,6 @@ def render_trajectory_frames(rgb_image, ground_truth, trajectory,
 
         # Panel 1: plain image
         panel1 = rgb.copy()
-        panel1 = add_label(
-            panel1,
-            f"image {image_index + 1}  t={sim_time:.1f}s  {phase}")
 
         # Panel 2: image + current annotation + cursor
         panel2 = rgb.copy()
@@ -284,19 +284,45 @@ def render_trajectory_frames(rgb_image, ground_truth, trajectory,
             panel2 = overlay(panel2, bg_mask, BG_ANNOT)
         panel2 = draw_cursor(panel2, last_r, last_c, last_painting,
                               last_brush_radius, last_channel)
-        panel2 = add_label(panel2, stem)
 
         # Panel 3: image + segmentation overlay
         panel3 = rgb.copy()
         if prediction is not None:
             panel3 = overlay(panel3, prediction.astype(bool), PRED_FG)
-            panel3 = add_label(panel3, f"seg  F1={val_f1:.3f}")
+
+        # Panel 4: image + corrected segmentation (prediction + annotation)
+        panel4 = rgb.copy()
+        if prediction is not None:
+            corrected = prediction.copy()
+            corrected[annot[:, :, 0] > 0] = 1
+            corrected[annot[:, :, 1] > 0] = 0
+            panel4 = overlay(panel4, corrected.astype(bool), PRED_FG)
+            tp = int(np.sum((corrected == 1) & (ground_truth == 1)))
+            fp = int(np.sum((corrected == 1) & (ground_truth == 0)))
+            fn = int(np.sum((corrected == 0) & (ground_truth == 1)))
+            frame_corrected_f1s.append(2 * tp / max(1, 2 * tp + fp + fn))
         else:
-            panel3 = add_label(panel3, "no seg yet")
+            frame_corrected_f1s.append(0.0)
 
-        frames.append(np.concatenate([panel1, sep, panel2, sep, panel3], axis=1))
+        # Label bar above panels
+        label_h = 18
+        labels = ['image', 'annotation', 'segmentation', 'corrected']
+        label_panels = []
+        for j, lbl in enumerate(labels):
+            lp = np.full((label_h, w, 3), 30, dtype=np.uint8)
+            lp = add_label(lp, lbl, position=(w // 2 - len(lbl) * 3, 1),
+                           size=12, color=(200, 200, 200))
+            label_panels.append(lp)
+            if j < len(labels) - 1:
+                label_panels.append(np.full((label_h, 3, 3), 30, dtype=np.uint8))
+        label_row = np.concatenate(label_panels, axis=1)
 
-    return frames, sim_time
+        panel_row = np.concatenate(
+            [panel1, sep, panel2, sep, panel3, sep, panel4], axis=1)
+        frames.append(np.concatenate([label_row, panel_row], axis=0))
+        frame_times.append(sim_time)
+
+    return frames, frame_times, frame_corrected_f1s, sim_time
 
 
 def save_frames(frames, output_dir):

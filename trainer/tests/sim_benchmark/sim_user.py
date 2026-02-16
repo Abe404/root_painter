@@ -334,7 +334,14 @@ def corrective_annotation(ground_truth, prediction):
             area = int(np.sum(region))
             if area < 50:
                 continue
+            # Skip scattered noise: if error pixels are sparse relative
+            # to their bounding box, it's not a coherent error region
             region_rows, region_cols = np.where(region)
+            bbox_h = region_rows.max() - region_rows.min() + 1
+            bbox_w = region_cols.max() - region_cols.min() + 1
+            density = area / max(1, bbox_h * bbox_w)
+            if density < 0.05:
+                continue
             centroid = (float(np.mean(region_rows)),
                         float(np.mean(region_cols)))
             errors.append({

@@ -1,0 +1,7 @@
+# Benchmark output
+quick_output/
+demo_output/
+frames/
+
+# Generated images
+preview.png

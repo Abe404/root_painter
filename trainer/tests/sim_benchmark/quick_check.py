@@ -5,6 +5,7 @@ Resume:       python -m sim_benchmark.quick_check --resume
 """
 import sys, os
 import copy
+import csv
 import shutil
 import tempfile
 import threading
@@ -35,13 +36,13 @@ IN_W = 172
 OUT_W = 100
 BATCH_SIZE = 2
 MIN_EPOCH_TILES = 10
-CORRECTIVE_CONFIDENCE_THRESHOLD = 0.8
+CORRECTIVE_CONFIDENCE_THRESHOLD = 0.5
 MIN_INITIAL_IMAGES = 2
 
 CHECKPOINT_PATH = os.path.join(this_dir, 'quick_output', 'checkpoint.pt')
 
 
-def make_images(num_images=30, size=200):
+def make_images(num_images=60, size=200):
     """Random ellipses on noisy backgrounds."""
     rng = np.random.RandomState(42)
     y, x = np.ogrid[:size, :size]
@@ -56,9 +57,9 @@ def make_images(num_images=30, size=200):
     return images
 
 
-def save_frame(frame, frames_dir, idx):
+def save_frame(frame, frames_dir, idx, name='', phase=''):
     """Save a single frame immediately."""
-    path = os.path.join(frames_dir, f'frame_{idx:04d}.png')
+    path = os.path.join(frames_dir, f'frame_{idx:04d}_{name}_{phase}.png')
     Image.fromarray(frame).save(path)
 
 
@@ -246,6 +247,13 @@ def main():
 
     training_started = resume
 
+    stats_path = os.path.join(frames_dir, 'stats.csv')
+    stats_file = open(stats_path, 'w', newline='')
+    stats_writer = csv.writer(stats_file)
+    stats_writer.writerow(['filename', 'image', 'image_index', 'phase',
+                           'val_f1', 'seg_f1', 'corrected_f1',
+                           'confidence', 'epochs', 'sim_time'])
+
     for i, (rgb, gt, name) in enumerate(images):
         if i < start_image:
             continue
@@ -292,13 +300,26 @@ def main():
         n_strokes = sum(1 for j, e in enumerate(traj)
                         if e['painting'] and (j == 0 or not traj[j-1]['painting']))
 
-        # Render annotation frames
-        frames, sim_time = render_trajectory_frames(
+        # Seg F1: prediction vs ground truth for this image
+        tp = int(np.sum((pred == 1) & (gt == 1)))
+        fp = int(np.sum((pred == 1) & (gt == 0)))
+        fn = int(np.sum((pred == 0) & (gt == 1)))
+        seg_f1 = 2 * tp / max(1, 2 * tp + fp + fn)
+
+        # Render annotation frames (corrected F1 computed per-frame)
+        frames, frame_times, frame_cf1s, sim_time = render_trajectory_frames(
             rgb, gt, traj, pred, name, phase, best_f1,
             image_index=i, time_offset=sim_time, fps=6)
-        for frame in frames:
-            save_frame(frame, frames_dir, frame_idx)
+        for frame, ft, cf1 in zip(frames, frame_times, frame_cf1s):
+            fname = f'frame_{frame_idx:04d}_{name}_{phase}.png'
+            save_frame(frame, frames_dir, frame_idx, name, phase)
+            stats_writer.writerow([fname, name, i, phase,
+                                   f'{best_f1:.4f}', f'{seg_f1:.4f}',
+                                   f'{cf1:.4f}',
+                                   f'{confidence:.4f}', trainer.epoch_count,
+                                   f'{ft:.2f}'])
             frame_idx += 1
+        stats_file.flush()
 
         # Save annotation to train/val split
         target_dir = get_annot_target_dir(train_annot_dir, val_annot_dir)
@@ -317,6 +338,7 @@ def main():
             trainer.start()
             training_started = True
 
+    stats_file.close()
     trainer.stop()
     if training_started:
         trainer.join(timeout=30)

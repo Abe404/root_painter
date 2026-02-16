@@ -150,27 +150,32 @@ def replace_with_stubs(bundle_dir):
 
     saved = 0
     for soname, pattern in STUB_LIBS.items():
-        # Find the real library in the bundle
-        matches = list(internal.glob(pattern))
-        if not matches:
-            print(f"  {soname}: not in bundle, skipping")
-            continue
-
-        real_lib = matches[0]
-        old_size = real_lib.stat().st_size
-
         # Get the symbols libtorch_cuda.so needs from this library
         symbols = _get_needed_symbols(libtorch, soname)
         if not symbols:
             print(f"  {soname}: no symbols referenced, skipping")
             continue
 
-        # Build stub and replace
+        # Find the real library in the bundle (if present)
+        matches = list(internal.glob(pattern))
+        if matches:
+            real_lib = matches[0]
+            old_size = real_lib.stat().st_size
+        else:
+            # Library not bundled (e.g. CI without CUDA toolkit) — create stub
+            real_lib = internal / soname
+            old_size = 0
+
+        # Build stub (replace real lib, or create from scratch)
         _build_stub(soname, symbols, real_lib)
         new_size = real_lib.stat().st_size
         saved += old_size - new_size
-        print(f"  {soname}: {old_size // 1024 // 1024}MB -> {new_size // 1024}KB "
-              f"({len(symbols)} stub symbols)")
+        if old_size > 0:
+            print(f"  {soname}: {old_size // 1024 // 1024}MB -> {new_size // 1024}KB "
+                  f"({len(symbols)} stub symbols)")
+        else:
+            print(f"  {soname}: created stub {new_size // 1024}KB "
+                  f"({len(symbols)} symbols)")
 
     # Also remove libcusolver if present (not in NEEDED, purely transitive)
     for extra in ["libcusolver.so.11"]:

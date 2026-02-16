@@ -97,10 +97,9 @@ jobs:
         run: |
           set -euxo pipefail
           ls -lah painter/dist
-          test -x painter/dist/RootPainter
-          test -x painter/dist/RootPainterTrainer
           test -d painter/dist/RootPainterWorkstation
           test -x painter/dist/RootPainterWorkstation/RootPainter
+          test -d painter/dist/RootPainterWorkstation/_internal
           test -x painter/dist/RootPainterWorkstation/RootPainterTrainerBundle/RootPainterTrainer
           test -d painter/dist/RootPainterWorkstation/RootPainterTrainerBundle/_internal
 

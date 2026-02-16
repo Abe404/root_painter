@@ -124,6 +124,7 @@ else:
         target_arch=None,
         codesign_identity=None,
         entitlements_file=None,
+        exclude_binaries=True,
     )
 
     painter_exe = EXE(
@@ -139,6 +140,7 @@ else:
         disable_windowed_traceback=False,
         argv_emulation=False,
         icon=icon_file,
+        exclude_binaries=True,
     )
 
     coll = COLLECT(

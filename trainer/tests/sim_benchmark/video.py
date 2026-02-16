@@ -261,6 +261,9 @@ def render_trajectory_frames(rgb_image, ground_truth, trajectory,
 
         if entry.get('painted', entry['painting']):
             paint(annot, (r, c), entry['brush_radius'], entry['channel'])
+            # Clip: annotation must not land on the wrong class
+            annot[ground_truth == 0, 0] = 0  # no FG annot on true BG
+            annot[ground_truth == 1, 1] = 0  # no BG annot on true FG
 
         last_r, last_c = r, c
         last_painting = entry['painting']

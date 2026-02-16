@@ -180,24 +180,58 @@ predicted FG. Implementation:
 This ensures annotations stay on the correct class while covering the error
 and its surroundings.
 
-**Brush sized for the error.** The brush starts at `min(error_equiv,
-class_equiv) / 2` and shrinks (halving) until the paint region has paintable
-pixels. A large error region gets a larger brush; a small false positive gets
-a small one. The class geometry constraint prevents bleed across boundaries.
+**Brush sized to the error.** The brush adapts to the remaining error each
+iteration. The desired radius is based on the error's equivalent radius
+(sqrt(area/pi)) capped by the maximum distance transform value within the
+error (how deep inside the GT class the error pixels are). `_find_brush`
+binary-searches for the largest radius where the eroded safe zone
+(gt_class_mask eroded by disk(radius)) overlaps with the dilated error.
+Erosion ignores image borders (pad with edge values) so the brush can
+reach image edges.
 
-**Speed adapts to the error.** The corrective paint region is typically
-smaller and tighter than initial annotation regions, so `choose_paint_speed`
-returns a lower speed with less jitter — the user naturally slows down for
-precise correction work.
+**Paint region (safe zone).** The paint region is the eroded GT class mask
+intersected with the dilated error neighbourhood. Erosion by the brush
+radius guarantees the full circular brush stays inside the correct class —
+mathematically safe because `paint()` uses the same disk shape as the
+erosion structuring element.
 
-**Stroke count.** The number of strokes scales with the error region relative
-to the brush: `min(5, error_equiv / brush_radius)`. This produces a few
-targeted strokes — enough to indicate the correct class, not exhaustive
-coverage of every error pixel.
+**Raster zigzag fill.** Error regions are filled with parallel scan lines
+using the standard raster fill algorithm from coverage path planning — the
+same approach used by 3D printing slicers (rectilinear infill in Cura,
+PrusaSlicer, etc.) and CNC pocket milling. See Choset (2001)
+"Coverage of Known Spaces: The Boustrophedon Cellular Decomposition",
+Autonomous Robots 9(3), for the formal robotics treatment. The sweep direction
+is computed from the error centroid toward the farthest error pixel, and
+scan lines are spaced perpendicular to this at ~85% of brush diameter
+(slight overlap to avoid gaps, standard in raster fill). Each scan line
+is clipped to the UNCOVERED strokeable area — after each stroke, the
+remaining error is updated, so subsequent scan lines target only unpainted
+territory. Sweep direction alternates (zigzag / boustrophedon) to minimize
+travel between lines, like a human coloring back and forth. The loop
+continues until only boundary-ambiguous pixels remain (within 4px of the
+GT class edge), with a safety cap of 20 strokes per error region.
 
-**Thin error regions.** If an error region is too thin to have any safe
-interior after erosion, it is skipped — the simulated user judges it as not
-a clear enough error to annotate.
+**Boundary-aware stopping.** The simulated user does not try to annotate
+the last few pixels of error right on the boundary between true foreground
+and background. These pixels are genuinely ambiguous — a real user wouldn't
+agonize over them either. Error pixels within 4px of the opposite GT class
+(computed via `binary_dilation(~gt_class_mask, disk(4))`) are excluded
+from the actionable error mask. If all remaining error pixels fall within
+this boundary zone, the error region is considered corrected.
+
+**Boundary mode for thin errors.** When `_find_brush` cannot fit any
+brush with safe-zone erosion (the error is right at the GT class
+boundary), the annotator switches to boundary mode: connected components
+of the remaining actionable error are labeled, and each component is
+stroked individually along its own principal axis using a small brush
+(radius 2) with a 1px erosion buffer to minimize spill. If even that
+fails, radius 1 on the uneroded GT mask is tried.
+
+**Spill detection and eraser.** After each stroke, a check detects any
+annotation pixels that landed on the wrong GT class. If spill is found,
+those pixels are erased (set to 0) and a warning is printed — simulating
+the user noticing the mistake and using the eraser brush to fix it. This
+is rare with safe-zone erosion but can occur in boundary mode.
 
 ## Training Loop
 

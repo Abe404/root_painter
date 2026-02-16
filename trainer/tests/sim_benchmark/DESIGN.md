@@ -63,10 +63,19 @@ clear error region, they paint a corrective stroke in the appropriate
 channel (FG where the model missed foreground, BG where the model
 hallucinated foreground).
 
-**What gets corrected:** All clear errors. Tiny ambiguous border issues
-(1–3 pixels next to a boundary) may be left alone, since boundaries are
-often genuinely unclear. For now, the simulation corrects all errors above
-a small size threshold. Boundary ambiguity could be added later.
+**What gets corrected:** All errors that a user could reasonably annotate.
+A 10-pixel false positive in the middle of an empty background region is
+trivial to fix — just a quick click. A 200-pixel missed root section is a
+few confident strokes. The simulated user does not give up on small errors
+just because they are small.
+
+**What gets skipped:** Only boundary-ambiguous pixels — error pixels
+within ~2px of the GT class edge, where the true boundary between
+foreground and background is genuinely hard to pinpoint. A real user
+wouldn't try to paint 1–2px slivers right on a complex boundary either.
+The simulation's multi-stroke loop keeps stroking until only these
+boundary pixels remain uncovered. This means interior errors are always
+fully corrected regardless of size or shape.
 
 **Brush size trade-off:** The user picks the largest brush they can use
 confidently at speed. The brush should be large enough to cover the area
@@ -164,17 +173,58 @@ Training transition frames between images showing F1 progress.
 ## Implementation approach
 
 Current approach is rules-based: compute regions, pick brush size, plan
-stroke paths geometrically. This has proven brittle — each edge case
-needs a new rule, and rules interact in unexpected ways.
+stroke paths geometrically using **raster zigzag fill** — the standard
+algorithm from CNC machining, 3D printing slicers, and robotic painting.
 
-If the rules-based approach continues to struggle, alternatives to
-consider:
+### Raster zigzag fill (current)
+
+The corrective annotator fills error regions with parallel scan lines:
+
+1. Compute sweep direction from error centroid → farthest error pixel
+2. Compute perpendicular direction for scan line spacing
+3. Space scan lines at ~85% of brush diameter (slight overlap, standard
+   in raster fill to avoid gaps)
+4. For each scan line: clip to UNCOVERED strokeable area, sweep, update
+   remaining error
+5. Zigzag: alternate sweep direction each line (boustrophedon) to
+   minimize travel, like a human coloring back and forth
+
+Key property: each scan line recomputes the uncovered strokeable region,
+so strokes never retrace already-painted areas. This was the main failure
+mode of earlier approaches (principal axis sweep, centroid targeting) —
+the direction didn't change between iterations, causing redundant strokes
+over the same path.
+
+### Background: coverage path planning literature
+
+The raster zigzag approach comes from **coverage path planning** — a
+well-studied problem in robotics, CNC, and 3D printing:
+
+- **Raster/zigzag fill** (our approach): parallel scan lines clipped to
+  the region boundary, connected in alternating directions. Simplest and
+  most common. Used by every 3D printing slicer for rectilinear infill.
+- **Contour-parallel fill**: shrink the boundary inward repeatedly,
+  stroke each offset contour. Better edge coverage for organic shapes.
+  Used in CNC as "pocket milling" and in 3D printing as "concentric
+  infill."
+- **Hybrid (contour + raster)**: what 3D printing slicers actually do —
+  2-3 perimeter contour passes for clean edges, then raster fill for the
+  interior. The gold standard for practical coverage.
+- **Boustrophedon cellular decomposition**: formal robotics algorithm.
+  Decompose region into cells at obstacle vertices, fill each cell with
+  zigzag, plan a tour through cells. Only needed for regions with holes.
+  Reference: Choset (2001), Autonomous Robots 9(3).
+
+Key parameters across all approaches:
+- Step size = brush_width × (1 − overlap), overlap 10-20%
+- Fill angle can be fixed or rotated between passes
+
+### If rules-based continues to struggle
 
 - **Vector field / cost-benefit optimization:** Define a field over the
   image where each point has an annotation value (how much the model
   needs correction there) and a cost (proximity to boundaries, direction
   change penalty). Stroke paths follow high benefit-to-cost gradients.
-  Naturally produces efficient straight strokes through valuable regions.
 - **RL:** Agent learns a stroke placement policy given current state
   (image, GT, existing annotation). Reward = coverage per unit time.
   Could be combined with constraints learned from real user data.
@@ -183,9 +233,30 @@ consider:
   them to learn realistic stroke patterns or to constrain/validate the
   simulation.
 
-For now: keep rules-based, but informed by this design document to avoid
-the cycle of fix → break → fix.
-
 ## Current issues (to resolve)
 
-_To be filled in as we identify specific problems._
+_None currently open._
+
+## Resolved issues
+
+- **Redundant strokes over already-painted area.** Principal axis sweep
+  and centroid targeting both produced the same stroke direction each
+  iteration, retracing the same band. Fixed by switching to raster zigzag
+  fill: parallel scan lines perpendicular to the sweep direction, each
+  clipped to uncovered area. Strokes now systematically fill the region
+  without redundancy.
+
+- **BG/FG annotation landing on wrong class.** The brush could spill
+  across the GT class boundary. Fixed with safe-zone erosion: erode
+  gt_class_mask by disk(brush_radius) so the full brush disk stays
+  inside. For boundary-adjacent errors where no brush fits with erosion,
+  a small brush (radius 2) with 1px erosion buffer is used. Any
+  remaining spill is detected and erased (simulating the user noticing
+  and using the eraser).
+
+- **Corrective annotator skipping fixable errors.** Safe-zone erosion
+  silently failed on thin structures, causing the annotator to skip errors
+  it should have corrected. Fixed with progressive fallbacks (smaller
+  brush, boundary mode with per-component strokes) and boundary-aware
+  stopping criterion (stop only when remaining errors are within 4px of
+  the GT class edge).

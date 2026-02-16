@@ -9,8 +9,9 @@ even though pixel speeds vary with image resolution and zoom level.
 
 Every event is recorded with a simulated time cost (dt in seconds).
 """
+import sys
 import numpy as np
-from scipy.ndimage import binary_erosion, binary_dilation
+from scipy.ndimage import binary_erosion, binary_dilation, distance_transform_edt
 from sim_benchmark.brush import disk, paint, new_annot
 
 # Stroke durations (seconds).
@@ -59,15 +60,6 @@ def principal_axis(mask):
         return (1.0, 0.0)
     return (float(axis[0] / length), float(axis[1] / length))
 
-
-def axis_endpoints(mask, direction):
-    """Project mask pixels onto direction, return (start, end) at extremes."""
-    rows, cols = np.where(mask)
-    if len(rows) == 0:
-        return None, None
-    projections = rows * direction[0] + cols * direction[1]
-    return (int(rows[np.argmin(projections)]), int(cols[np.argmin(projections)])), \
-           (int(rows[np.argmax(projections)]), int(cols[np.argmax(projections)]))
 
 
 def mouse_travel(trajectory, from_pos, to_pos, rng):
@@ -239,59 +231,218 @@ def initial_annotation(ground_truth, seed=None, **_ignored):
 
 def _annotate_error_region(annot, error_region, gt_class_mask, channel,
                            mouse_pos, rng, trajectory, h, w):
-    """Annotate a single error region with one big stroke.
+    """Annotate a single error region with raster zigzag fill.
+
+    Uses parallel scan lines to systematically cover the error, like a
+    human coloring in a shape.  Falls back to per-component boundary
+    strokes for thin errors near the GT class edge.  Stops when only
+    boundary-ambiguous pixels remain (within 4px of opposite class).
 
     Returns updated mouse_pos.
     """
+    from scipy.ndimage import label as ndimage_label
+
     error_area = int(np.sum(error_region))
-    error_equiv = np.sqrt(error_area / np.pi)
-
-    brush_radius = max(3, int(error_equiv * 0.6))
-
-    # Keep brush center far enough from the wrong class that the disk won't spill
-    safe = binary_erosion(gt_class_mask, structure=disk(brush_radius + 1))
-    paint_region = safe & binary_dilation(error_region,
-                                          structure=disk(brush_radius * 2))
-    if not np.any(paint_region):
-        for r in [brush_radius // 2, max(1, brush_radius // 4), 1]:
-            safe = binary_erosion(gt_class_mask, structure=disk(r + 1))
-            paint_region = safe & binary_dilation(error_region,
-                                                  structure=disk(r * 2))
-            if np.any(paint_region):
-                brush_radius = r
-                break
-        else:
-            return mouse_pos
-
-    # One stroke along the error region's principal axis.
-    # Pick start/end from error pixels so the stroke stays on one side.
-    direction = principal_axis(error_region)
-    er_rows, er_cols = np.where(error_region)
-    axis_proj = (er_rows * direction[0] + er_cols * direction[1]).astype(float)
-
-    start_i = np.argmin(axis_proj)
-    end_i = np.argmax(axis_proj)
+    if error_area == 0:
+        return mouse_pos
 
     base_duration = FG_STROKE_DURATION if channel == 0 else BG_STROKE_DURATION
-    duration = base_duration * rng.lognormal(0, STROKE_DURATION_SPREAD)
+    remaining_error = error_region.copy()
+    near_opposite = binary_dilation(~gt_class_mask, structure=disk(4))
+    dt = distance_transform_edt(gt_class_mask)
 
-    dist_est = np.sqrt((er_rows[end_i] - er_rows[start_i])**2 +
-                       (er_cols[end_i] - er_cols[start_i])**2)
-    sigma = max(1.0, dist_est / duration) * JITTER_RATE
+    def _done():
+        if not np.any(remaining_error):
+            return True
+        return not np.any(remaining_error & ~near_opposite)
 
-    jr, jc = rng.normal(0, sigma), rng.normal(0, sigma)
-    start = (int(er_rows[start_i] + jr), int(er_cols[start_i] + jc))
-    end = (int(er_rows[end_i]), int(er_cols[end_i]))
+    def _erode_safe(mask, radius):
+        """Erode mask by radius, ignoring image borders.
 
-    noise = abs(rng.normal(0, max(1, sigma * 0.5)))
-    rad = max(1, brush_radius - int(noise))
+        The brush can extend outside the image (paint() clips to
+        bounds), so we only erode from class boundaries, not image
+        edges.  Pad with edge values before eroding, then crop back.
+        """
+        if radius <= 0:
+            return mask.copy()
+        padded = np.pad(mask, radius, mode='edge')
+        eroded = binary_erosion(padded, structure=disk(radius))
+        return eroded[radius:-radius, radius:-radius]
 
-    mouse_travel(trajectory, mouse_pos, start, rng)
-    mouse_stroke(annot, start, end, paint_region, rad, channel,
-                  rng, trajectory, duration)
+    def _find_brush(err_mask, max_r):
+        """Binary search for largest brush <= max_r that fits.
 
-    mouse_pos = end if not trajectory or not trajectory[-1]['painting'] else \
-        (trajectory[-1]['r'], trajectory[-1]['c'])
+        Erodes gt_class_mask by brush_radius so the full brush disk
+        stays inside the correct class.  Safe because paint() uses
+        the same disk shape as the erosion SE.
+        """
+        lo2, hi2 = 1, max_r
+        best_r, best_pr = 0, None
+        while lo2 <= hi2:
+            mid = (lo2 + hi2) // 2
+            safe = _erode_safe(gt_class_mask, mid)
+            pr = safe & binary_dilation(err_mask, structure=disk(mid))
+            if np.any(pr):
+                best_r, best_pr = mid, pr
+                lo2 = mid + 1
+            else:
+                hi2 = mid - 1
+        return best_r, best_pr
+
+    def _do_stroke(start, end, pr, br):
+        """Execute a stroke, return dabs_placed."""
+        nonlocal mouse_pos
+        duration = base_duration * rng.lognormal(0, STROKE_DURATION_SPREAD)
+        dist_est = max(1.0, np.sqrt((end[0]-start[0])**2 +
+                                     (end[1]-start[1])**2))
+        sigma = max(1.0, dist_est / duration) * JITTER_RATE
+        jr, jc = rng.normal(0, sigma), rng.normal(0, sigma)
+        jstart = (int(start[0] + jr), int(start[1] + jc))
+        noise = abs(rng.normal(0, max(1, sigma * 0.5)))
+        rad = max(1, br - int(noise))
+        mouse_travel(trajectory, mouse_pos, jstart, rng)
+        dabs = mouse_stroke(annot, jstart, end, pr, rad, channel,
+                             rng, trajectory, duration)
+        # Check: did the brush spill into the wrong class?
+        spill_mask = (~gt_class_mask) & (annot[:, :, channel] > 0)
+        if np.any(spill_mask):
+            # Erase the spill — the user notices and fixes it.
+            n_spill = int(np.sum(spill_mask))
+            annot[spill_mask, channel] = 0
+            print(f"  ERASED {n_spill}px of "
+                  f"{'FG' if channel == 0 else 'BG'} annotation on "
+                  f"{'BG' if channel == 0 else 'FG'} "
+                  f"(br={rad}, start={start})", file=sys.stderr)
+        mouse_pos = end if not trajectory or not trajectory[-1]['painting'] \
+            else (trajectory[-1]['r'], trajectory[-1]['c'])
+        return dabs
+
+    # --- Stroke loop ---
+    # Each iteration: find the best brush for the remaining error, then
+    # fill with raster zigzag scan lines.  When the error becomes a thin
+    # boundary strip, fall back to per-component strokes with a small brush.
+    total_strokes = 0
+    force_boundary = False
+    for stroke_i in range(20):
+        if _done() or total_strokes >= 20:
+            break
+        actionable = remaining_error & ~near_opposite
+        if not np.any(actionable):
+            break
+
+        # Adapt brush to current remaining error
+        act_rows, act_cols = np.where(actionable)
+        act_area = int(np.sum(actionable))
+        act_equiv = np.sqrt(act_area / np.pi)
+        act_safe = int(np.max(dt[act_rows, act_cols]))
+        act_desired = min(act_safe, max(3, int(act_equiv + 0.5)))
+
+        if force_boundary:
+            br, pr = 0, None
+            force_boundary = False
+        else:
+            br, pr = _find_brush(actionable, act_desired)
+        if br == 0 or pr is None:
+            # Boundary-adjacent: break into connected components and
+            # stroke each arc separately with a small brush.
+            # Use br=2 with 1px erosion buffer to reduce spill.
+            br = 2
+            safe_boundary = _erode_safe(gt_class_mask, 1)
+            pr_full = safe_boundary & binary_dilation(
+                actionable, structure=disk(br + 1))
+            if not np.any(pr_full):
+                # Can't fit even br=2 with erosion — use br=1 on uneroded
+                br = 1
+                pr_full = gt_class_mask & binary_dilation(
+                    actionable, structure=disk(2))
+                if not np.any(pr_full):
+                    break
+
+            # Label connected components of actionable error
+            labeled, num = ndimage_label(actionable)
+            # Process components largest first
+            comp_sizes = [(int(np.sum(labeled == ci)), ci)
+                          for ci in range(1, num + 1)]
+            comp_sizes.sort(reverse=True)
+            for _, ci in comp_sizes:
+                if _done() or total_strokes >= 20:
+                    break
+                comp = (labeled == ci)
+                comp_pr = pr_full & binary_dilation(
+                    comp, structure=disk(br + 1))
+                if not np.any(comp_pr):
+                    continue
+                # Stroke along this component's axis
+                comp_dir = principal_axis(comp)
+                cr, cc = np.where(comp_pr)
+                axis_proj = cr * comp_dir[0] + cc * comp_dir[1]
+                start = (int(cr[np.argmin(axis_proj)]),
+                         int(cc[np.argmin(axis_proj)]))
+                end = (int(cr[np.argmax(axis_proj)]),
+                       int(cc[np.argmax(axis_proj)]))
+                _do_stroke(start, end, comp_pr, br)
+                total_strokes += 1
+            remaining_error = remaining_error & ~(annot[:, :, channel] > 0)
+            continue
+
+        # Normal mode: raster zigzag fill.  Scan lines perpendicular
+        # to centroid→farthest, clipped to UNCOVERED area each line.
+        # Zigzag alternates sweep direction like a human coloring in.
+        centroid_r = float(np.mean(act_rows))
+        centroid_c = float(np.mean(act_cols))
+        dists_from_centroid = ((act_rows - centroid_r) ** 2
+                               + (act_cols - centroid_c) ** 2)
+        far_idx = int(np.argmax(dists_from_centroid))
+        dr = act_rows[far_idx] - centroid_r
+        dc = act_cols[far_idx] - centroid_c
+        length = max(1.0, np.sqrt(dr ** 2 + dc ** 2))
+        sweep_dir = (float(dr / length), float(dc / length))
+        perp_dir = (-sweep_dir[1], sweep_dir[0])
+
+        # Scan line positions from PR extent, spaced at ~85% brush
+        # diameter for slight overlap (standard raster fill)
+        pr_rows, pr_cols = np.where(pr)
+        pr_perp = pr_rows * perp_dir[0] + pr_cols * perp_dir[1]
+        perp_min = float(np.min(pr_perp))
+        perp_max = float(np.max(pr_perp))
+        scan_step = max(1, int(br * 2 * 0.85))
+        scan_positions = np.arange(perp_min, perp_max + scan_step,
+                                   scan_step)
+
+        scanned_any = False
+        zigzag = 1  # alternating sweep direction
+        for scan_pos in scan_positions:
+            if _done() or total_strokes >= 20:
+                break
+            # Recompute uncovered strokeable for each scan line
+            cur_actionable = remaining_error & ~near_opposite
+            if not np.any(cur_actionable):
+                break
+            uncovered = pr & binary_dilation(
+                cur_actionable, structure=disk(br))
+            if not np.any(uncovered):
+                break
+            sr, sc = np.where(uncovered)
+            perp_proj = sr * perp_dir[0] + sc * perp_dir[1]
+            near = np.abs(perp_proj - scan_pos) <= br
+            if not np.any(near):
+                continue
+            s_sr, s_sc = sr[near], sc[near]
+            s_sweep = s_sr * sweep_dir[0] + s_sc * sweep_dir[1]
+            if zigzag > 0:
+                si, ei = np.argmin(s_sweep), np.argmax(s_sweep)
+            else:
+                si, ei = np.argmax(s_sweep), np.argmin(s_sweep)
+            start = (int(s_sr[si]), int(s_sc[si]))
+            end = (int(s_sr[ei]), int(s_sc[ei]))
+            _do_stroke(start, end, pr, br)
+            total_strokes += 1
+            remaining_error = remaining_error & ~(annot[:, :, channel] > 0)
+            scanned_any = True
+            zigzag *= -1
+
+        if not scanned_any:
+            force_boundary = True
 
     return mouse_pos
 
@@ -332,16 +483,9 @@ def corrective_annotation(ground_truth, prediction):
             # Use original error pixels within this merged blob
             region = error_mask & (labeled == i)
             area = int(np.sum(region))
-            if area < 50:
+            if area < 15:
                 continue
-            # Skip scattered noise: if error pixels are sparse relative
-            # to their bounding box, it's not a coherent error region
             region_rows, region_cols = np.where(region)
-            bbox_h = region_rows.max() - region_rows.min() + 1
-            bbox_w = region_cols.max() - region_cols.min() + 1
-            density = area / max(1, bbox_h * bbox_w)
-            if density < 0.05:
-                continue
             centroid = (float(np.mean(region_rows)),
                         float(np.mean(region_cols)))
             errors.append({
@@ -366,9 +510,29 @@ def corrective_annotation(ground_truth, prediction):
         remaining.remove(best_idx)
 
         e = errors[best_idx]
+        traj_before = len(trajectory)
         mouse_pos = _annotate_error_region(
             annot, e['region'], e['gt_class_mask'], e['channel'],
             mouse_pos, rng, trajectory, h, w)
+        # Log per-region annotation efficiency (stroke level)
+        new_events = trajectory[traj_before:]
+        strokes, cur_painted, cur_total = [], 0, 0
+        for ev in new_events:
+            if ev.get('painting'):
+                cur_total += 1
+                if ev.get('painted'):
+                    cur_painted += 1
+            elif cur_total > 0:
+                strokes.append((cur_painted, cur_total))
+                cur_painted, cur_total = 0, 0
+        if cur_total > 0:
+            strokes.append((cur_painted, cur_total))
+        empty_strokes = sum(1 for p, t in strokes if p == 0)
+        if empty_strokes > 0:
+            ch_name = 'FG' if e['channel'] == 0 else 'BG'
+            print(f"  WARNING: {ch_name} region (area={e['area']}): "
+                  f"{empty_strokes}/{len(strokes)} strokes painted nothing",
+                  file=sys.stderr)
 
     if not np.any(annot[:, :, 0] > 0) and not np.any(annot[:, :, 1] > 0):
         return None, []

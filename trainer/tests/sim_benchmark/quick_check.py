@@ -193,6 +193,10 @@ def load_checkpoint(dataset_dir, train_annot_dir, val_annot_dir):
 
 def main():
     resume = '--resume' in sys.argv
+    max_corrective = None
+    for arg in sys.argv:
+        if arg.startswith('--max-corrective='):
+            max_corrective = int(arg.split('=')[1])
 
     out_dir = os.path.join(this_dir, 'quick_output')
     frames_dir = os.path.join(out_dir, 'frames')
@@ -246,6 +250,7 @@ def main():
         corrective_mode = False
 
     training_started = resume
+    corrective_count = 0
 
     stats_path = os.path.join(frames_dir, 'stats.csv')
     stats_file = open(stats_path, 'w', newline='')
@@ -292,9 +297,36 @@ def main():
                 print(f"{name}: no errors found, skipping")
                 continue
 
-        # BG annotation must never land on foreground
+        # Annotation must never land on the wrong class
         bg_on_fg = np.any((annot[:, :, 1] > 0) & (gt == 1))
         assert not bg_on_fg, f"{name}: BG annotation on foreground!"
+        fg_on_bg = np.any((annot[:, :, 0] > 0) & (gt == 0))
+        assert not fg_on_bg, f"{name}: FG annotation on background!"
+
+        # Self-check: corrective annotation should cover all errors except
+        # boundary pixels (within 2px of the FG/BG boundary).
+        if phase == 'corrective':
+            from scipy.ndimage import binary_dilation, binary_erosion
+            from skimage.morphology import disk
+            fn_mask = (gt == 1) & (pred == 0)
+            fp_mask = (gt == 0) & (pred == 1)
+            fg_annot = annot[:, :, 0] > 0
+            bg_annot = annot[:, :, 1] > 0
+            # Boundary = within 4px of opposite class
+            near_bg = binary_dilation(gt == 0, structure=disk(4))
+            near_fg = binary_dilation(gt == 1, structure=disk(4))
+            # Non-boundary errors that should have been corrected
+            fn_interior = fn_mask & ~near_bg  # FN away from BG boundary
+            fp_interior = fp_mask & ~near_fg  # FP away from FG boundary
+            fn_uncovered = fn_interior & ~fg_annot
+            fp_uncovered = fp_interior & ~bg_annot
+            fn_unc = int(np.sum(fn_uncovered))
+            fp_unc = int(np.sum(fp_uncovered))
+            fn_tot = int(np.sum(fn_interior))
+            fp_tot = int(np.sum(fp_interior))
+            if fn_unc > 0 or fp_unc > 0:
+                print(f"  CHECK: {name} uncorrected interior errors: "
+                      f"FN={fn_unc}/{fn_tot}px  FP={fp_unc}/{fp_tot}px")
 
         total_time = sum(e.get('dt', 0) for e in traj)
         n_strokes = sum(1 for j, e in enumerate(traj)
@@ -337,6 +369,12 @@ def main():
             print("  [trainer] starting")
             trainer.start()
             training_started = True
+
+        if phase == 'corrective':
+            corrective_count += 1
+            if max_corrective is not None and corrective_count >= max_corrective:
+                print(f"  (stopping after {max_corrective} corrective images)")
+                break
 
     stats_file.close()
     trainer.stop()

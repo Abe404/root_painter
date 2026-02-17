@@ -1,13 +1,39 @@
 #!/usr/bin/env bash
-# Build the Linux CUDA 12.8 workstation bundle (painter + trainer).
+# Build the Linux CUDA workstation bundle (painter + trainer) as an AppImage.
+#
+# Usage:
+#   ./build_workstation_ubuntu_cuda128.sh              # RTX 5000 series (sm_120)
+#   ./build_workstation_ubuntu_cuda128.sh rtx50        # same as above
+#   ./build_workstation_ubuntu_cuda128.sh broad        # GTX 1660 through RTX 4090
 #
 # PyTorch wheels: uses local wheels from ./dist/ if present (built by
 # ./build_custom_torch.sh), otherwise falls back to the URLs in
-# trainer/requirements_torch_cu128.txt.
+# trainer/requirements_torch_cu128_<variant>.txt.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 PYTHON="${PYTHON:-python}"
+VARIANT="${1:-rtx50}"
+
+case "$VARIANT" in
+  rtx50)
+    REQUIREMENTS="requirements_torch_cu128.txt"
+    APPIMAGE_NAME="RootPainterWorkstation_0.2.28_Ubuntu_CUDA128_RTX50.AppImage"
+    ;;
+  broad)
+    REQUIREMENTS="requirements_torch_cu128_broad.txt"
+    APPIMAGE_NAME="RootPainterWorkstation_0.2.28_Ubuntu_CUDA128.AppImage"
+    ;;
+  *)
+    echo "ERROR: Unknown variant '$VARIANT'. Use 'rtx50' or 'broad'."
+    exit 1
+    ;;
+esac
+
+echo "Building variant: $VARIANT"
+echo "  Requirements: $REQUIREMENTS"
+echo "  AppImage:     $APPIMAGE_NAME"
+echo ""
 
 # Fail fast if interpreter isn't available
 command -v "$PYTHON" >/dev/null 2>&1 || {
@@ -46,8 +72,8 @@ if [ -n "$TORCH_WHEEL" ] && [ -n "$VISION_WHEEL" ]; then
     nvidia-cuda-runtime-cu12 nvidia-cudnn-cu12 nvidia-curand-cu12 \
     nvidia-nvjitlink-cu12 nvidia-cuda-nvrtc-cu12
 else
-  echo "No local wheels in ./dist/, using requirements_torch_cu128.txt"
-  python -m pip install -r requirements_torch_cu128.txt
+  echo "No local wheels in ./dist/, using $REQUIREMENTS"
+  python -m pip install -r "$REQUIREMENTS"
 fi
 
 python -m pip install pyinstaller
@@ -129,11 +155,11 @@ fi
 
 # Build AppImage
 export ARCH=x86_64
-APPIMAGE_OUT="$ROOT/painter/dist/RootPainterWorkstation_0.2.28_Ubuntu_CUDA128.AppImage"
+APPIMAGE_OUT="$ROOT/painter/dist/$APPIMAGE_NAME"
 "$APPIMAGETOOL" --no-appstream "$APPDIR" "$APPIMAGE_OUT" \
   || "$APPIMAGETOOL" --appimage-extract-and-run --no-appstream "$APPDIR" "$APPIMAGE_OUT"
 
 echo ""
-echo "Built Ubuntu RTX50 CUDA128 workstation AppImage:"
+echo "Built Ubuntu CUDA workstation AppImage ($VARIANT):"
 echo "$APPIMAGE_OUT"
 ls -lh "$APPIMAGE_OUT"

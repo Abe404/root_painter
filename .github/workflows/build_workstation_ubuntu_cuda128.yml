@@ -1,7 +1,17 @@
-name: Build Workstation (Ubuntu, CUDA 12.8 / RTX50)
+name: Build Workstation (Ubuntu, CUDA 12.8)
 
 on:
   workflow_dispatch:
+    inputs:
+      variant:
+        description: "GPU variant to build"
+        required: true
+        default: "rtx50"
+        type: choice
+        options:
+          - rtx50
+          - broad
+          - both
 
 env:
   ACTIONS_RUNNER_DEBUG: "true"
@@ -11,6 +21,11 @@ jobs:
   build-ubuntu-cuda128:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
+
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ github.event.inputs.variant == 'both' && fromJSON('["rtx50","broad"]') || fromJSON(format('["{0}"]', github.event.inputs.variant)) }}
 
     steps:
       - name: Checkout
@@ -62,7 +77,7 @@ jobs:
             libx11-6 \
             libfuse2
 
-      - name: Build Workstation (Ubuntu CUDA128)
+      - name: Build Workstation (Ubuntu CUDA128 - ${{ matrix.variant }})
         shell: bash
         env:
           PYTHON: ${{ steps.setup-python.outputs.python-path }}
@@ -75,7 +90,7 @@ jobs:
           trap 'kill $HB_PID 2>/dev/null || true' EXIT
 
           chmod +x build_workstation_ubuntu_cuda128.sh
-          ./build_workstation_ubuntu_cuda128.sh
+          ./build_workstation_ubuntu_cuda128.sh ${{ matrix.variant }}
 
           echo "=== POST-BUILD STATE (inside build step) ==="
           ls -lah painter/dist || true
@@ -96,11 +111,13 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          test -f painter/dist/RootPainterWorkstation_0.2.28_Ubuntu_CUDA128.AppImage
-          ls -lh painter/dist/RootPainterWorkstation_0.2.28_Ubuntu_CUDA128.AppImage
+          APPIMAGE=$(ls painter/dist/RootPainterWorkstation_*.AppImage 2>/dev/null | head -1)
+          test -n "$APPIMAGE"
+          test -f "$APPIMAGE"
+          ls -lh "$APPIMAGE"
 
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
-          name: RootPainter-Workstation-Ubuntu-CUDA128-RTX50
-          path: painter/dist/RootPainterWorkstation_0.2.28_Ubuntu_CUDA128.AppImage
+          name: RootPainter-Workstation-Ubuntu-CUDA128-${{ matrix.variant }}
+          path: painter/dist/RootPainterWorkstation_*.AppImage

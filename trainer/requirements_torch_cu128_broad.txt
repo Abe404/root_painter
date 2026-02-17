@@ -1,0 +1,22 @@
+# Custom minimal PyTorch wheels (CUDA 12.8, sm_75/80/86/89)
+# Supports: GTX 1660 (Turing), RTX 2000 series, RTX 3000 series, RTX 4000 series
+# Built without: nccl, cusparse, cusparselt, cufft, cusolver, distributed, triton
+#
+# These URLs are a fallback for CI / builds without local wheels.
+# For local builds: ./build_custom_torch.sh outputs wheels to ./dist/
+# and build_workstation_ubuntu_cuda128.sh picks them up automatically.
+https://github.com/Abe404/root_painter/releases/download/torch-cu128-sm75-89-v1/torch-2.7.1a0+gite2d141d-cp311-cp311-linux_x86_64.whl
+https://github.com/Abe404/root_painter/releases/download/torch-cu128-sm75-89-v1/torchvision-0.22.1+59a3e1f-cp311-cp311-linux_x86_64.whl
+
+# CUDA runtime libraries needed by the custom torch wheel.
+# The custom wheel is built against the system CUDA toolkit and does NOT
+# declare pip dependencies on these, so we install them explicitly.
+# Deliberately excluded: nvidia-nccl, nvidia-cusparse, nvidia-cusparselt,
+# nvidia-cufft, nvidia-cusolver (not used by RootPainter).
+nvidia-cublas-cu12
+nvidia-cuda-cupti-cu12
+nvidia-cuda-runtime-cu12
+nvidia-cudnn-cu12
+nvidia-curand-cu12
+nvidia-nvjitlink-cu12
+nvidia-cuda-nvrtc-cu12

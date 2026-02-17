@@ -122,16 +122,41 @@ def erode_safe(mask, radius):
     return eroded[radius:-radius, radius:-radius]
 
 
-def pick_brush_radius(gt_class_mask):
-    """50% of the max inscribed radius of the class region.
+def pick_brush_radius(gt_class_mask, error_mask):
+    """Largest brush that's useful for covering errors, constrained by class.
 
-    The distance transform gives the depth (distance to nearest
-    boundary) at every pixel. Half the max depth gives a brush
-    that fits comfortably inside the region.
+    Finds the error pixel deepest inside the class region (most room
+    around it), then measures how far other errors extend from there
+    within the class circle. Adds 50% margin for imperfect aim.
+
+    The class circle constraint means errors on opposite sides of a
+    foreground region are measured separately — the circle can't cross
+    into the wrong class.
     """
-    dt = distance_transform_edt(gt_class_mask)
-    max_depth = float(np.max(dt))
-    return max(1, int(max_depth * 0.5))
+    class_dt = distance_transform_edt(gt_class_mask)
+    max_r = max(1, int(np.max(class_dt) * 0.5))
+
+    err_coords = np.argwhere(error_mask)
+    if len(err_coords) == 0:
+        return max_r
+
+    # Best center: error pixel with most room in the class
+    err_depths = class_dt[err_coords[:, 0], err_coords[:, 1]]
+    best_idx = int(np.argmax(err_depths))
+    cr, cc = err_coords[best_idx]
+    circle_r = class_dt[cr, cc]
+
+    # Error pixels within the class circle at that center
+    dists = np.sqrt(np.sum((err_coords - [cr, cc]) ** 2, axis=1))
+    in_circle = dists <= circle_r
+    if not np.any(in_circle):
+        return max_r
+
+    # How far do errors extend within this circle?
+    needed_r = max(1, int(np.percentile(dists[in_circle], 95)))
+
+    # Add margin, cap by class constraint
+    return max(1, min(int(needed_r * 1.5), max_r))
 
 
 def corrective_annotation(ground_truth, prediction):
@@ -160,7 +185,7 @@ def corrective_annotation(ground_truth, prediction):
 
         duration_base = (FG_STROKE_DURATION if channel == 0
                          else BG_STROKE_DURATION)
-        br = pick_brush_radius(gt_class_mask)
+        br = pick_brush_radius(gt_class_mask, error_mask)
 
         # Multi-pass: start with the ideal brush, halve for remaining
         # errors that the big brush couldn't reach.

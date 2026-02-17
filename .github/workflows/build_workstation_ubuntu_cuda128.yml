@@ -59,7 +59,8 @@ jobs:
             libxcb-xinerama0 \
             libxrender1 \
             libxext6 \
-            libx11-6
+            libx11-6 \
+            libfuse2
 
       - name: Build Workstation (Ubuntu CUDA128)
         shell: bash
@@ -87,25 +88,19 @@ jobs:
         run: |
           set -euxo pipefail
           ls -lah painter/dist || true
-          find painter/dist -maxdepth 2 -type d -print || true
           du -sh painter/dist/* 2>/dev/null || true
           df -h
           free -h
 
-      - name: Sanity check bundle layout
+      - name: Sanity check
         shell: bash
         run: |
           set -euxo pipefail
-          ls -lah painter/dist
-          test -d painter/dist/RootPainterWorkstation
-          test -x painter/dist/RootPainterWorkstation/RootPainter
-          test -d painter/dist/RootPainterWorkstation/_internal
-          test -x painter/dist/RootPainterWorkstation/RootPainterTrainerBundle/RootPainterTrainer
-          test -d painter/dist/RootPainterWorkstation/RootPainterTrainerBundle/_internal
+          test -f painter/dist/RootPainter-x86_64.AppImage
+          ls -lh painter/dist/RootPainter-x86_64.AppImage
 
-      - name: Upload artifact
+      - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
           name: RootPainter-Workstation-Ubuntu-CUDA128-RTX50
-          path: painter/dist/RootPainterWorkstation
-
+          path: painter/dist/RootPainter-x86_64.AppImage

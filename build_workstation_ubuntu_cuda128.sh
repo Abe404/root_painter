@@ -81,5 +81,59 @@ cp -R "$ROOT/trainer/src/dist/RootPainterTrainer" \
 
 chmod +x "$APP_DIR/RootPainterTrainerBundle/RootPainterTrainer"
 
-echo "Built Ubuntu RTX50 CUDA128 workstation:"
-echo "$APP_DIR"
+# Remove the broken trainer EXE from the workstation spec (painter venv has no torch).
+# The working trainer is in RootPainterTrainerBundle/.
+rm -f "$APP_DIR/RootPainterTrainer"
+
+# --------------------
+# AppImage
+# --------------------
+APPDIR="$ROOT/painter/dist/RootPainter.AppDir"
+rm -rf "$APPDIR"
+mkdir -p "$APPDIR"
+
+# Move the workstation contents into the AppDir
+mv "$APP_DIR"/* "$APPDIR"/
+rmdir "$APP_DIR"
+
+# AppRun entry point
+cat > "$APPDIR/AppRun" << 'APPRUN'
+#!/bin/bash
+HERE="$(dirname "$(readlink -f "$0")")"
+exec "$HERE/RootPainter" "$@"
+APPRUN
+chmod +x "$APPDIR/AppRun"
+
+# Desktop file
+cat > "$APPDIR/RootPainter.desktop" << 'DESKTOP'
+[Desktop Entry]
+Name=RootPainter
+Comment=Corrective annotation for biological image segmentation
+Exec=RootPainter
+Icon=RootPainter
+Type=Application
+Categories=Science;Education;Graphics;
+DESKTOP
+
+# Icon
+cp "$ROOT/painter/src/main/icons/linux/256.png" "$APPDIR/RootPainter.png"
+
+# Download appimagetool if not present
+APPIMAGETOOL="$ROOT/painter/dist/appimagetool"
+if [ ! -x "$APPIMAGETOOL" ]; then
+  echo "Downloading appimagetool..."
+  curl -fSL -o "$APPIMAGETOOL" \
+    "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+  chmod +x "$APPIMAGETOOL"
+fi
+
+# Build AppImage
+export ARCH=x86_64
+APPIMAGE_OUT="$ROOT/painter/dist/RootPainter-x86_64.AppImage"
+"$APPIMAGETOOL" --no-appstream "$APPDIR" "$APPIMAGE_OUT" \
+  || "$APPIMAGETOOL" --appimage-extract-and-run --no-appstream "$APPDIR" "$APPIMAGE_OUT"
+
+echo ""
+echo "Built Ubuntu RTX50 CUDA128 workstation AppImage:"
+echo "$APPIMAGE_OUT"
+ls -lh "$APPIMAGE_OUT"

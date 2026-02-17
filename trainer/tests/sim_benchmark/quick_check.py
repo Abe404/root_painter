@@ -2,6 +2,7 @@
 
 Run:          python -m sim_benchmark.quick_check
 Resume:       python -m sim_benchmark.quick_check --resume
+CAM mode:     python -m sim_benchmark.quick_check --cam
 """
 import sys, os
 import copy
@@ -27,7 +28,8 @@ from multi_epoch.multi_epoch_loader import MultiEpochsDataLoader
 from metrics import get_metrics
 from skimage.io import imsave
 
-from sim_benchmark.sim_user import initial_annotation, corrective_annotation
+from sim_benchmark.sim_user import initial_annotation
+# corrective_annotation imported below based on --cam flag
 from sim_benchmark.video import render_trajectory_frames
 from sim_benchmark.benchmark import get_annot_target_dir
 
@@ -193,10 +195,17 @@ def load_checkpoint(dataset_dir, train_annot_dir, val_annot_dir):
 
 def main():
     resume = '--resume' in sys.argv
+    use_cam = '--cam' in sys.argv
     max_corrective = None
     for arg in sys.argv:
         if arg.startswith('--max-corrective='):
             max_corrective = int(arg.split('=')[1])
+
+    if use_cam:
+        from sim_benchmark.sim_user_cam import corrective_annotation
+        print("Using CAM-based corrective annotator\n")
+    else:
+        from sim_benchmark.sim_user import corrective_annotation
 
     out_dir = os.path.join(this_dir, 'quick_output')
     frames_dir = os.path.join(out_dir, 'frames')
@@ -327,6 +336,9 @@ def main():
             if fn_unc > 0 or fp_unc > 0:
                 print(f"  CHECK: {name} uncorrected interior errors: "
                       f"FN={fn_unc}/{fn_tot}px  FP={fp_unc}/{fp_tot}px")
+                # Auto-save test case for offline debugging
+                from sim_benchmark.test_annotator import save_test_case
+                save_test_case(f'{name}_f1{best_f1:.2f}', rgb, gt, pred)
 
         total_time = sum(e.get('dt', 0) for e in traj)
         n_strokes = sum(1 for j, e in enumerate(traj)

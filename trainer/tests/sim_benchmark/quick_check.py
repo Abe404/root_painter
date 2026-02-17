@@ -196,12 +196,16 @@ def load_checkpoint(dataset_dir, train_annot_dir, val_annot_dir):
 def main():
     resume = '--resume' in sys.argv
     use_cam = '--cam' in sys.argv
+    use_astar = '--astar' in sys.argv
     max_corrective = None
     for arg in sys.argv:
         if arg.startswith('--max-corrective='):
             max_corrective = int(arg.split('=')[1])
 
-    if use_cam:
+    if use_astar:
+        from astar_annotator.annotator import corrective_annotation
+        print("Using A*-based corrective annotator\n")
+    elif use_cam:
         from sim_benchmark.sim_user_cam import corrective_annotation
         print("Using CAM-based corrective annotator\n")
     else:
@@ -349,6 +353,15 @@ def main():
         fp = int(np.sum((pred == 1) & (gt == 0)))
         fn = int(np.sum((pred == 0) & (gt == 1)))
         seg_f1 = 2 * tp / max(1, 2 * tp + fp + fn)
+
+        # Save raw data for corrective images (for test case creation)
+        if phase == 'corrective':
+            data_dir = os.path.join(frames_dir, 'data')
+            os.makedirs(data_dir, exist_ok=True)
+            Image.fromarray(rgb).save(os.path.join(data_dir, f'{name}_image.png'))
+            Image.fromarray(gt * 255).save(os.path.join(data_dir, f'{name}_gt.png'))
+            Image.fromarray(pred * 255).save(
+                os.path.join(data_dir, f'{name}_pred.png'))
 
         # Render annotation frames (corrected F1 computed per-frame)
         frames, frame_times, frame_cf1s, sim_time = render_trajectory_frames(

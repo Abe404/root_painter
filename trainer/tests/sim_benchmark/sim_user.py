@@ -376,16 +376,8 @@ def _annotate_error_region(annot, error_region, gt_class_mask, channel,
         mouse_travel(trajectory, mouse_pos, jstart, rng)
         dabs = mouse_stroke(annot, jstart, end, pr, rad, channel,
                              rng, trajectory, duration)
-        # Check: did the brush spill into the wrong class?
-        spill_mask = (~gt_class_mask) & (annot[:, :, channel] > 0)
-        if np.any(spill_mask):
-            # Erase the spill — the user notices and fixes it.
-            n_spill = int(np.sum(spill_mask))
-            annot[spill_mask, channel] = 0
-            print(f"  ERASED {n_spill}px of "
-                  f"{'FG' if channel == 0 else 'BG'} annotation on "
-                  f"{'BG' if channel == 0 else 'FG'} "
-                  f"(br={rad}, start={start})", file=sys.stderr)
+        # No GT clipping — spill indicates a stroke planning bug.
+        # The annotator must keep strokes inside the correct class.
         mouse_pos = end if not trajectory or not trajectory[-1]['painting'] \
             else (trajectory[-1]['r'], trajectory[-1]['c'])
         return dabs

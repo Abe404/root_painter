@@ -112,6 +112,12 @@ trainer/src/build/_pyi_work/
 trainer/tests/test_temp_output/
 trainer/tests/test_rp_sync/
 trainer/tests/metrics/
+trainer/tests/sim_benchmark/test_output/
+trainer/tests/sim_benchmark/test_cases/
+
+# Build artifacts (additional)
+trainer/build/
+painter/src/build/build/
 
 # Private notes / roadmap
 trainer/ROADMAP.md

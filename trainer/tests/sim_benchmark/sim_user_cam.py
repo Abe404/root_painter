@@ -24,19 +24,17 @@ from sim_benchmark.sim_user import (
 
 
 def _follow_path(annot, path, brush_radius, channel, rng, trajectory,
-                 stroke_duration, gt_class_mask):
+                 stroke_duration):
     """Follow a multi-waypoint path with the brush down.
 
     Unlike mouse_stroke (straight line start→end), this follows the full
     curved path through all waypoints — essential for contour-parallel
     strokes that trace the error boundary.
+
+    No GT clipping — the stroke planning must keep paths inside the
+    correct class. Any spill is a bug in path generation.
     """
     h, w = annot.shape[:2]
-
-    # Total path length for speed/jitter calculation
-    diffs = np.diff(path, axis=0)
-    seg_lengths = np.sqrt(np.sum(diffs**2, axis=1))
-    total_dist = max(1.0, float(np.sum(seg_lengths)))
 
     duration = stroke_duration * rng.lognormal(0, STROKE_DURATION_SPREAD)
     dt_per_point = duration / max(1, len(path))
@@ -47,19 +45,13 @@ def _follow_path(annot, path, brush_radius, channel, rng, trajectory,
         r = max(0, min(h - 1, r))
         c = max(0, min(w - 1, c))
 
-        # Only paint inside the GT class (safe clipping)
-        if gt_class_mask[r, c]:
-            paint(annot, (r, c), brush_radius, channel)
+        paint(annot, (r, c), brush_radius, channel)
 
         trajectory.append({
             'r': r, 'c': c, 'painting': True,
             'channel': channel, 'brush_radius': brush_radius,
             'dt': dt_per_point,
         })
-
-    # Clip any brush overshoot at the GT boundary
-    spill = annot[:, :, channel] & ~(gt_class_mask.astype(np.uint8) * 255)
-    annot[:, :, channel] &= (gt_class_mask.astype(np.uint8) * 255)
 
     last = path[-1]
     return (int(round(last[0])), int(round(last[1])))
@@ -166,7 +158,7 @@ def corrective_annotation(ground_truth, prediction):
                 # Follow the full CAM path with the brush
                 mouse_pos = _follow_path(
                     annot, path, br, channel, rng,
-                    trajectory, duration_base, gt_class_mask)
+                    trajectory, duration_base)
 
 
     # Check if any annotation was placed

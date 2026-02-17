@@ -1,17 +1,18 @@
 """Fast annotation test harness — no model training required.
 
-Loads saved test cases (image + GT + prediction) and runs the annotator
-on each one, checking coverage and spill. Much faster iteration than
-running the full quick_check pipeline.
+Loads saved test cases (image + GT + prediction PNGs) and runs the
+annotator on each one, checking coverage and spill. Much faster
+iteration than running the full quick_check pipeline.
 
 Usage:
-    python -m sim_benchmark.test_annotator              # test all cases
-    python -m sim_benchmark.test_annotator --cam        # test CAM annotator
-    python -m sim_benchmark.test_annotator --save-frames  # save visual output
+    python -m sim_benchmark.test_annotator               # test all cases
+    python -m sim_benchmark.test_annotator --astar       # test A* annotator
+    python -m sim_benchmark.test_annotator --cam         # test CAM annotator
+    python -m sim_benchmark.test_annotator --save-frames # save trajectory frames
 
-Test cases are .npz files in test_cases/ with keys: image, gt, pred.
-They can be saved automatically during quick_check (CHECK failures)
-or created manually.
+Test cases are PNG triples ({name}_image.png, _gt.png, _pred.png) in
+test_cases/. They can be saved from the viewer (S key) during a
+quick_check run, or created with save_test_case().
 """
 import sys
 import os
@@ -30,25 +31,50 @@ CASES_DIR = os.path.join(this_dir, 'test_cases')
 
 
 def save_test_case(name, image, gt, pred):
-    """Save a test case for later debugging."""
+    """Save a test case as PNGs for easy viewing."""
     os.makedirs(CASES_DIR, exist_ok=True)
-    path = os.path.join(CASES_DIR, f'{name}.npz')
-    np.savez_compressed(path, image=image, gt=gt, pred=pred)
-    print(f"  Saved test case: {path}")
+    Image.fromarray(image).save(os.path.join(CASES_DIR, f'{name}_image.png'))
+    Image.fromarray((gt * 255).astype(np.uint8)).save(
+        os.path.join(CASES_DIR, f'{name}_gt.png'))
+    Image.fromarray((pred * 255).astype(np.uint8)).save(
+        os.path.join(CASES_DIR, f'{name}_pred.png'))
+    print(f"  Saved test case: {CASES_DIR}/{name}_*.png")
 
 
 def load_test_cases():
-    """Load all .npz test cases."""
+    """Load test cases from PNGs or legacy .npz files."""
     cases = []
     if not os.path.exists(CASES_DIR):
         return cases
+
+    # Find PNG test cases: look for *_gt.png files
+    seen_names = set()
+    for fname in sorted(os.listdir(CASES_DIR)):
+        if not fname.endswith('_gt.png'):
+            continue
+        name = fname.replace('_gt.png', '')
+        image_path = os.path.join(CASES_DIR, f'{name}_image.png')
+        gt_path = os.path.join(CASES_DIR, f'{name}_gt.png')
+        pred_path = os.path.join(CASES_DIR, f'{name}_pred.png')
+        if not (os.path.exists(image_path) and os.path.exists(pred_path)):
+            continue
+        image = np.array(Image.open(image_path))
+        gt = (np.array(Image.open(gt_path)) > 127).astype(np.uint8)
+        pred = (np.array(Image.open(pred_path)) > 127).astype(np.uint8)
+        cases.append({'name': name, 'image': image, 'gt': gt, 'pred': pred})
+        seen_names.add(name)
+
+    # Legacy .npz test cases
     for fname in sorted(os.listdir(CASES_DIR)):
         if not fname.endswith('.npz'):
+            continue
+        name = fname.replace('.npz', '')
+        if name in seen_names:
             continue
         path = os.path.join(CASES_DIR, fname)
         data = np.load(path)
         cases.append({
-            'name': fname.replace('.npz', ''),
+            'name': name,
             'image': data['image'],
             'gt': data['gt'],
             'pred': data['pred'],
@@ -130,9 +156,13 @@ def render_result(image, gt, pred, annot, trajectory):
 
 def main():
     use_cam = '--cam' in sys.argv
+    use_astar = '--astar' in sys.argv
     save_frames = '--save-frames' in sys.argv
 
-    if use_cam:
+    if use_astar:
+        from astar_annotator.annotator import corrective_annotation
+        print("Testing A*-based annotator\n")
+    elif use_cam:
         from sim_benchmark.sim_user_cam import corrective_annotation
         print("Testing CAM-based annotator\n")
     else:
@@ -154,8 +184,15 @@ def main():
         cases = load_test_cases()
 
     out_dir = os.path.join(this_dir, 'test_output')
+    frames_dir = os.path.join(out_dir, 'frames')
     if save_frames:
-        os.makedirs(out_dir, exist_ok=True)
+        import shutil
+        from sim_benchmark.video import render_trajectory_frames
+        if os.path.exists(frames_dir):
+            shutil.rmtree(frames_dir)
+        os.makedirs(frames_dir)
+        frame_idx = 0
+        sim_time_acc = 0.0
 
     for case in cases:
         name = case['name']
@@ -189,12 +226,24 @@ def main():
               f"corrF1={result['corrected_f1']:.3f}  [{status}]")
 
         if save_frames:
-            frame = render_result(image, gt, pred, annot, traj)
-            Image.fromarray(frame).save(
-                os.path.join(out_dir, f'{name}.png'))
+            # Seg F1: prediction vs ground truth
+            tp = int(np.sum((pred == 1) & (gt == 1)))
+            fp_c = int(np.sum((pred == 1) & (gt == 0)))
+            fn_c = int(np.sum((pred == 0) & (gt == 1)))
+            seg_f1 = 2 * tp / max(1, 2 * tp + fp_c + fn_c)
+
+            frames, frame_times, frame_cf1s, sim_time_acc = \
+                render_trajectory_frames(
+                    image, gt, traj, pred, name, 'corrective', seg_f1,
+                    time_offset=sim_time_acc, fps=6)
+            for frame in frames:
+                fname = f'frame_{frame_idx:04d}_{name}.png'
+                Image.fromarray(frame).save(
+                    os.path.join(frames_dir, fname))
+                frame_idx += 1
 
     if save_frames:
-        print(f"\nFrames saved to {out_dir}/")
+        print(f"\n{frame_idx} frames saved to {frames_dir}/")
 
 
 if __name__ == '__main__':

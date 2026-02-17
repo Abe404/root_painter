@@ -6,6 +6,7 @@ during a simulation run to watch live.
 """
 import csv
 import json
+import shutil
 import sys
 import os
 import glob
@@ -18,7 +19,7 @@ from PyQt5.QtCore import Qt, QRect, QTimer
 
 
 HELP_TEXT = ("  \u25c0 \u25b6  step    Space  play/pause    \u25b2 \u25bc  speed    "
-             "Home  start    End  live    N  note    Q  quit")
+             "Home  start    End  live    N  note    S  save test case    Q  quit")
 
 
 class NoteSlider(QSlider):
@@ -348,6 +349,43 @@ class Viewer(QMainWindow):
                 json.dump(self.notes, f, indent=2)
             self._sync_note_markers()
 
+    def _save_test_case(self):
+        """Copy current image's data (image, gt, pred PNGs) to test_cases/."""
+        if not self.frames:
+            return
+        fname = os.path.basename(self.frames[self.idx])
+        s = self.stats.get(fname)
+        if not s:
+            self.saved_label.setText("No stats for frame")
+            self.saved_label.show()
+            self._save_flash_timer.start(2000)
+            return
+        image_name = s['image']
+        data_dir = os.path.join(self.frames_dir, 'data')
+        cases_dir = os.path.join(os.path.dirname(self.frames_dir),
+                                 '..', 'test_cases')
+        cases_dir = os.path.normpath(cases_dir)
+
+        # Check that raw data exists
+        gt_path = os.path.join(data_dir, f'{image_name}_gt.png')
+        pred_path = os.path.join(data_dir, f'{image_name}_pred.png')
+        image_path = os.path.join(data_dir, f'{image_name}_image.png')
+        if not os.path.exists(gt_path):
+            self.saved_label.setText("No data/ for this image")
+            self.saved_label.show()
+            self._save_flash_timer.start(2000)
+            return
+
+        os.makedirs(cases_dir, exist_ok=True)
+        for src in [gt_path, pred_path, image_path]:
+            dst = os.path.join(cases_dir, os.path.basename(src))
+            shutil.copy2(src, dst)
+
+        self.saved_label.setText(f"Saved: {image_name}")
+        self.saved_label.show()
+        self._save_flash_timer.start(2000)
+        print(f"Test case saved: {cases_dir}/{image_name}_*.png")
+
     def _update_charts(self):
         """Extract chart data from stats and push to chart widgets."""
         confidence = []
@@ -549,6 +587,8 @@ class Viewer(QMainWindow):
         elif key == Qt.Key_N:
             self.note_edit.setFocus()
             self.note_edit.selectAll()
+        elif key == Qt.Key_S:
+            self._save_test_case()
         elif key in (Qt.Key_Q, Qt.Key_Escape):
             self.close()
         else:

@@ -89,14 +89,16 @@ cd painter && python src/build/run_pyinstaller.py
 
 **Workstation bundle (trainer + painter):**
 ```bash
-./build_workstation_ubuntu_cuda128.sh   # Linux
-./build_workstation_win.ps1             # Windows
-./build_workstation_mac.sh              # macOS
+./build_workstation_ubuntu_cuda128.sh              # Linux (RTX 5000 series, default)
+./build_workstation_ubuntu_cuda128.sh rtx50        # same as above
+./build_workstation_ubuntu_cuda128.sh broad        # Linux (GTX 1660 through RTX 4090)
+./build_workstation_win.ps1                        # Windows
+./build_workstation_mac.sh                         # macOS
 ```
 
 **Custom PyTorch wheels (for minimal CUDA workstation builds):**
 
-The Linux CUDA 12.8 workstation uses custom-built PyTorch wheels with unused CUDA libraries stripped out (~180MB vs ~1.5GB). Wheels are hosted as GitHub release assets and referenced in `trainer/requirements_torch_cu128.txt`.
+The Linux CUDA 12.8 workstation uses custom-built PyTorch wheels with unused CUDA libraries stripped out (~330MB vs ~1.5GB). Two variants exist: RTX 5000 (sm_120, `requirements_torch_cu128.txt`) and broad (sm_75/80/86/89, `requirements_torch_cu128_broad.txt`). Wheels are hosted as GitHub release assets.
 
 ```bash
 # Build wheels locally (requires CUDA 12.8 toolkit + Python 3.11)
@@ -119,12 +121,10 @@ Outputs wheels to `./dist/`. After building, upload to a GitHub release and upda
 ## Current Development Status
 
 ### Benchmarks (in progress)
-- test_unet.py passing (inference, synthetic training, mask training)
-- test_instructions.py passing (instruction execution, retry/failure handling)
+- All unit tests passing: test_loss.py, test_unet.py, test_instructions.py
 - test_training.py running with Zenodo datasets (biopores, roots/towers, nodules)
 - Biopore corrective benchmark done (5 runs x 60 epochs)
 - Still need: dense roots, corrective roots, dense nodules benchmarks
-- Still need: get test_loss.py passing
 
 ### Planned: Model Abstraction
 - Add model_type parameter ("unet" | "mobilesam") with factory function

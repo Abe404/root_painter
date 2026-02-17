@@ -96,11 +96,11 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          test -f painter/dist/RootPainter-x86_64.AppImage
-          ls -lh painter/dist/RootPainter-x86_64.AppImage
+          test -f painter/dist/RootPainterWorkstation_0.2.28_Ubuntu_CUDA128.AppImage
+          ls -lh painter/dist/RootPainterWorkstation_0.2.28_Ubuntu_CUDA128.AppImage
 
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
           name: RootPainter-Workstation-Ubuntu-CUDA128-RTX50
-          path: painter/dist/RootPainter-x86_64.AppImage
+          path: painter/dist/RootPainterWorkstation_0.2.28_Ubuntu_CUDA128.AppImage

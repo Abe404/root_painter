@@ -129,7 +129,7 @@ fi
 
 # Build AppImage
 export ARCH=x86_64
-APPIMAGE_OUT="$ROOT/painter/dist/RootPainter-x86_64.AppImage"
+APPIMAGE_OUT="$ROOT/painter/dist/RootPainterWorkstation_0.2.28_Ubuntu_CUDA128.AppImage"
 "$APPIMAGETOOL" --no-appstream "$APPDIR" "$APPIMAGE_OUT" \
   || "$APPIMAGETOOL" --appimage-extract-and-run --no-appstream "$APPDIR" "$APPIMAGE_OUT"
 

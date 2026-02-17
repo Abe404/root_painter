@@ -22,7 +22,7 @@ case "$VARIANT" in
     ;;
   broad)
     REQUIREMENTS="requirements_torch_cu128_broad.txt"
-    APPIMAGE_NAME="RootPainterWorkstation_0.2.28_Ubuntu_CUDA128.AppImage"
+    APPIMAGE_NAME="RootPainterWorkstation_0.2.28_Ubuntu_CUDA128_GTX1660_to_RTX4090.AppImage"
     ;;
   *)
     echo "ERROR: Unknown variant '$VARIANT'. Use 'rtx50' or 'broad'."

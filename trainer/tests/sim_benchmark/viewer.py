@@ -95,14 +95,17 @@ class ChartWidget(QWidget):
         self.color = QColor(color)
         self.values = []       # float values aligned to frame list
         self.markers = []      # frame indices for vertical marker lines
+        self.phase_markers = [] # frame indices for phase transitions
         self.cursor = -1       # current frame index
         self.setFixedHeight(80)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-    def set_data(self, values, markers=None):
+    def set_data(self, values, markers=None, phase_markers=None):
         self.values = values
         if markers is not None:
             self.markers = markers
+        if phase_markers is not None:
+            self.phase_markers = phase_markers
         self.update()
 
     def set_cursor(self, idx):
@@ -159,6 +162,14 @@ class ChartWidget(QWidget):
         marker_pen = QPen(QColor('#555'), 1, Qt.DashLine)
         painter.setPen(marker_pen)
         for mi in self.markers:
+            if 0 <= mi < n:
+                mx = to_x(mi)
+                painter.drawLine(mx, margin_t, mx, h - margin_b)
+
+        # Phase transition lines
+        phase_pen = QPen(QColor('#ff0'), 1, Qt.DashDotLine)
+        painter.setPen(phase_pen)
+        for mi in self.phase_markers:
             if 0 <= mi < n:
                 mx = to_x(mi)
                 painter.drawLine(mx, margin_t, mx, h - margin_b)
@@ -274,6 +285,8 @@ class Viewer(QMainWindow):
         # Metric charts
         self.confidence_chart = ChartWidget("confidence", '#0ff')  # cyan
         self.val_f1_chart = ChartWidget("val F1", '#0f0')          # green
+        self.seg_f1_chart = ChartWidget("seg F1", '#88f')          # blue
+        self.corrected_f1_chart = ChartWidget("corrected F1", '#f80')  # orange
 
         # Help bar
         self.help_label = QLabel(HELP_TEXT)
@@ -290,6 +303,8 @@ class Viewer(QMainWindow):
         layout.addWidget(self.stats_label, 0)
         layout.addWidget(self.confidence_chart, 0)
         layout.addWidget(self.val_f1_chart, 0)
+        layout.addWidget(self.seg_f1_chart, 0)
+        layout.addWidget(self.corrected_f1_chart, 0)
         layout.addWidget(self.help_label, 0)
 
         container = QWidget()
@@ -390,12 +405,22 @@ class Viewer(QMainWindow):
         """Extract chart data from stats and push to chart widgets."""
         confidence = []
         val_f1 = []
+        seg_f1 = []
+        corrected_f1 = []
         best_markers = []
+        phase_markers = []
         best_so_far = -1.0
+        prev_phase = None
         for i, path in enumerate(self.frames):
             fname = os.path.basename(path)
             s = self.stats.get(fname)
             if s:
+                # Phase transition detection
+                phase = s.get('phase')
+                if phase != prev_phase and phase == 'corrective':
+                    phase_markers.append(i)
+                prev_phase = phase
+
                 try:
                     confidence.append(float(s['confidence']))
                 except (KeyError, ValueError):
@@ -408,11 +433,23 @@ class Viewer(QMainWindow):
                         best_markers.append(i)
                 except (KeyError, ValueError):
                     val_f1.append(None)
+                try:
+                    seg_f1.append(float(s['seg_f1']))
+                except (KeyError, ValueError):
+                    seg_f1.append(None)
+                try:
+                    corrected_f1.append(float(s['corrected_f1']))
+                except (KeyError, ValueError):
+                    corrected_f1.append(None)
             else:
                 confidence.append(None)
                 val_f1.append(None)
-        self.confidence_chart.set_data(confidence)
-        self.val_f1_chart.set_data(val_f1, best_markers)
+                seg_f1.append(None)
+                corrected_f1.append(None)
+        self.confidence_chart.set_data(confidence, phase_markers=phase_markers)
+        self.val_f1_chart.set_data(val_f1, best_markers, phase_markers)
+        self.seg_f1_chart.set_data(seg_f1, phase_markers=phase_markers)
+        self.corrected_f1_chart.set_data(corrected_f1, phase_markers=phase_markers)
 
     def scan_frames(self):
         found = sorted(glob.glob(os.path.join(self.frames_dir, '*.png')))
@@ -479,6 +516,8 @@ class Viewer(QMainWindow):
         # Update chart cursors
         self.confidence_chart.set_cursor(self.idx)
         self.val_f1_chart.set_cursor(self.idx)
+        self.seg_f1_chart.set_cursor(self.idx)
+        self.corrected_f1_chart.set_cursor(self.idx)
 
     def _update_pixmap(self):
         if self.current_pixmap and not self.current_pixmap.isNull():

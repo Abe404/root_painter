@@ -228,7 +228,7 @@ def render_trajectory_frames(rgb_image, ground_truth, trajectory,
         (frames, frame_times, corrected_f1s, end_time) — frame arrays,
         per-frame simulated times, per-frame corrected F1, final sim time
     """
-    from sim_benchmark.brush import paint, new_annot
+    from sim_benchmark.brush import paint, paint_stroke, new_annot
 
     if not trajectory:
         return [], [], [], time_offset
@@ -250,6 +250,7 @@ def render_trajectory_frames(rgb_image, ground_truth, trajectory,
     last_painting = trajectory[0]['painting']
     last_brush_radius = trajectory[0].get('brush_radius', 0)
     last_channel = trajectory[0].get('channel', -1)
+    prev_paint_pos = None
 
     for entry in trajectory:
         r, c = entry['r'], entry['c']
@@ -260,7 +261,14 @@ def render_trajectory_frames(rgb_image, ground_truth, trajectory,
             break
 
         if entry.get('painted', entry['painting']):
-            paint(annot, (r, c), entry['brush_radius'], entry['channel'])
+            if prev_paint_pos is not None:
+                paint_stroke(annot, prev_paint_pos, (r, c),
+                             entry['brush_radius'], entry['channel'])
+            else:
+                paint(annot, (r, c), entry['brush_radius'], entry['channel'])
+            prev_paint_pos = (r, c)
+        else:
+            prev_paint_pos = None
 
         last_r, last_c = r, c
         last_painting = entry['painting']

@@ -17,11 +17,43 @@ import numpy as np
 from scipy.ndimage import binary_erosion, distance_transform_edt
 from skimage.morphology import disk
 
-from sim_benchmark.brush import paint, new_annot
-from sim_benchmark.sim_user import (
-    mouse_travel, FG_STROKE_DURATION, BG_STROKE_DURATION,
-    STROKE_DURATION_SPREAD,
-)
+from sim_benchmark.brush import paint, paint_stroke, new_annot
+
+# Mouse input model — approximates OS mouse event delivery during painting.
+# macOS coalesces mouse events to the display refresh rate regardless of
+# mouse hardware polling rate. Measured ~119Hz on a 120Hz ProMotion display
+# using measure_mouse_rate.py. Qt receives one mouseMoveEvent per display frame.
+MOUSE_POLL_HZ = 120       # Hz, measured on macOS with 120Hz ProMotion display
+MOUSE_PAINT_SPEED = 400   # px/s, moderate speed for corrective annotation
+MOUSE_TRAVEL_SPEED = 800  # px/s, fast straight-line repositioning (mouse-up)
+
+# Decision and assessment timings.
+# Scene gist: >80% accuracy after 36ms (Larson & Loschky, 2014).
+# Two-choice decision: ~190ms for trained gamers (Hyde & von Bastian, 2024).
+VISUAL_SEARCH_MS = 200    # ms, find next error target and decide to go there
+ASSESSMENT_PAUSE_MS = 200  # ms, post-annotation scan to confirm no errors remain
+
+
+def mouse_travel(trajectory, from_pos, to_pos):
+    """Record mouse-up repositioning from one position to another.
+
+    Decomposes the gap into visual search time (finding the next target)
+    and physical travel time (moving the cursor there).
+    """
+    r0, c0 = from_pos
+    r1, c1 = to_pos
+    dist = np.sqrt((r1 - r0) ** 2 + (c1 - c0) ** 2)
+    travel_time = dist / MOUSE_TRAVEL_SPEED
+    total_time = VISUAL_SEARCH_MS / 1000 + travel_time
+    num_steps = max(1, int(dist / 8.0))
+    dt = total_time / num_steps
+    for i in range(1, num_steps + 1):
+        t = i / num_steps
+        trajectory.append({
+            'r': int(round(r0 + (r1 - r0) * t)),
+            'c': int(round(c0 + (c1 - c0) * t)),
+            'painting': False, 'channel': -1, 'brush_radius': 0, 'dt': dt,
+        })
 
 
 def _neighbors(r, c, h, w):
@@ -159,6 +191,90 @@ def pick_brush_radius(gt_class_mask, error_mask):
     return max(1, min(int(needed_r * 1.5), max_r))
 
 
+def coarse_waypoint_indices(path, max_spacing):
+    """Indices into path at approximately max_spacing apart.
+
+    This is the fastest the user can move their mouse — limited by
+    physical hand speed. The OS polls at a fixed rate, so faster
+    movement means wider spacing between samples.
+    """
+    if len(path) <= 1:
+        return list(range(len(path)))
+    indices = [0]
+    dist_acc = 0.0
+    for i in range(1, len(path)):
+        dr = path[i][0] - path[i - 1][0]
+        dc = path[i][1] - path[i - 1][1]
+        dist_acc += (dr * dr + dc * dc) ** 0.5
+        if dist_acc >= max_spacing:
+            indices.append(i)
+            dist_acc = 0.0
+    if indices[-1] != len(path) - 1:
+        indices.append(len(path) - 1)
+    return indices
+
+
+def line_within_walkable(p1, p2, walkable):
+    """True if every pixel on the straight line from p1 to p2 is walkable.
+
+    The walkable mask is the GT class eroded by brush radius, so if the
+    line stays walkable, the full brush disk stays within the class at
+    every point — no spill.
+    """
+    r0, c0 = p1
+    r1, c1 = p2
+    steps = max(abs(r1 - r0), abs(c1 - c0))
+    if steps <= 1:
+        return True
+    for i in range(1, steps):
+        r = r0 + round((r1 - r0) * i / steps)
+        c = c0 + round((c1 - c0) * i / steps)
+        if not walkable[r, c]:
+            return False
+    return True
+
+
+def _refine_segment(path, idx_a, idx_b, walkable, result):
+    """Bisect a segment until the straight line stays walkable."""
+    if idx_b - idx_a <= 1:
+        result.append(idx_b)
+        return
+    if line_within_walkable(path[idx_a], path[idx_b], walkable):
+        result.append(idx_b)
+        return
+    mid = (idx_a + idx_b) // 2
+    _refine_segment(path, idx_a, mid, walkable, result)
+    _refine_segment(path, mid, idx_b, walkable, result)
+
+
+def refine_for_safety(path, indices, walkable):
+    """Add waypoints where straight lines between existing ones leave walkable.
+
+    Uses bisection: if the straight line between two waypoints crosses
+    non-walkable pixels, insert the midpoint from the original A* path
+    and check both halves. This models a user slowing down on curves
+    near class boundaries — more mouse samples where precision matters.
+    """
+    refined = [indices[0]]
+    for i in range(1, len(indices)):
+        _refine_segment(path, refined[-1], indices[i], walkable, refined)
+    return refined
+
+
+def safe_waypoints(path, max_spacing, walkable):
+    """Subsample path to waypoints safe to connect with straight brush strokes.
+
+    1. Coarse pass: space waypoints at max_spacing (mouse speed limit)
+    2. Refine: add waypoints where straight lines would leave walkable mask
+
+    The result models a user who moves fast on straight sections and
+    slows down on curves near class boundaries.
+    """
+    indices = coarse_waypoint_indices(path, max_spacing)
+    indices = refine_for_safety(path, indices, walkable)
+    return [path[i] for i in indices]
+
+
 def corrective_annotation(ground_truth, prediction):
     """Create corrective annotations using A* pathfinding.
 
@@ -173,7 +289,6 @@ def corrective_annotation(ground_truth, prediction):
     h, w = ground_truth.shape
     annot = new_annot(h, w)
     trajectory = []
-    rng = np.random.RandomState(0)
     mouse_pos = (h // 2, w // 2)
 
     for error_mask, gt_class_mask, channel in [
@@ -183,9 +298,9 @@ def corrective_annotation(ground_truth, prediction):
         if not np.any(error_mask):
             continue
 
-        duration_base = (FG_STROKE_DURATION if channel == 0
-                         else BG_STROKE_DURATION)
         br = pick_brush_radius(gt_class_mask, error_mask)
+        wp_spacing = MOUSE_PAINT_SPEED / MOUSE_POLL_HZ
+        dt_per_wp = 1.0 / MOUSE_POLL_HZ
 
         # Multi-pass: start with the ideal brush, halve for remaining
         # errors that the big brush couldn't reach.
@@ -205,12 +320,13 @@ def corrective_annotation(ground_truth, prediction):
                 mid_r, mid_c = int(np.mean(unc_r)), int(np.mean(unc_c))
                 wr, wc = _nearest_walkable(mid_r, mid_c, walkable, h, w)
                 if wr is not None:
-                    mouse_travel(trajectory, mouse_pos, (wr, wc), rng)
+                    mouse_travel(trajectory, mouse_pos, (wr, wc))
                     mouse_pos = (wr, wc)
 
-            # Paint along A* paths to each uncovered error pixel.
-            stroke_points = []
+            # Paint along A* paths using waypoints sampled at poll rate.
+            all_waypoints = []
             first_path = True
+            prev_wp = None
 
             for _ in range(2000):
                 if not np.any(uncovered):
@@ -234,15 +350,20 @@ def corrective_annotation(ground_truth, prediction):
                 if first_path:
                     start_pt = path[0]
                     if start_pt != mouse_pos:
-                        mouse_travel(trajectory, mouse_pos, start_pt, rng)
+                        mouse_travel(trajectory, mouse_pos, start_pt)
                         mouse_pos = start_pt
                     first_path = False
 
-                for r, c in path:
-                    paint(annot, (r, c), br, channel)
-                    stroke_points.append((r, c))
+                waypoints = safe_waypoints(path, wp_spacing, walkable)
 
-                    # Mark brush footprint as covered
+                for wp in waypoints:
+                    if prev_wp is not None:
+                        paint_stroke(annot, prev_wp, wp, br, channel)
+                    else:
+                        paint(annot, wp, br, channel)
+
+                    # Mark brush circle coverage at waypoint
+                    r, c = wp
                     r0, r1 = max(0, r - br), min(h, r + br + 1)
                     c0, c1 = max(0, c - br), min(w, c + br + 1)
                     rr = np.arange(r0, r1)[:, None]
@@ -250,30 +371,31 @@ def corrective_annotation(ground_truth, prediction):
                     bmask = ((rr - r)**2 + (cc - c)**2) <= br**2
                     uncovered[r0:r1, c0:c1] &= ~bmask
 
-                mouse_pos = path[-1]
+                    prev_wp = wp
 
-            # Trajectory timing: emit all points for the video renderer,
-            # but only give nonzero dt every step_size points.
-            # Each ~100px segment gets one stroke duration.
-            if stroke_points:
-                step_size = max(1, br // 2)
-                n_timed = max(1, len(stroke_points) // step_size)
-                steps_per_stroke = max(1, 100 // step_size)
-                n_equiv_strokes = max(1, n_timed // steps_per_stroke)
-                total_dur = sum(
-                    duration_base * rng.lognormal(0, STROKE_DURATION_SPREAD)
-                    for _ in range(n_equiv_strokes))
-                dt_per_step = total_dur / n_timed
-                for idx, (r, c) in enumerate(stroke_points):
+                all_waypoints.extend(waypoints)
+                mouse_pos = waypoints[-1]
+
+            # Emit trajectory — one waypoint per mouse poll event
+            if all_waypoints:
+                for r, c in all_waypoints:
                     trajectory.append({
                         'r': r, 'c': c, 'painting': True,
                         'channel': channel, 'brush_radius': br,
-                        'dt': dt_per_step if idx % step_size == 0 else 0.0,
+                        'dt': dt_per_wp,
                     })
 
             br //= 2
 
     if not np.any(annot[:, :, 0] > 0) and not np.any(annot[:, :, 1] > 0):
         return None, []
+
+    # Assessment pause — user scans the image for remaining errors,
+    # sees it looks good, and moves on.
+    trajectory.append({
+        'r': mouse_pos[0], 'c': mouse_pos[1],
+        'painting': False, 'channel': -1, 'brush_radius': 0,
+        'dt': ASSESSMENT_PAUSE_MS / 1000,
+    })
 
     return annot, trajectory

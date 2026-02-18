@@ -59,9 +59,9 @@ epoch (best_f1 > 0) before switching — no corrective on random weights.
 
 The user sees the model's prediction overlaid on the image. They scan for
 errors — places where the prediction disagrees with reality. For each
-clear error region, they paint a corrective stroke in the appropriate
-channel (FG where the model missed foreground, BG where the model
-hallucinated foreground).
+error region, they paint a corrective stroke in the appropriate channel
+(FG where the model missed foreground, BG where the model hallucinated
+foreground).
 
 **What gets corrected:** All errors that a user could reasonably annotate.
 A 10-pixel false positive in the middle of an empty background region is
@@ -73,17 +73,11 @@ just because they are small.
 within ~2px of the GT class edge, where the true boundary between
 foreground and background is genuinely hard to pinpoint. A real user
 wouldn't try to paint 1–2px slivers right on a complex boundary either.
-The simulation's multi-stroke loop keeps stroking until only these
-boundary pixels remain uncovered. This means interior errors are always
-fully corrected regardless of size or shape.
 
 **Brush size trade-off:** The user picks the largest brush they can use
-confidently at speed. The brush should be large enough to cover the area
-efficiently (not many thin strokes in a big space), but small enough that
-comfortable margin exists on both sides of the stroke path — the user
-shouldn't need pixel-precise placement. Roughly: brush diameter is a
-fraction of the safe zone width, leaving enough room for fast confident
-strokes.
+without spilling onto the wrong class. The brush should be large enough
+to cover the area efficiently, but small enough that the full brush disk
+stays inside the correct class region when the cursor follows a safe path.
 
 **Skipping:** If the prediction looks good (no clear errors), the image
 is skipped entirely. No annotation is saved, and the image is not used in
@@ -107,11 +101,9 @@ validation improves.
 - Images 3, 4, ...: A model may or may not be ready yet (training takes
   time). If no useful model is available, the user continues with initial
   annotation. Once the model is approximately predicting the structure of
-  interest, the user switches to corrective annotation. The exact
-  threshold for "approximately predicting" may need experimentation.
+  interest, the user switches to corrective annotation.
 - In corrective mode: the user sees the prediction, corrects all clear
-  errors, or skips if no clear errors exist. For now, skipping is strict
-  — only skip when there are truly no errors.
+  errors, or skips if no clear errors exist.
 
 **Note for simulation:** Training runs asynchronously in a background
 thread, matching the real tool's architecture. The trainer runs
@@ -120,20 +112,21 @@ state whenever it needs to segment a new image.
 
 ## What a stroke looks like
 
-A stroke is a continuous line from point A to point B. It is NOT a
-sequence of dabs or blobs. The cursor position is sampled at a fixed tick
-interval — if the user moves fast, the line has fewer sampled x,y points
-but is still a connected line that can be long. If they move slowly, more
-points are sampled but the line is shorter.
+A stroke is a continuous mouse-down → drag → mouse-up motion. The OS
+delivers mouse position events at a fixed polling rate (display refresh
+rate on macOS — measured at ~120Hz on a 120Hz ProMotion display). Between
+consecutive mouse events, the painting toolkit (Qt's QPainter) draws a
+capsule shape — a line segment with round caps connecting the two cursor
+positions, filled at the brush radius.
 
-**Stroke characteristics:**
-- Roughly straight. Not zigzag, not squiggly.
-- Fills empty space efficiently. The user does not squiggle around empty
-  space for no reason. Draw a line that gets the job done and move on.
-- A stroke should not go over itself in strange ways. If a single
-  straight stroke covers the area, that's what the user does.
-- In some cases a non-straight path may be needed (e.g. following a
-  curved boundary), but the default is: simple, efficient, straight.
+**Key properties:**
+- The cursor position is sampled at the display refresh rate (~120Hz)
+- If the user moves fast, consecutive samples are farther apart but the
+  capsule stroke still produces continuous coverage
+- If they move slowly, samples are closer together (more precision on
+  curves near boundaries)
+- The user cannot physically move the cursor faster than their hand allows
+  (~400 px/s for corrective annotation)
 
 **Brush size:** Fixed within a stroke (may vary between strokes).
 
@@ -144,94 +137,91 @@ requires it.
 
 ## Simulated time model
 
-Each mouse action has a simulated time cost:
-- **Mouse-up travel** (repositioning between strokes): fast, straight line
-- **Painting** (mouse-down drag): speed depends on how much margin the
-  user has — fast in open areas, slow near edges
-- **Direction changes** have a cost. A gentle curve or loop around a blob
-  is low cost. Lots of back-and-forth or sharp precise angle changes is
-  high cost — harder than just drawing a straight line. This naturally
-  pushes the simulation toward long straight strokes, which is realistic.
+Each mouse event corresponds to one OS polling interval:
 
-**Duration-based model:** Rather than pixel-per-second speeds (which vary
-with image resolution and zoom level), the simulation uses stroke
-durations:
-- FG stroke duration: ~1.4s (log-normal variation, spread 0.3)
-- BG stroke duration: ~0.75s
-- Inter-stroke gap: ~1.5s
-- Jitter derived from effective speed (distance / duration) × jitter rate
+- **Painting events:** dt = 1 / MOUSE_POLL_HZ (≈8.3ms at 120Hz). The
+  spacing between consecutive waypoints determines the implied cursor
+  speed — closer waypoints = slower movement (curves near boundaries),
+  wider spacing = faster movement (straight sections).
+- **Mouse-up travel:** Decomposed into visual search time (200ms to
+  find the next target and decide to go there) plus physical travel
+  time (distance / 800 px/s). Short repositions are fast (~225ms for
+  20px), long ones take proportionally longer.
+- **Assessment pause:** After all painting is complete, a brief pause
+  (200ms) for the user to scan the image and confirm no errors remain.
+
+### Mouse polling rate
+
+macOS coalesces mouse events to the display refresh rate regardless of
+mouse hardware polling rate (even gaming mice at 500–1000Hz). Measured
+~119Hz on a 120Hz ProMotion display using `measure_mouse_rate.py`. Qt
+receives one `mouseMoveEvent` per display frame.
+
+### Assessment pause timing
+
+The 200ms assessment pause is grounded in scene gist research: humans
+recognise the gist of a scene at >80% accuracy after just 36ms of
+processing (Larson & Loschky, K-State Visual Cognition Lab). Esports
+players (CS:GO) make two-choice decisions ~89ms faster than novices
+(Hyde & von Bastian, University of Sheffield; https://osf.io/4kuqc).
+For a trained annotator scanning a familiar image they just finished
+painting, 200ms provides comfortable margin for a confirmatory visual
+sweep plus the decision to move on.
+
+## Implementation: A* pathfinding annotator
+
+The corrective annotator uses A* pathfinding to navigate error regions.
+The ground truth class mask defines walkable terrain — the brush path
+cannot spill onto the wrong class.
+
+### Algorithm
+
+1. **Pick brush radius** from the GT class distance transform (50% of
+   max depth), refined by how far errors extend within the class region.
+2. **Erode GT mask** by brush radius so the full brush disk stays inside
+   the correct class at every point along the path.
+3. **A* to nearest uncovered error pixel**, paint along the path using
+   waypoints, repeat until all errors are covered.
+4. **Halve brush radius** and repeat for errors the big brush couldn't
+   reach (too close to class boundary for the large brush to fit).
+
+### Safe waypoints
+
+The A* path is subsampled to waypoints that are safe to connect with
+straight capsule strokes (matching Qt's QPainter.drawLine with round
+caps). This happens in two passes:
+
+1. **Coarse pass:** Space waypoints at max mouse speed
+   (MOUSE_PAINT_SPEED / MOUSE_POLL_HZ ≈ 3.3px at 400px/s, 120Hz).
+   This is the widest spacing the user's hand physically allows.
+2. **Safety refinement:** For each pair of consecutive waypoints, check
+   if the straight line between them stays on the walkable (eroded) mask.
+   If not, bisect using the original A* path and check both halves.
+   Repeat until all straight connections are safe.
+
+This models a user who moves fast on straight sections and slows down
+on curves near class boundaries — more mouse samples where precision
+matters, fewer where it doesn't.
+
+### Why waypoints guarantee no spill
+
+The walkable mask is the GT class eroded by brush radius. If the straight
+line between two waypoints stays on this mask, then at every point along
+that line, the full brush disk (radius R centered on the cursor) is
+contained within the GT class region. The capsule stroke between waypoints
+fills exactly this swept area — so no pixels land on the wrong class.
 
 ## Video / visualization
 
-Three panels side by side for every image:
-- Panel 1: raw image
-- Panel 2: FG/BG annotation shown over image
-- Panel 3: segmentation (prediction) shown over image
+Four panels side by side for every frame:
+- Panel 1: input image
+- Panel 2: annotation built up so far (red = FG, green = BG) with cursor
+- Panel 3: model segmentation (cyan overlay)
+- Panel 4: corrected segmentation (prediction + annotation applied)
 
-Training transition frames between images showing F1 progress.
-
-## Implementation approach
-
-Current approach is rules-based: compute regions, pick brush size, plan
-stroke paths geometrically using **raster zigzag fill** — the standard
-algorithm from CNC machining, 3D printing slicers, and robotic painting.
-
-### Raster zigzag fill (current)
-
-The corrective annotator fills error regions with parallel scan lines:
-
-1. Compute sweep direction from error centroid → farthest error pixel
-2. Compute perpendicular direction for scan line spacing
-3. Space scan lines at ~85% of brush diameter (slight overlap, standard
-   in raster fill to avoid gaps)
-4. For each scan line: clip to UNCOVERED strokeable area, sweep, update
-   remaining error
-5. Zigzag: alternate sweep direction each line (boustrophedon) to
-   minimize travel, like a human coloring back and forth
-
-Key property: each scan line recomputes the uncovered strokeable region,
-so strokes never retrace already-painted areas. This was the main failure
-mode of earlier approaches (principal axis sweep, centroid targeting) —
-the direction didn't change between iterations, causing redundant strokes
-over the same path.
-
-### Background: coverage path planning literature
-
-The raster zigzag approach comes from **coverage path planning** — a
-well-studied problem in robotics, CNC, and 3D printing:
-
-- **Raster/zigzag fill** (our approach): parallel scan lines clipped to
-  the region boundary, connected in alternating directions. Simplest and
-  most common. Used by every 3D printing slicer for rectilinear infill.
-- **Contour-parallel fill**: shrink the boundary inward repeatedly,
-  stroke each offset contour. Better edge coverage for organic shapes.
-  Used in CNC as "pocket milling" and in 3D printing as "concentric
-  infill."
-- **Hybrid (contour + raster)**: what 3D printing slicers actually do —
-  2-3 perimeter contour passes for clean edges, then raster fill for the
-  interior. The gold standard for practical coverage.
-- **Boustrophedon cellular decomposition**: formal robotics algorithm.
-  Decompose region into cells at obstacle vertices, fill each cell with
-  zigzag, plan a tour through cells. Only needed for regions with holes.
-  Reference: Choset (2001), Autonomous Robots 9(3).
-
-Key parameters across all approaches:
-- Step size = brush_width × (1 − overlap), overlap 10-20%
-- Fill angle can be fixed or rotated between passes
-
-### If rules-based continues to struggle
-
-- **Vector field / cost-benefit optimization:** Define a field over the
-  image where each point has an annotation value (how much the model
-  needs correction there) and a cost (proximity to boundaries, direction
-  change penalty). Stroke paths follow high benefit-to-cost gradients.
-- **RL:** Agent learns a stroke placement policy given current state
-  (image, GT, existing annotation). Reward = coverage per unit time.
-  Could be combined with constraints learned from real user data.
-- **Learned from real data:** If real annotation traces (mouse
-  trajectories from actual RootPainter sessions) become available, use
-  them to learn realistic stroke patterns or to constrain/validate the
-  simulation.
+Charts below the panels track confidence, val F1, seg F1, and corrected
+F1 over time, with phase transition markers (initial → corrective) and
+best model save markers.
 
 ## Current issues (to resolve)
 
@@ -239,33 +229,26 @@ _None currently open._
 
 ## Resolved issues
 
-- **Redundant strokes over already-painted area.** Principal axis sweep
-  and centroid targeting both produced the same stroke direction each
-  iteration, retracing the same band. Fixed by switching to raster zigzag
-  fill: parallel scan lines perpendicular to the sweep direction, each
-  clipped to uncovered area. Strokes now systematically fill the region
-  without redundancy.
-
 - **BG/FG annotation landing on wrong class.** The brush could spill
   across the GT class boundary. Fixed with safe-zone erosion: erode
   gt_class_mask by disk(brush_radius) so the full brush disk stays
-  inside. For boundary-adjacent errors where no brush fits with erosion,
-  a small brush (radius 2) with 1px erosion buffer is used. Any
-  remaining spill is detected and erased (simulating the user noticing
-  and using the eraser).
+  inside the class at every point along the path.
 
-- **Corrective annotator skipping fixable errors.** Safe-zone erosion
-  silently failed on thin structures, causing the annotator to skip errors
-  it should have corrected. Fixed with progressive fallbacks (smaller
-  brush, boundary mode with per-component strokes) and boundary-aware
-  stopping criterion (stop only when remaining errors are within 2px of
-  the GT class edge).
+- **Straight capsule strokes cutting corners on curves.** When waypoints
+  were spaced only by mouse speed, the straight capsule between them
+  could cut across non-walkable area on tight curves near class
+  boundaries. Fixed with safety refinement: bisect the A* path and add
+  waypoints wherever the straight connection leaves the walkable mask.
+  This models the user slowing down (more mouse samples) on curves.
 
-- **Artificial 20-stroke-per-region cap.** The original stroke loop had a
-  hard cap of 20 strokes per error region, which prevented the annotator
-  from correcting all clear errors on images with large error areas (e.g.
-  when the model is weak early in training). Replaced with stall-based
-  stopping: if 3 consecutive iterations each cover less than 5% of the
-  remaining actionable error, the annotator moves on. This follows the
-  protocol's instruction to correct all clear errors — annotation time is
-  naturally longer when the model is bad and shorter as it improves.
+## References
+
+- Larson, A. M. & Loschky, L. C. "The Spatiotemporal Dynamics of Scene
+  Gist Recognition." Journal of Experimental Psychology: Human Perception
+  and Performance, 2014. Scene gist recognised at >80% accuracy after
+  36ms of processing. https://www.k-state.edu/psych/vcl/basic-research/scene-gist.html
+
+- Hyde, E. & von Bastian, C. University of Sheffield, 2024. CS:GO
+  experts outperform novices by ~89ms in two-choice decision tasks;
+  faster stimulus encoding and evidence accumulation.
+  https://osf.io/4kuqc

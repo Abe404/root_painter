@@ -24,21 +24,28 @@ import traceback
 from PyQt5 import QtWidgets
 
 from root_painter import RootPainter
+from server_manager import find_bundled_trainer
 
 def init_root_painter():
     settings_path = os.path.join(Path.home(), 'root_painter_settings.json')
     try:
         app = QtWidgets.QApplication([])
         # if the settings file does not exist then create it with
-        # a user specified sync_dir
+        # a suitable sync_dir
         if not os.path.isfile(settings_path):
-            msg = QtWidgets.QMessageBox()
-            output = "Sync directory not specified. Please specify a sync directory."
-            msg.setText(output)
-            msg.exec_()
-            dir_path = QtWidgets.QFileDialog.getExistingDirectory()
-            if not dir_path:
-                exit()
+            # Workstation mode: bundled trainer found — use a sensible default
+            # so new users don't accidentally pick the install directory.
+            if find_bundled_trainer() is not None:
+                dir_path = os.path.join(Path.home(), 'rp_sync')
+                os.makedirs(dir_path, exist_ok=True)
+            else:
+                msg = QtWidgets.QMessageBox()
+                output = "Sync directory not specified. Please specify a sync directory."
+                msg.setText(output)
+                msg.exec_()
+                dir_path = QtWidgets.QFileDialog.getExistingDirectory()
+                if not dir_path:
+                    exit()
             with open(settings_path, 'w') as json_file:
                 content = {
                     "sync_dir": os.path.abspath(dir_path)

@@ -21,6 +21,11 @@ from PyQt5.QtCore import Qt, QRect, QTimer
 HELP_TEXT = ("  \u25c0 \u25b6  step    Space  play/pause    \u25b2 \u25bc  speed    "
              "Home  start    End  live    N  note    S  save test case    Q  quit")
 
+# Frames are rendered at this FPS of simulated time.
+# Playing back at RENDER_FPS = real-time (1x human speed).
+RENDER_FPS = 6
+SPEED_PRESETS = [0.5, 1, 2, 3, 5, 10]
+
 
 class NoteSlider(QSlider):
     """Slider with colored tick marks where notes exist."""
@@ -203,14 +208,15 @@ class ChartWidget(QWidget):
 
 
 class Viewer(QMainWindow):
-    def __init__(self, frames_dir, fps=6):
+    def __init__(self, frames_dir):
         super().__init__()
         self.frames_dir = frames_dir
         self.frames = []
         self.idx = 0
         self.playing = False
         self.live = False
-        self.fps = fps
+        self.speed_idx = SPEED_PRESETS.index(1)  # start at 1x
+        self.fps = RENDER_FPS
         self._prev_fname = None
 
         # Notes stored as {filename: comment}
@@ -488,7 +494,7 @@ class Viewer(QMainWindow):
         note_marker = " \u270e" if fname in self.notes else ""
         self.setWindowTitle(
             f"{self.idx + 1}/{n}  {fname}  "
-            f"{self.fps}fps{status}{note_marker}")
+            f"{SPEED_PRESETS[self.speed_idx]}x ({self.fps}fps){status}{note_marker}")
         self.slider.blockSignals(True)
         self.slider.setValue(self.idx)
         self.slider.blockSignals(False)
@@ -499,6 +505,7 @@ class Viewer(QMainWindow):
         self.note_edit.blockSignals(False)
 
         # Update stats panel
+        speed = f"{SPEED_PRESETS[self.speed_idx]}x ({self.fps}fps)"
         s = self.stats.get(fname)
         if s:
             seg = s.get('seg_f1', '?')
@@ -509,9 +516,9 @@ class Viewer(QMainWindow):
                 f"  {s['image']}  {phase}    "
                 f"seg {seg}  val {val}  corrected {cor}    "
                 f"conf {s['confidence']}  ep {s['epochs']}  "
-                f"t={s['sim_time']}s")
+                f"t={s['sim_time']}s    {speed}")
         else:
-            self.stats_label.setText(f"  frame {self.idx+1}/{n}")
+            self.stats_label.setText(f"  frame {self.idx+1}/{n}    {speed}")
 
         # Update chart cursors
         self.confidence_chart.set_cursor(self.idx)
@@ -556,7 +563,7 @@ class Viewer(QMainWindow):
         note_marker = " \u270e" if fname in self.notes else ""
         self.setWindowTitle(
             f"{self.idx + 1}/{n}  {fname}  "
-            f"{self.fps}fps{status}{note_marker}")
+            f"{SPEED_PRESETS[self.speed_idx]}x ({self.fps}fps){status}{note_marker}")
 
     def on_slider(self, value):
         self.live = False
@@ -614,12 +621,14 @@ class Viewer(QMainWindow):
             self.idx = max(0, len(self.frames) - 1)
             self.show_frame()
         elif key == Qt.Key_Up:
-            self.fps = min(60, self.fps + 2)
+            self.speed_idx = min(len(SPEED_PRESETS) - 1, self.speed_idx + 1)
+            self.fps = int(RENDER_FPS * SPEED_PRESETS[self.speed_idx])
             if self.playing:
                 self.timer.start(int(1000 / self.fps))
             self.show_frame()
         elif key == Qt.Key_Down:
-            self.fps = max(1, self.fps - 2)
+            self.speed_idx = max(0, self.speed_idx - 1)
+            self.fps = int(RENDER_FPS * SPEED_PRESETS[self.speed_idx])
             if self.playing:
                 self.timer.start(int(1000 / self.fps))
             self.show_frame()

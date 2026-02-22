@@ -117,7 +117,8 @@ class Trainer():
         # These can be trigged by data sent from client
         self.valid_instructions = [self.start_training,
                                    self.segment,
-                                   self.stop_training]
+                                   self.stop_training,
+                                   self.trainer_status]
 
     def main_loop(self):
         print('Started main loop. Checking for instructions in',
@@ -216,6 +217,25 @@ class Trainer():
         else:
             raise Exception(f"Unhandled instruction: {name}")
         return True, None
+
+    def trainer_status(self, _):
+        """Respond to a trainer status check from the painter."""
+        status = {
+            "timestamp": time.time(),
+            "training": self.training,
+        }
+        if self.training and self.train_config:
+            # Include the project being trained so the painter can inform the user
+            model_dir = self.train_config.get('model_dir', '')
+            # model_dir is like sync_dir/projects/<project_name>/models
+            # extract the project name from the path
+            project_dir = os.path.dirname(str(model_dir))
+            status["project"] = os.path.basename(project_dir)
+        status_path = os.path.join(self.sync_dir, 'trainer_status.json')
+        tmp_path = status_path + '.tmp'
+        with open(tmp_path, 'w') as f:
+            json.dump(status, f)
+        os.replace(tmp_path, status_path)
 
     def stop_training(self, _):
         if self.training:

@@ -13,13 +13,17 @@ Contract:
 
 from __future__ import annotations
 
+import json
 import os
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, List
 
 from PyQt5 import QtCore, QtWidgets
+
+from instructions import send_instruction
 
 
 def _exe_suffix() -> str:
@@ -336,4 +340,164 @@ class ServerLogDialog(QtWidgets.QDialog):
             self.server_manager.stop()
         else:
             self.server_manager.start(self.sync_dir)
+
+
+class TrainerStatusDialog(QtWidgets.QDialog):
+    """Dialog that polls for a trainer_status response file.
+
+    Shows 'Opening project...' for at least 1s while polling.
+    Happy path: auto-closes after 1s.
+    Problems (no trainer, or training another project): switches
+    to a warning after 3s and lets the user decide.
+    """
+
+    def __init__(self, instruction_path, response_path,
+                 workstation=False, opening_project=None, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('Opening Project')
+        self.instruction_path = instruction_path
+        self.response_path = response_path
+        self.status_info = None
+        self.workstation = workstation
+        self.opening_project = opening_project
+        self._open_time = time.time()
+        self.setMinimumWidth(400)
+
+        layout = QtWidgets.QVBoxLayout()
+        layout.setSpacing(12)
+        self.setLayout(layout)
+
+        self.label = QtWidgets.QLabel('Opening project...')
+        self.label.setStyleSheet('font-size: 18px;')
+        self.label.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addWidget(self.label)
+
+        self.info_label = QtWidgets.QLabel()
+        self.info_label.setWordWrap(True)
+        self.info_label.hide()
+        layout.addWidget(self.info_label)
+
+        btn_layout = QtWidgets.QHBoxLayout()
+        layout.addLayout(btn_layout)
+
+        self.open_btn = QtWidgets.QPushButton('Open project anyway')
+        self.open_btn.clicked.connect(self.accept)
+        self.open_btn.hide()
+        btn_layout.addWidget(self.open_btn)
+
+        self.back_btn = QtWidgets.QPushButton('Go back')
+        self.back_btn.clicked.connect(self.reject)
+        self.back_btn.hide()
+        btn_layout.addWidget(self.back_btn)
+
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self._poll)
+        self.timer.start(500)
+
+    def _elapsed(self):
+        return time.time() - self._open_time
+
+    def _poll(self):
+        if os.path.isfile(self.response_path):
+            self.timer.stop()
+            try:
+                with open(self.response_path, 'r') as f:
+                    self.status_info = json.load(f)
+            except Exception:
+                pass
+
+            training = self.status_info and self.status_info.get('training')
+            training_project = self.status_info.get('project') if self.status_info else None
+            same_project = (training and training_project
+                            and training_project == self.opening_project)
+            if training and not same_project:
+                # Trainer is busy with a different project — tell the user.
+                self._show_training_warning()
+            else:
+                # Happy path: auto-close after at least 1s total.
+                remaining = max(0, 1.0 - self._elapsed())
+                QtCore.QTimer.singleShot(int(remaining * 1000), self.accept)
+            return
+
+        # No response yet — after 3s, show buttons so user can decide.
+        if self._elapsed() >= 3.0:
+            self.timer.stop()
+            self._show_waiting_warning()
+
+    def _show_training_warning(self):
+        project = self.status_info.get('project', 'unknown')
+        self.label.setText(f'Trainer is currently training: {project}')
+        self.info_label.setText(
+            f'To train this project, open {project} and stop its '
+            'training from Network \u2192 Stop training.')
+        self.info_label.show()
+        self.open_btn.setText('OK')
+        self.open_btn.show()
+        self.adjustSize()
+
+    def _show_waiting_warning(self):
+        self.label.setText('Waiting for trainer...')
+        if self.workstation:
+            self.info_label.setText(
+                'The trainer is not running. Without the trainer, '
+                'image segmentation and model training are disabled.\n\n'
+                'To start the trainer go to Network \u2192 Open server, '
+                'then click Start server.')
+        else:
+            self.info_label.setText(
+                'No response from the trainer yet. This may take '
+                'some time if syncing over a network.\n\n'
+                'Possible reasons:\n\n'
+                '\u2022 The trainer is not running\n'
+                '\u2022 Sync is not set up between client and server\n'
+                '\u2022 The trainer is an older version without status checks '
+                '- everything might work fine anyway\n\n'
+                'If training and segmentation do not work, see: '
+                '<a href="https://github.com/Abe404/root_painter/blob/master/'
+                'docs/FAQ.md#question---why-is-the-segmentation-not-loading">'
+                'FAQ - Why is the segmentation not loading?</a>')
+            self.info_label.setOpenExternalLinks(True)
+        self.info_label.show()
+        self.open_btn.show()
+        self.back_btn.show()
+        self.adjustSize()
+
+    def _cleanup(self):
+        """Remove instruction and response files."""
+        for path in [self.instruction_path, self.response_path]:
+            try:
+                if os.path.isfile(path):
+                    os.remove(path)
+            except OSError:
+                pass
+
+    def done(self, result):
+        self.timer.stop()
+        self._cleanup()
+        super().done(result)
+
+
+def check_trainer_status(sync_dir, instruction_dir,
+                         workstation=False, opening_project=None,
+                         parent=None):
+    """Send trainer_status instruction and show dialog while waiting.
+       Returns (proceed: bool, status_info: dict or None)."""
+    response_path = os.path.join(str(sync_dir), 'trainer_status.json')
+
+    # Clean up any stale response from a previous check
+    if os.path.isfile(response_path):
+        os.remove(response_path)
+
+    instruction_path = send_instruction(
+        'trainer_status', {}, str(instruction_dir), str(sync_dir))
+
+    dialog = TrainerStatusDialog(instruction_path, response_path,
+                                 workstation=workstation,
+                                 opening_project=opening_project,
+                                 parent=parent)
+    result = dialog.exec_()
+
+    if result == QtWidgets.QDialog.Accepted:
+        return True, dialog.status_info
+    return False, None
 

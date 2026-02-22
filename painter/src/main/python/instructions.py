@@ -80,3 +80,4 @@ def send_instruction(name, content, instruction_dir, sync_dir):
     if not os.path.isfile(fpath):
         with open(fpath, 'w') as json_file:
             json.dump(content, json_file, indent=4)
+    return fpath

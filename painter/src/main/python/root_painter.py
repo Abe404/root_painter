@@ -194,6 +194,23 @@ class RootPainter(QtWidgets.QMainWindow):
             return dataset_abs_path
 
     def open_project(self, proj_file_path):
+        # Workstation mode: warn if server isn't running
+        if self.server_manager and not self.server_manager.is_running():
+            msg = QtWidgets.QMessageBox()
+            msg.setWindowTitle('Server not running')
+            msg.setText('The server is not running.')
+            msg.setInformativeText(
+                'Without the server running, image segmentation and '
+                'model training are disabled.\n\n'
+                'To start the server go to Network \u2192 Open server, '
+                'then click Start server.')
+            open_btn = msg.addButton('Open project anyway', QtWidgets.QMessageBox.AcceptRole)
+            back_btn = msg.addButton('Go back', QtWidgets.QMessageBox.RejectRole)
+            msg.setDefaultButton(back_btn)
+            msg.exec_()
+            if msg.clickedButton() == back_btn:
+                return
+
         # extract json
         with open(proj_file_path, 'r') as json_file:
             settings = json.load(json_file)

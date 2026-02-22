@@ -25,12 +25,12 @@ Run "painter\env\Scripts\python -m pip install --upgrade pip wheel setuptools"
 # -----------------------
 # Trainer env (optional but useful for sanity / local trainer runs)
 Run "trainer\env\Scripts\pip install -r trainer\requirements_base_no_torch.txt"
-Run "trainer\env\Scripts\pip install -r trainer\requirements_torch_cu128.txt"
+Run "trainer\env\Scripts\pip install -r trainer\requirements_torch_cu128_win.txt"
 
 # Painter env (THIS is the env that runs PyInstaller, so it MUST include trainer deps too)
 Run "painter\env\Scripts\pip install -r painter\requirements.txt"
 Run "painter\env\Scripts\pip install -r trainer\requirements_base_no_torch.txt"
-Run "painter\env\Scripts\pip install -r trainer\requirements_torch_cu128.txt"
+Run "painter\env\Scripts\pip install -r trainer\requirements_torch_cu128_win.txt"
 
 # PyInstaller in painter env
 Run "painter\env\Scripts\pip install --upgrade pyinstaller"

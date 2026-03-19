@@ -87,9 +87,22 @@ def auto_contrast(img, clip_limit=0.02):
 def load_image(photo_path):
     photo = Image.open(photo_path)
 
+    # Handle 16-bit images (e.g. uint16 TIFF) by normalizing to 8-bit range
+    # before RGB conversion, which would otherwise truncate values.
+    # https://github.com/Abe404/root_painter/issues/191
+    if photo.mode in ('I;16', 'I'):
+        arr = np.array(photo, dtype=np.float64)
+        min_val = arr.min()
+        max_val = arr.max()
+        if max_val > min_val:
+            arr = (arr - min_val) / (max_val - min_val) * 255
+        else:
+            arr = np.zeros_like(arr, dtype=np.float64)
+        photo = Image.fromarray(arr.astype(np.uint8))
+
     # Convert to RGB before converting to NumPy due to bug in Pillow
     # https://github.com/Abe404/root_painter/issues/94
-    photo = photo.convert("RGB") 
+    photo = photo.convert("RGB")
 
     photo = ImageOps.exif_transpose(photo)
     photo = np.array(photo)

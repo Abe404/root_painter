@@ -113,6 +113,7 @@ Outputs wheels to `./dist/`. After building, upload to a GitHub release and upda
 
 ## Key Constraints
 
+- Do not include `Co-Authored-By` or any Claude attribution in commit messages
 - Python 3.11–3.12 required (`>=3.11,<3.13`)
 - Trainer imports are relative (e.g., `from unet import ...`), not package-qualified—tests and entry points run from `trainer/src/`
 - Batch size is auto-detected from GPU memory (CUDA/MPS/CPU fallback)

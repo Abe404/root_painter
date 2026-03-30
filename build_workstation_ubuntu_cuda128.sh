@@ -14,15 +14,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 PYTHON="${PYTHON:-python}"
 VARIANT="${1:-rtx50}"
+VERSION=$(grep -oP 'Version: \K[0-9.]+' "$ROOT/painter/src/main/python/about.py")
 
 case "$VARIANT" in
   rtx50)
     REQUIREMENTS="requirements_torch_cu128.txt"
-    APPIMAGE_NAME="RootPainterWorkstation_0.2.28_Ubuntu_CUDA128_RTX50.AppImage"
+    APPIMAGE_NAME="RootPainterWorkstation_${VERSION}_Ubuntu_CUDA128_RTX50.AppImage"
     ;;
   broad)
     REQUIREMENTS="requirements_torch_cu128_broad.txt"
-    APPIMAGE_NAME="RootPainterWorkstation_0.2.28_Ubuntu_CUDA128_GTX1660_to_RTX4090.AppImage"
+    APPIMAGE_NAME="RootPainterWorkstation_${VERSION}_Ubuntu_CUDA128_GTX1660_to_RTX4090.AppImage"
     ;;
   *)
     echo "ERROR: Unknown variant '$VARIANT'. Use 'rtx50' or 'broad'."

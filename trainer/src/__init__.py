@@ -25,12 +25,17 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--syncdir',
                     help=('location of directory where data is'
                            ' synced between the client and server'))
+parser.add_argument('--maxbatchsize',
+                    type=int,
+                    default=12,
+                    help='maximum batch size for training')
 
 def start():
     from trainer import Trainer
     args = parser.parse_args()
     if args.syncdir:
-        trainer = Trainer(sync_dir=args.syncdir)
+        trainer = Trainer(sync_dir=args.syncdir,
+                          max_batch_size=args.maxbatchsize)
     else:
-        trainer = Trainer()
+        trainer = Trainer(max_batch_size=args.maxbatchsize)
     trainer.main_loop()

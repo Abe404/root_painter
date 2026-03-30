@@ -53,6 +53,7 @@ class Trainer():
 
     def __init__(self, sync_dir=None, patch_size=572,
                  max_workers=12,
+                 max_batch_size=12,
                  ):
 
 
@@ -102,7 +103,7 @@ class Trainer():
 
         if total_mem > 0: # means CUDA or MPS found
             self.bs = total_mem // mem_per_item
-            self.bs = min(12, self.bs)
+            self.bs = min(max_batch_size, self.bs)
         else:
             self.bs = 1 # cpu is batch size of 1
 

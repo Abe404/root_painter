@@ -203,7 +203,7 @@ class SegmentFolderWidget(QtWidgets.QWidget):
         options = QtWidgets.QFileDialog.Options()
         file_paths, _ = QtWidgets.QFileDialog.getOpenFileNames(self,
                                                                "Specify model file", "",
-                                                               "Pickle Files (*.pkl)",
+                                                               "Model Files (*.pkl *.pth)",
                                                                options=options)
         if file_paths:
             file_paths = [os.path.abspath(f) for f in file_paths]

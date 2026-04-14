@@ -540,9 +540,13 @@ class Trainer():
                 print('Exception loading', fpath, e)
                 return
             seg_start = time.time()
-            seg_out = ensemble_segment(model_paths, photo, self.bs,
-                                         self.in_w, self.out_w)
-            print(f'ensemble segment {fname}, dur', round(time.time() - seg_start, 2))
+            if any(p.endswith('.pth') for p in model_paths):
+                from MobileSAMInference import mobilesam_segment_image
+                seg_out = mobilesam_segment_image(model_paths[0], photo)
+            else:
+                seg_out = ensemble_segment(model_paths, photo, self.bs,
+                                             self.in_w, self.out_w)
+            print(f'segment {fname}, dur', round(time.time() - seg_start, 2))
             # catch warnings as low contrast is ok here.
             with warnings.catch_warnings():
             

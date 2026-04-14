@@ -515,6 +515,9 @@ class RootPainter(QtWidgets.QMainWindow):
             self.network_menu.addAction(server_btn)
 
         def show_segment_folder():
+            if self.server_manager and not self.server_manager.is_running():
+                self.show_server_window()
+                self.server_manager.start(self.sync_dir)
             self.segment_folder_widget = SegmentFolderWidget(self.sync_dir,
                                                              self.instruction_dir)
             self.segment_folder_widget.show()
@@ -1088,6 +1091,9 @@ class RootPainter(QtWidgets.QMainWindow):
         segment_folder_btn = QtWidgets.QAction(QtGui.QIcon('missing.png'), 'Segment folder', self)
 
         def show_segment_folder():
+            if self.server_manager and not self.server_manager.is_running():
+                self.show_server_window()
+                self.server_manager.start(self.sync_dir)
             self.segment_folder_widget = SegmentFolderWidget(self.sync_dir,
                                                              self.instruction_dir)
             self.segment_folder_widget.show()

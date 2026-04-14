@@ -151,8 +151,9 @@ PyInstaller.__main__.run([
     # CRITICAL: make trainer/src importable during analysis (so 'trainer.py' is found)
     "--paths", str(SRC),
 
-    # Ensure local module is bundled
+    # Ensure local modules are bundled
     "--hidden-import", "trainer",
+    "--hidden-import", "mobile_sam",
 
     # Torch bits
     "--hidden-import", "torch",

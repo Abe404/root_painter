@@ -31,16 +31,18 @@ class SegmentWatchThread(QtCore.QThread):
     progress_change = QtCore.pyqtSignal(int, int)
     done = QtCore.pyqtSignal()
 
-    def __init__(self, segment_dir, total_images):
+    def __init__(self, segment_dirs, images_per_dir):
         super().__init__()
-        self.segment_dir = segment_dir
-        self.total_images = total_images
+        self.segment_dirs = segment_dirs
+        self.total_images = images_per_dir * len(segment_dirs)
 
     def run(self):
         while True:
-            done_fnames = file_utils.ls(self.segment_dir)
-            done_fnames = [f for f in done_fnames if is_image(f) or f.endswith('.npz')]
-            count = len(done_fnames)
+            count = 0
+            for d in self.segment_dirs:
+                done_fnames = file_utils.ls(d)
+                done_fnames = [f for f in done_fnames if is_image(f) or f.endswith('.npz')]
+                count += len(done_fnames)
             if count >= self.total_images:
                 self.done.emit()
                 break
@@ -53,9 +55,9 @@ class SegmentProgressWidget(BaseProgressWidget):
     def __init__(self):
         super().__init__('Segmenting dataset')
 
-    def run(self, segment_dir, total_images):
-        self.progress_bar.setMaximum(total_images)
-        self.watch_thread = SegmentWatchThread(segment_dir, total_images)
+    def run(self, segment_dirs, images_per_dir):
+        self.progress_bar.setMaximum(images_per_dir * len(segment_dirs))
+        self.watch_thread = SegmentWatchThread(segment_dirs, images_per_dir)
         self.watch_thread.progress_change.connect(self.onCountChanged)
         self.watch_thread.done.connect(self.done)
         self.watch_thread.start()
@@ -80,18 +82,93 @@ class SegmentFolderWidget(QtWidgets.QWidget):
         output_dir = self.output_dir
         all_fnames = file_utils.ls(str(input_dir))
         all_fnames = [f for f in all_fnames if is_image(f)]
-        # need to make sure all train photos are copied now.
+        format_str = self.format_dropdown.currentText()
+
+        if len(selected_models) > 1:
+            mode = self.ask_combine_mode()
+            if mode is None:
+                return
+            if mode == 'batch':
+                self.segment_batch(selected_models, input_dir, output_dir,
+                                   all_fnames, format_str)
+                return
+
         content = {
             "model_paths": selected_models,
             "dataset_dir": input_dir,
             "seg_dir": output_dir,
             "file_names": all_fnames,
-            "format": self.format_dropdown.currentText()
+            "format": format_str
         }
         send_instruction('segment', content, self.instruction_dir, self.sync_dir)
         self.progress_widget = SegmentProgressWidget()
+        self.progress_widget.run([output_dir], len(all_fnames))
+        self.progress_widget.show()
+        self.close()
 
-        self.progress_widget.run(output_dir, len(all_fnames))
+    def ask_combine_mode(self):
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Multiple models selected")
+        layout = QtWidgets.QVBoxLayout(dialog)
+
+        question = QtWidgets.QLabel(
+            "How should the selected models be combined?")
+        layout.addWidget(question)
+
+        ensemble_radio = QtWidgets.QRadioButton("Ensemble")
+        ensemble_radio.setChecked(True)
+        ensemble_desc = QtWidgets.QLabel(
+            "Averages the model predictions, producing a single "
+            "segmentation file for each image."
+        )
+        ensemble_desc.setWordWrap(True)
+        ensemble_desc.setIndent(20)
+        layout.addWidget(ensemble_radio)
+        layout.addWidget(ensemble_desc)
+
+        batch_radio = QtWidgets.QRadioButton("Batch")
+        batch_desc = QtWidgets.QLabel(
+            "Creates a separate output folder for each input model "
+            "and produces segmentations for all models selected "
+            "independently."
+        )
+        batch_desc.setWordWrap(True)
+        batch_desc.setIndent(20)
+        layout.addWidget(batch_radio)
+        layout.addWidget(batch_desc)
+
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+
+        if dialog.exec_() != QtWidgets.QDialog.Accepted:
+            return None
+        return 'ensemble' if ensemble_radio.isChecked() else 'batch'
+
+    def segment_batch(self, selected_models, input_dir, output_dir,
+                      all_fnames, format_str):
+        subdirs = []
+        for model_path in selected_models:
+            name = os.path.splitext(os.path.basename(model_path))[0]
+            subdir = os.path.join(output_dir, name)
+            os.makedirs(subdir, exist_ok=True)
+            subdirs.append(subdir)
+
+        for model_path, subdir in zip(selected_models, subdirs):
+            content = {
+                "model_paths": [model_path],
+                "dataset_dir": input_dir,
+                "seg_dir": subdir,
+                "file_names": all_fnames,
+                "format": format_str,
+            }
+            send_instruction('segment', content,
+                             self.instruction_dir, self.sync_dir)
+
+        self.progress_widget = SegmentProgressWidget()
+        self.progress_widget.run(subdirs, len(all_fnames))
         self.progress_widget.show()
         self.close()
 

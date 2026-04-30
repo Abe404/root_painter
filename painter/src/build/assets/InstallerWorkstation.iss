@@ -1,6 +1,6 @@
 [Setup]
 AppName=RootPainter Workstation
-AppVersion=0.3.0
+AppVersion=0.3.1
 AppPublisher=Abraham George Smith
 DefaultDirName={autopf}\RootPainter Workstation
 DefaultGroupName=RootPainter Workstation

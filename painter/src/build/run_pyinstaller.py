@@ -67,6 +67,15 @@ run_args = [
     '--hidden-import', 'pyqtgraph.graphicsItems.PlotItem.plotConfigTemplate_pyqt5',
     '--hidden-import', 'pyqtgraph.imageview.ImageViewTemplate_pyqt5',
 
+    # PyInstaller's pyi_rth_pkgres runtime hook imports pkg_resources at startup,
+    # which does `from jaraco.text import ...`. setuptools ships jaraco only
+    # vendored under setuptools/_vendor and adds that directory to sys.path at
+    # import time, so bundling setuptools (submodules + data + metadata) makes the
+    # vendored jaraco resolvable and avoids a ModuleNotFoundError on launch. The
+    # macOS and workstation builds already bundle setuptools and so are unaffected;
+    # this makes the Linux build behave the same way.
+    '--collect-all', 'setuptools',
+
     # Where to put all the temporary work files .log, .pyz and etc. (default: ./build)
     '--workpath', os.path.join('dist', 'tmp_files'), 
     

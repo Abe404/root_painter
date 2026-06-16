@@ -44,6 +44,35 @@ jobs:
           cd painter
           python src/build/run_pyinstaller.py
 
+      - name: Smoke test (frozen app starts, no pkg_resources/jaraco crash)
+        shell: pwsh
+        run: |
+          cd painter
+          # The pyi_rth_pkgres runtime hook imports pkg_resources (-> jaraco) at
+          # interpreter startup, before any Qt, so this catches that regression
+          # even with no display. Run headless and fail if the crash appears.
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $exe = "dist\RootPainter\RootPainter.exe"
+          $p = Start-Process -FilePath $exe -PassThru `
+                 -RedirectStandardError stderr.txt -RedirectStandardOutput stdout.txt
+          Start-Sleep -Seconds 20
+          if ($p.HasExited) {
+            Write-Host "Process exited early with code $($p.ExitCode)"
+          } else {
+            Write-Host "Process still running after 20s (got past startup) - stopping it"
+            Stop-Process -Id $p.Id -Force
+          }
+          $out = (Get-Content stdout.txt -Raw -ErrorAction SilentlyContinue) + `
+                 (Get-Content stderr.txt -Raw -ErrorAction SilentlyContinue)
+          Write-Host "----- captured output -----"
+          Write-Host $out
+          Write-Host "---------------------------"
+          if ($out -match "jaraco|pyi_rth_pkgres|ModuleNotFoundError|Failed to execute script") {
+            Write-Error "Startup crash detected (pkg_resources/jaraco)."
+            exit 1
+          }
+          Write-Host "Smoke test passed: no pkg_resources/jaraco startup crash."
+
       - name: Install NSIS
         shell: pwsh
         run: |

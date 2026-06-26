@@ -32,6 +32,7 @@ from skimage.io import imread
 from progress_widget import BaseProgressWidget
 from interaction_time import events_from_client_log 
 from interaction_time import get_annot_duration_s
+from log_recovery import detect_log_corruption, recover_log
 
 
 def moving_average(x_vals, y_vals, w):
@@ -171,6 +172,7 @@ def get_model_name_for_seg(seg_path, models_dir):
 
 class Thread(QtCore.QThread):
     progress_change = QtCore.pyqtSignal(int, int)
+    status_change = QtCore.pyqtSignal(str)
     done = QtCore.pyqtSignal(str)
 
     def __init__(self, proj_dir, csv_path, fnames):
@@ -193,6 +195,15 @@ class Thread(QtCore.QThread):
             writer = csv.writer(csv_file, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
         start = time.time()
+        # the interaction log can be corrupted by the sync/network filesystem
+        # (blank lines, out-of-order records). detect and recover before parsing
+        # so the metrics are computed from a clean, chronological log.
+        self.status_change.emit('Log file recovery: assessing log integrity')
+        if detect_log_corruption(self.client_log_fpath):
+            backup_fpath = recover_log(
+                self.client_log_fpath,
+                status_callback=self.status_change.emit)
+            print('Recovered corrupt client log. Backup saved to', backup_fpath)
         # load the annotation events first (and once)
         annot_events = load_annot_events(self.proj_dir)
         cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
@@ -265,6 +276,7 @@ class MetricsProgressWidget(BaseProgressWidget):
         self.thread = Thread(proj_dir, csv_path, fnames)
         self.progress_bar.setMaximum(len(fnames))
         self.thread.progress_change.connect(self.onCountChanged)
+        self.thread.status_change.connect(self.info_label.setText)
         self.thread.done.connect(self.metrics_computed)
         self.thread.start()
 

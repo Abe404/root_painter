@@ -205,21 +205,27 @@ def gen_composite(annot_dir, photo_dir, comp_dir, fname, ext='.jpg'):
             background = resize(background,
                                 (background.shape[0]//2,
                                  background.shape[1]//2, 3))
-            annot = resize(annot, (annot.shape[0]//2, annot.shape[1]//2, 3))
-        # if the annotation has 4 channels (that means alpha included)
-        if len(annot.shape) and annot.shape[2] == 4:
-            # then save alpha channel
-            alpha_channel = annot[:, :, 3]
-            # convert the annot to just the rgb
-            annot = annot[:, :, :3]
-            # and set to 0 if the alpha was 0
-            annot[alpha_channel == 0] = [0, 0, 0]
+            if annot.ndim == 3:
+                annot = resize(annot, (annot.shape[0]//2,
+                                       annot.shape[1]//2,
+                                       annot.shape[2]))
+            else:
+                annot = resize(annot, (annot.shape[0]//2, annot.shape[1]//2))
 
-        annot = rgb2gray(annot)
-        annot = img_as_ubyte(annot)
+        # Derive the foreground mask. RootPainter Default segmentations are
+        # RGBA with a cyan foreground on a transparent background. RhizoVision
+        # Explorer segmentations are a single channel with a black foreground
+        # on a white background.
+        if annot.ndim == 3 and annot.shape[2] == 4:
+            foreground = annot[:, :, 3] > 0
+        elif annot.ndim == 3:
+            foreground = img_as_ubyte(rgb2gray(annot)) > 0
+        else:
+            foreground = img_as_ubyte(annot) < 128
+
         background = img_as_ubyte(background)
         comp_right = np.copy(background)
-        comp_right[annot > 0] = [255, 0, 0]
+        comp_right[foreground] = [255, 0, 0]
         # if width is more than 20% bigger than height then vstack
         if background.shape[1] > background.shape[0] * 1.2:
             comp = np.vstack((background, comp_right))

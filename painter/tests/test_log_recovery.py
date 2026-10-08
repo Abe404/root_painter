@@ -121,6 +121,38 @@ def test_recover_preserves_four_field_events():
         assert len(recovered) == 2
 
 
+def test_recover_preserves_crlf_line_endings():
+    """ A log written by a Windows client has CRLF line endings. Recovery must
+        keep them, even when run on mac/linux. """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        log_dir = os.path.join(tmpdir, 'logs')
+        os.makedirs(log_dir)
+        fpath = os.path.join(log_dir, 'client.csv')
+        lines = [
+            mouse_line(100.0, 'mouse_press'),
+            mouse_line(102.0, 'mouse_release'),
+            '\n',
+            mouse_line(101.0, 'mouse_press'),  # out of order
+            'ue\n',  # fragment of a line, as seen in a real corrupted log
+            mouse_line(103.0, 'mouse_release'),
+        ]
+        with open(fpath, 'wb') as f:
+            f.write(''.join(lines).replace('\n', '\r\n').encode())
+        assert detect_log_corruption(fpath) is True
+
+        recover_log(fpath)
+
+        expected = [
+            mouse_line(100.0, 'mouse_press'),
+            mouse_line(101.0, 'mouse_press'),
+            mouse_line(102.0, 'mouse_release'),
+            mouse_line(103.0, 'mouse_release'),
+        ]
+        with open(fpath, 'rb') as f:
+            assert f.read() == ''.join(expected).replace('\n', '\r\n').encode()
+        assert detect_log_corruption(fpath) is False
+
+
 def test_recover_status_callback_reports_steps():
     with tempfile.TemporaryDirectory() as tmpdir:
         fpath = write_log(tmpdir, [mouse_line(100.0), '\n', mouse_line(101.0)])

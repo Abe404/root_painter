@@ -46,7 +46,7 @@ def timestamp_from_line(line):
 
         A valid line is: '<datetime>,<epoch_time>,<event_name>,...,fname:...'
         so the epoch time is the second comma-separated field. """
-    parts = line.rstrip('\n').split(',')
+    parts = line.rstrip('\r\n').split(',')
     if len(parts) < 3:
         return None
     try:
@@ -62,7 +62,9 @@ def detect_log_corruption(client_log_fpath):
     if not os.path.isfile(client_log_fpath):
         return False
     prev_time = None
-    with open(client_log_fpath) as log_file:
+    # newline='' so line endings are seen as written. The client may be on
+    # Windows (CRLF) whilst the machine running the recovery is not.
+    with open(client_log_fpath, newline='') as log_file:
         for line in log_file:
             t = timestamp_from_line(line)
             if t is None:
@@ -103,7 +105,11 @@ def recover_log(client_log_fpath, status_callback=None):
     # 2. keep only lines with a valid timestamp, then stable-sort by it.
     #    stable sort keeps the original order of records sharing a timestamp.
     report('Log file recovery: de-corrupting log file')
-    with open(client_log_fpath) as log_file:
+    # newline='' on both the read and the write below, so each line keeps the
+    # line ending it was written with. Without this, a CRLF log written by a
+    # Windows client is silently rewritten as LF when recovered on mac/linux -
+    # a change to the user's file that the repair was never asked to make.
+    with open(client_log_fpath, newline='') as log_file:
         lines = log_file.readlines()
     valid = [(timestamp_from_line(l), l) for l in lines]
     valid = [(t, l) for (t, l) in valid if t is not None]
@@ -115,7 +121,7 @@ def recover_log(client_log_fpath, status_callback=None):
     #    already safe in the backup regardless).
     report('Log file recovery: saving recovered log')
     tmp_fpath = client_log_fpath + '.recovered'
-    with open(tmp_fpath, 'w') as tmp_file:
+    with open(tmp_fpath, 'w', newline='') as tmp_file:
         tmp_file.writelines(recovered_lines)
     os.replace(tmp_fpath, client_log_fpath)
 

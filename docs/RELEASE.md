@@ -6,12 +6,14 @@ The trainer is also published to PyPI.
 
 ## Version numbers
 
-Bump both:
+Bump all of these:
 
 | Component | File | Field |
 |-----------|------|-------|
 | Painter (GUI) | `painter/src/main/python/about.py` | the `Version: X.Y.Z` line |
 | Trainer (PyPI) | `trainer/pyproject.toml` | `version = "X.Y.Z"` |
+| Windows painter installer | `painter/src/build/assets/Installer.nsi` | `!define VERSION "X.Y.Z.0"` (NSIS needs four parts) |
+| Windows workstation installer | `painter/src/build/assets/InstallerWorkstation.iss` | `AppVersion=X.Y.Z` |
 
 The `.deb` and AppImage builds read the painter version from `about.py` with
 `grep -oP 'Version: \K[0-9.]+'`, so nothing else needs editing for them.
@@ -63,7 +65,7 @@ From `trainer/` (requires `build`, `twine`, and PyPI credentials):
 
 ## Steps
 
-1. Bump both versions and commit.
+1. Bump all versions and commit.
 2. Run each workflow for this release.
 3. Download each artifact, rename to the convention above.
 4. Create the GitHub release / tag and upload the assets.

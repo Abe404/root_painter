@@ -56,9 +56,13 @@ painter, `painter/src/build/run_pyinstaller.py` then
 
 ## Publishing the trainer to PyPI
 
-From `trainer/` (requires `build`, `twine`, and PyPI credentials):
+Use the trainer venv (`trainer/env`) with the pinned publishing tools from
+`trainer/publish_requirements.txt` (requires PyPI credentials):
 
 ```bash
+cd trainer
+source env/bin/activate
+pip install -r publish_requirements.txt   # pinned build and twine
 ./publish.sh        # uploads an sdist to TestPyPI
 ./publish.sh prod   # uploads to real PyPI (prompts for confirmation)
 ```

@@ -99,6 +99,28 @@ def get_cache_key(fname):
     fname = os.path.splitext(fname)[0] + '.png'
     return fname
 
+
+def load_metrics_cache(cache_dict_path):
+    """ The cache only saves recomputing metrics, so if it is missing or
+        can't be read (e.g. truncated) start from empty and rebuild it. """
+    if not os.path.isfile(cache_dict_path):
+        return {}
+    try:
+        with open(cache_dict_path, 'rb') as cache_file:
+            return pickle.load(cache_file)
+    except Exception as error:
+        print('Could not read metrics cache, rebuilding it.', error)
+        return {}
+
+
+def save_metrics_cache(cache_dict, cache_dict_path):
+    """ write to a temporary file and then replace, so the cache
+        is never left partially written """
+    tmp_fpath = cache_dict_path + '.tmp'
+    with open(tmp_fpath, 'wb') as cache_file:
+        pickle.dump(cache_dict, cache_file)
+    os.replace(tmp_fpath, cache_dict_path)
+
 def load_annot_events(proj_dir):
     client_log_fpath = os.path.join(proj_dir, 'logs', 'client.csv')
     if os.path.isfile(client_log_fpath):
@@ -207,10 +229,7 @@ class Thread(QtCore.QThread):
         # load the annotation events first (and once)
         annot_events = load_annot_events(self.proj_dir)
         cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
-        if os.path.isfile(cache_dict_path):
-            cache_dict = pickle.load(open(cache_dict_path, 'rb'))
-        else:
-            cache_dict = {}
+        cache_dict = load_metrics_cache(cache_dict_path)
         
         for i, fname in enumerate(self.fnames):
             self.progress_change.emit(i+1, len(self.fnames))
@@ -250,9 +269,8 @@ class Thread(QtCore.QThread):
                     for k in metric_keys:
                         row.append(corrected_metrics[k]) 
                     writer.writerow(row)
-        
-        with open(cache_dict_path, 'wb') as cache_file:
-            pickle.dump(cache_dict, cache_file) 
+
+        save_metrics_cache(cache_dict, cache_dict_path)
         print('Seconds to get metrics: ', round(time.time() - start, 2))
         self.done.emit(json.dumps([all_fnames, all_metrics]))
 
@@ -363,7 +381,7 @@ class MetricsPlot:
             annot_dir = os.path.join(self.proj_dir, 'annotations')
 
             cache_dict_path = os.path.join(self.proj_dir, 'metrics_cache.pkl')
-            cache_dict = pickle.load(open(cache_dict_path, 'rb'))
+            cache_dict = load_metrics_cache(cache_dict_path)
             cache_key = get_cache_key(fname)
 
             annot_events = load_annot_events(self.proj_dir)
@@ -375,8 +393,7 @@ class MetricsPlot:
                 cache_dict[cache_key] = metrics
                 self.plot_window.add_point(fname, metrics)
 
-            with open(cache_dict_path, 'wb') as cache_file:
-                pickle.dump(cache_dict, cache_file) 
+            save_metrics_cache(cache_dict, cache_dict_path)
 
 
     def view_plot_from_csv(self, csv_fpath):

@@ -70,10 +70,15 @@ pip install -r publish_requirements.txt   # pinned build and twine
 ## Steps
 
 1. Bump all versions and commit.
-2. Run each workflow for this release.
-3. Download each artifact, rename to the convention above.
-4. Create the GitHub release / tag and upload the assets.
-5. Publish the trainer with `trainer/publish.sh prod`.
+2. Create the GitHub release (as a pre-release), which creates the tag.
+3. Run each workflow from the tag, e.g. `gh workflow run build_osx.yml --ref X.Y.Z`
+   (the Ubuntu workstation workflow with `-f variant=both`).
+4. Run `attach_release_assets.yml` with the tag
+   (`gh workflow run attach_release_assets.yml -f tag=X.Y.Z`). It downloads each
+   artifact on GitHub's side, renames it to the convention above and uploads it
+   to the release.
+5. Once tested, mark the release as a full release.
+6. Publish the trainer with `trainer/publish.sh prod`.
 
 ## Notes
 

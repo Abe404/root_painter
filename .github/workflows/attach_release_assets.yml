@@ -1,0 +1,80 @@
+# Copyright (C) 2026 Abraham Smith
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+# Attach the build artifacts for a tag to its (existing) GitHub release.
+# Each build workflow must have a successful run on the tag's commit.
+# Runs on GitHub's side, so the assets are never downloaded locally.
+
+name: Attach Release Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. 0.3.3"
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Download and rename artifacts
+        run: |
+          set -euo pipefail
+          sha=$(gh api "repos/$GH_REPO/commits/$TAG" --jq .sha)
+          echo "Tag $TAG is commit $sha"
+          mkdir assets
+
+          # workflow file | artifact name | released asset name
+          while IFS='|' read -r workflow artifact asset; do
+            run_id=$(gh run list --workflow "$workflow" --commit "$sha" \
+                     --status success --limit 1 --json databaseId --jq '.[0].databaseId' < /dev/null)
+            if [ -z "$run_id" ]; then
+              echo "No successful run of $workflow on $sha"
+              exit 1
+            fi
+            gh run download "$run_id" --name "$artifact" --dir "download/$artifact" < /dev/null
+            files=(download/"$artifact"/*)
+            if [ "${#files[@]}" -ne 1 ]; then
+              echo "Expected one file in $artifact, found ${#files[@]}"
+              exit 1
+            fi
+            mv "${files[0]}" "assets/$asset"
+            echo "$workflow run $run_id: $artifact -> $asset"
+          done <<EOF
+          build_ubuntu_22.yml|Package-ubuntu-22.04|RootPainter_${TAG}_Ubuntu22.deb
+          build_osx.yml|Package-arm64|RootPainter_${TAG}_macOS_arm64.pkg
+          build_osx.yml|Package-x86_64|RootPainter_${TAG}_macOS_x86_64.pkg
+          build_windows.yml|Package|RootPainterInstaller_${TAG}_windows.exe
+          build_workstation_ubuntu_cuda128.yml|RootPainter-Workstation-Ubuntu-CUDA128-rtx50|RootPainterWorkstation_${TAG}_Ubuntu_CUDA128_RTX50.AppImage
+          build_workstation_ubuntu_cuda128.yml|RootPainter-Workstation-Ubuntu-CUDA128-broad|RootPainterWorkstation_${TAG}_Ubuntu_CUDA128_GTX1660_to_RTX4090.AppImage
+          build_workstation_macos.yml|RootPainter-Workstation-macOS|RootPainterWorkstation_${TAG}_macOS.pkg
+          build_workstation_windows.yml|RootPainter-Workstation-Windows-Installer|RootPainterWorkstationInstaller_${TAG}_windows.exe
+          EOF
+          ls -l assets
+
+      - name: Upload to release
+        run: |
+          set -euo pipefail
+          # without --clobber, gh refuses to overwrite an asset that already exists
+          gh release upload "$TAG" assets/*

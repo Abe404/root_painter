@@ -1,6 +1,6 @@
 [project]
 name = "root_painter_trainer"
-version = "0.3.2"
+version = "0.3.3"
 description = "Training server for RootPainter. Handles model training and segmentation. See https://github.com/Abe404/root_painter"
 authors = [
     {name = "Abraham George Smith"},
